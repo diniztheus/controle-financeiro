@@ -1,0 +1,226 @@
+<script lang="ts">
+  import { enhance } from '$app/forms';
+  import { resolve } from '$app/paths';
+  import EscolhaCor from '$lib/ui/EscolhaCor.svelte';
+  import { corCss, plural } from '$lib/ui/formato';
+  import type { PageProps } from './$types';
+
+  let { data, form }: PageProps = $props();
+  const erroCriar = $derived(form?.acao === 'criar' && !('ok' in form) ? form : null);
+  /** Linha aberta para edição. */
+  let editando = $state<string | null>(null);
+  const manter =
+    () =>
+    async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) =>
+      update({ reset: false });
+</script>
+
+<svelte:head>
+  <title>Controle Financeiro · Categorias</title>
+</svelte:head>
+
+<header class="page-head pad">
+  <div>
+    <h1>Categorias</h1>
+    <p>
+      Renomeie, troque a cor e ponha na ordem em que aparecem ao lançar. Arquivar tira a categoria
+      das opções sem mexer nos gastos antigos.
+    </p>
+    <p class="voltar-l"><a class="voltar" href={resolve('/gastos')}>‹ Voltar aos gastos</a></p>
+  </div>
+</header>
+
+<section class="sec alt pad grade">
+  <div class="col">
+    <ul class="cats" data-testid="lista-categorias">
+      {#each data.ativas as c, i (c.id)}
+        {@const erroLinha = form?.id === c.id && !('ok' in form) ? form : null}
+        <li class="cat">
+          <div class="cat-linha">
+            <span class="sq" style="--cc: {corCss(c.cor)}"></span>
+            <span class="cat-nome">{c.nome}</span>
+            <span class="muted small num">{plural(c.uso, 'gasto', 'gastos')}</span>
+            <div class="cat-acts">
+              <form method="POST" action="?/mover" use:enhance class="inline">
+                <input type="hidden" name="id" value={c.id} />
+                <button
+                  class="btn sm"
+                  name="direcao"
+                  value="subir"
+                  disabled={i === 0}
+                  aria-label="Subir {c.nome}">↑</button
+                >
+                <button
+                  class="btn sm"
+                  name="direcao"
+                  value="descer"
+                  disabled={i === data.ativas.length - 1}
+                  aria-label="Descer {c.nome}">↓</button
+                >
+              </form>
+              <button
+                class="btn sm"
+                type="button"
+                aria-expanded={editando === c.id}
+                onclick={() => (editando = editando === c.id ? null : c.id)}>Editar</button
+              >
+            </div>
+          </div>
+          {#if editando === c.id || erroLinha}
+            <div class="editar">
+              <form class="fe" method="POST" action="?/editar" use:enhance={manter}>
+                <input type="hidden" name="id" value={c.id} />
+                <div class="field">
+                  <label for="n-{c.id}">Nome</label>
+                  <input
+                    id="n-{c.id}"
+                    name="nome"
+                    maxlength="40"
+                    required
+                    value={erroLinha?.valores?.nome ?? c.nome}
+                  />
+                  {#if erroLinha?.erros?.nome}<span class="err">{erroLinha.erros.nome}</span>{/if}
+                </div>
+                <EscolhaCor id="cor-{c.id}" valor={erroLinha?.valores?.cor ?? c.cor} />
+                <div class="acts">
+                  <button class="btn ink sm" type="submit">Salvar</button>
+                </div>
+              </form>
+              <form method="POST" action="?/arquivar" use:enhance>
+                <input type="hidden" name="id" value={c.id} />
+                <input type="hidden" name="arquivar" value="sim" />
+                <button class="btn sm" type="submit">Arquivar</button>
+              </form>
+              {#if erroLinha?.erro}<p class="err" role="alert">{erroLinha.erro}</p>{/if}
+            </div>
+          {/if}
+        </li>
+      {/each}
+    </ul>
+
+    {#if data.arquivadas.length}
+      <div class="col-head arq-head"><h2 class="h">Arquivadas</h2></div>
+      <ul class="cats">
+        {#each data.arquivadas as c (c.id)}
+          <li class="cat arquivada">
+            <div class="cat-linha">
+              <span class="sq" style="--cc: {corCss(c.cor)}"></span>
+              <span class="cat-nome">{c.nome}</span>
+              <span class="muted small num">{plural(c.uso, 'gasto', 'gastos')}</span>
+              <form method="POST" action="?/arquivar" use:enhance>
+                <input type="hidden" name="id" value={c.id} />
+                <input type="hidden" name="arquivar" value="nao" />
+                <button class="btn sm" type="submit">Desarquivar</button>
+              </form>
+            </div>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </div>
+
+  <div class="painel-form">
+    <h2>Nova categoria</h2>
+    <form class="fe" method="POST" action="?/criar" use:enhance autocomplete="off">
+      <div class="field">
+        <label for="nova-nome">Nome</label>
+        <input
+          id="nova-nome"
+          name="nome"
+          maxlength="40"
+          required
+          placeholder="Ex.: Pets, Viagens"
+          value={erroCriar?.valores?.nome ?? ''}
+        />
+        {#if erroCriar?.erros?.nome}<span class="err">{erroCriar.erros.nome}</span>{/if}
+      </div>
+      <EscolhaCor id="nova-cor" valor={erroCriar?.valores?.cor || null} automatica />
+      {#if erroCriar?.erro}<p class="err" role="alert">{erroCriar.erro}</p>{/if}
+      <div><button class="btn ink" type="submit">Criar categoria</button></div>
+      {#if form?.acao === 'criar' && 'ok' in form}<p class="ok-msg" role="status">{form.ok}</p>{/if}
+    </form>
+  </div>
+</section>
+
+<style>
+  .grade {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 48px 64px;
+    align-items: start;
+    padding-block: clamp(32px, 5vw, 64px) clamp(64px, 10vw, 144px);
+  }
+  @media (max-width: 900px) {
+    .grade {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  .cats {
+    display: grid;
+    gap: 4px;
+  }
+  .cat {
+    background: var(--paper);
+    padding: 10px 12px;
+    display: grid;
+    gap: 12px;
+    --chip-bg: var(--surface);
+  }
+  .cat .field input {
+    background: var(--surface);
+  }
+  .cat-linha {
+    display: grid;
+    grid-template-columns: 12px minmax(0, 1fr) auto auto;
+    gap: 12px;
+    align-items: center;
+  }
+  .cat-nome {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cat-acts,
+  .inline,
+  .acts {
+    display: flex;
+    gap: 4px;
+  }
+  .cat-acts .btn {
+    min-width: 40px;
+  }
+  .btn:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
+  .editar {
+    display: grid;
+    gap: 12px;
+    padding: 4px 0 6px 24px;
+  }
+  .fe {
+    display: grid;
+    gap: 14px;
+  }
+  .arquivada .cat-nome {
+    color: var(--muted);
+  }
+  .arq-head {
+    margin-top: 24px;
+  }
+  .h {
+    font-size: var(--s-lead);
+  }
+  @media (max-width: 520px) {
+    .cat-linha {
+      grid-template-columns: 12px minmax(0, 1fr) auto;
+    }
+    .cat-linha > .muted {
+      display: none;
+    }
+    .editar {
+      padding-left: 0;
+    }
+  }
+</style>
