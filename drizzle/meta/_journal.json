@@ -36,6 +36,13 @@
       "when": 1792106745177,
       "tag": "0004_receitas_recorrentes",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1792107415478,
+      "tag": "0005_receitas_confirmacao",
+      "breakpoints": true
     }
   ]
 }

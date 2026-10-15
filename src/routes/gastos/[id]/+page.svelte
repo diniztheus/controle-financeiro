@@ -1,7 +1,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import { formatarBRL } from '$lib/dominio/dinheiro';
-  import { formatarDia } from '$lib/dominio/datas';
+  import { nomeMesCurto } from '$lib/dominio/datas';
   import ConfirmarRemocao from '$lib/ui/ConfirmarRemocao.svelte';
   import FormGasto from '$lib/ui/FormGasto.svelte';
   import type { PageProps } from './$types';
@@ -18,13 +18,7 @@
 
 <header class="page-head pad">
   <div>
-    <h1>
-      {data.editavel
-        ? 'Editar gasto'
-        : g.meio === 'cartao'
-          ? 'Compra no cartão'
-          : 'Compra parcelada'}
-    </h1>
+    <h1>{g.meio === 'cartao' ? 'Compra no cartão' : 'Editar gasto'}</h1>
     <p>{g.descricao ?? data.categoriaNome} · {formatarBRL(g.valorTotalCentavos)}</p>
     <p class="voltar-l"><a class="voltar" href={voltar}>‹ Voltar aos gastos</a></p>
   </div>
@@ -32,48 +26,66 @@
 
 <section class="sec alt pad grade">
   <div class="painel-form">
-    {#if data.editavel}
-      <FormGasto
-        acao="?/salvar"
-        rotulo="Salvar alterações"
-        id="e"
-        categorias={data.categorias}
-        contas={data.contas}
-        inicial={{
-          valorCentavos: g.valorTotalCentavos,
-          descricao: g.descricao,
-          categoriaId: g.categoriaId,
-          data: g.dataCompra,
-          contaId: g.contaId,
-        }}
-        erros={erroSalvar?.erros}
-        erro={erroSalvar?.erro}
-        valores={erroSalvar?.valores}
-      />
-    {:else}
-      <dl class="fatos">
-        <div>
-          <dt>Valor total</dt>
-          <dd class="num">{formatarBRL(g.valorTotalCentavos)}</dd>
-        </div>
-        <div>
-          <dt>Parcelas</dt>
-          <dd class="num">{g.numParcelas}x</dd>
-        </div>
-        <div>
-          <dt>Data da compra</dt>
-          <dd class="num">{formatarDia(g.dataCompra)}</dd>
-        </div>
-        <div>
-          <dt>Cartão</dt>
-          <dd>{data.cartaoNome ?? '—'}</dd>
-        </div>
-      </dl>
+    <FormGasto
+      acao="?/salvar"
+      rotulo="Salvar alterações"
+      id="e"
+      categorias={data.categorias}
+      contas={data.contas}
+      cartoes={data.cartoes}
+      inicial={{
+        valorCentavos: g.valorTotalCentavos,
+        descricao: g.descricao,
+        categoriaId: g.categoriaId,
+        data: g.dataCompra,
+        contaId: g.contaId,
+        meio: g.meio,
+        cartaoId: g.cartaoId,
+        numParcelas: g.numParcelas,
+      }}
+      erros={erroSalvar?.erros}
+      erro={erroSalvar?.erro}
+      valores={erroSalvar?.valores}
+    />
+    {#if g.meio === 'cartao'}
       <p class="note">
-        Compras no cartão e parceladas vieram do app atual e já contam nos meses certos. Editá-las
-        fica para a tela de cartões, que chega em breve. Por enquanto dá para mandá-las para a
-        lixeira.
+        Mudar a data ou o número de parcelas refaz as parcelas. Se alguma delas já estiver em fatura
+        paga, desfaça o pagamento antes.
       </p>
+    {/if}
+
+    {#if data.parcelas.length}
+      <section class="parcelas" aria-labelledby="h-parcelas">
+        <h2 id="h-parcelas">Parcelas</h2>
+        <div class="rolagem">
+          <table>
+            <caption class="sr">Parcelas desta compra e a fatura de cada uma</caption>
+            <thead>
+              <tr>
+                <th scope="col">Parcela</th>
+                <th scope="col">Fatura</th>
+                <th scope="col" class="num">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each data.parcelas as p (p.numero)}
+                <tr>
+                  <td class="num">{p.numero}/{g.numParcelas}</td>
+                  <td>
+                    <a href={resolve(`/cartoes/${g.cartaoId}/faturas/${p.faturaMes}`)}
+                      >{nomeMesCurto(p.faturaMes)}/{p.faturaMes.slice(0, 4)}</a
+                    >{#if p.paga}<span class="muted"> · paga</span>{/if}
+                  </td>
+                  <td class="num">{formatarBRL(p.valorCentavos)}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+        <p class="small muted">
+          Cada parcela cai na fatura do mês em que vence o cartão, a partir da data da compra.
+        </p>
+      </section>
     {/if}
   </div>
 
@@ -89,26 +101,17 @@
   .remover h2 {
     font-size: var(--s-lead);
   }
-  .fatos {
+  .parcelas {
+    margin-top: 28px;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px;
-    margin: 0;
+    gap: 10px;
   }
-  .fatos div {
-    background: var(--surface);
-    padding: 14px 16px;
-    display: grid;
-    gap: 2px;
+  .parcelas h2 {
+    font-size: var(--s-lead);
   }
-  .fatos dt {
-    font-size: var(--s-small);
-    color: var(--muted);
-  }
-  .fatos dd {
-    margin: 0;
-    font-size: 1.25rem;
+  .parcelas a {
+    color: var(--ink);
     font-weight: 600;
-    letter-spacing: -0.02em;
+    text-underline-offset: 4px;
   }
 </style>

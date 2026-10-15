@@ -27,7 +27,8 @@
     <h1>Receitas recorrentes</h1>
     <p>
       Salário, bolsa, aluguel recebido. O site lança a receita todo mês sozinho, no dia combinado. O
-      que já foi lançado não muda quando você edita o modelo.
+      que já foi lançado não muda quando você edita o modelo. As receitas lançadas aparecem como
+      "previstas" até você confirmar o recebimento.
     </p>
     <p class="voltar-l"><a class="voltar" href={resolve('/receitas')}>‹ Voltar às receitas</a></p>
   </div>

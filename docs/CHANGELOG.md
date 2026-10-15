@@ -2,6 +2,26 @@
 
 Uma nota curta por onda. Versões seguem as tags do git (`v0.0`, `v0.1`…).
 
+## Onda 2: Cartão de crédito + confirmação de recebimento (15/10/2026)
+
+- **Cartões** (`/cartoes`): cadastro com limite, dia de fechamento e de vencimento; limite
+  disponível; arquivar (some dos formulários, mantém o histórico) e lixeira. Mudar fechamento ou
+  vencimento vale só para compras novas.
+- **Compra no cartão** (`/gastos`): "Forma de pagamento" Conta ou Cartão, 1 a 24 parcelas e uma
+  prévia ("10x de R$ 100,00 · 1ª parcela na fatura de dez/2026"). As parcelas caem na fatura
+  certa (a 1ª leva o resto dos centavos) e a compra pode ser editada: as parcelas são refeitas.
+- **Fatura** (`/cartoes/[id]/faturas/[mes]`): itens com "3/10", total, fechamento, vencimento,
+  situação (aberta, fechada, vencida, paga), marcar como paga e desfazer, navegação entre meses.
+  Pagar não altera o saldo das contas. Editar ou remover uma compra que está em fatura paga é
+  recusado até desfazer o pagamento.
+- **Patrimônio** = contas + bitcoin − o que falta pagar nos cartões (inclui parcelas futuras), na
+  tela inicial e na evolução dos relatórios (coluna "Cartões a pagar").
+- **Receitas recorrentes agora nascem "previstas"**: aparecem em "A receber" e só entram nos
+  totais quando você confirma o recebimento ("Recebi", podendo ajustar valor e data dentro do
+  mês) ou descarta ("Não recebi"). A confirmação pode ser desfeita. Receita lançada à mão nasce
+  recebida, e as que já existiam ficaram como recebidas (migration `0005_receitas_confirmacao`).
+- O menu não tem mais seções "em breve".
+
 ## Receitas recorrentes (15/10/2026)
 
 - **Receitas recorrentes** (`/receitas/recorrentes`): salário, bolsa, aluguel recebido e afins.

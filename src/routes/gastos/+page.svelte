@@ -39,7 +39,9 @@
 <header class="page-head pad">
   <div>
     <h1>Gastos</h1>
-    <p>Gastos à vista, pagos com conta ou dinheiro. Compras no cartão chegam em breve.</p>
+    <p>
+      Gastos pagos com conta, dinheiro ou cartão. Compras no cartão entram nas faturas do mês certo.
+    </p>
   </div>
   <NavMes mes={data.mes} href={linkMes} />
 </header>
@@ -63,6 +65,7 @@
       rotulo="Lançar gasto"
       categorias={data.categorias}
       contas={data.contas}
+      cartoes={data.cartoes}
       inicial={{
         data: data.dataInicial,
         categoriaId: data.ultimaCategoria,

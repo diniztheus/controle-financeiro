@@ -4,6 +4,7 @@ import { redirect } from '@sveltejs/kit';
 import { campo, executar, falhou, validar } from '$lib/server/acoes';
 import { obterBanco } from '$lib/server/db';
 import { listarCategorias } from '$lib/server/servicos/categorias';
+import { listarCartoes } from '$lib/server/servicos/cartoes';
 import { listarContas } from '$lib/server/servicos/contas';
 import {
   lancamentosDoMes,
@@ -14,6 +15,7 @@ import {
 } from '$lib/server/servicos/gastos';
 import { agruparPorDia } from '$lib/dominio/lancamentos';
 import { mesDaRota, viaEnhance } from '$lib/server/rotas';
+import { comCamposDoFormulario, dadosDoGasto } from '$lib/server/formularioGasto';
 import { gastoForm } from '$lib/validacao/nucleo';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -39,6 +41,12 @@ export const load: PageServerLoad = ({ url }) => {
     quantidade: lancamentos.length,
     categorias: listarCategorias(banco).map((c) => ({ id: c.id, nome: c.nome, cor: c.cor })),
     contas: listarContas(banco).map((c) => ({ id: c.id, nome: c.nome })),
+    cartoes: listarCartoes(banco).map((c) => ({
+      id: c.id,
+      nome: c.nome,
+      diaFechamento: c.diaFechamento,
+      diaVencimento: c.diaVencimento,
+    })),
     ultimaCategoria: ultimaCategoriaUsada(banco),
     /** Gasto que acabou de ir para a lixeira (para oferecer "desfazer"). */
     removido: gastoAindaNaLixeira(banco, url.searchParams.get('removido')),
@@ -50,22 +58,18 @@ export const actions: Actions = {
     const v = await validar(request, gastoForm, 'lancar');
     if (!v.ok) return v.falha;
     const d = v.dados;
-    const r = executar(
-      'lancar',
-      () => {
-        const g = lancarGasto(obterBanco(), {
-          valorCentavos: d.valor,
-          descricao: d.descricao,
-          categoriaId: d.categoriaId,
-          data: d.data,
-          contaId: d.contaId,
-        });
-        return {
-          acao: 'lancar',
-          lancado: { id: g.id, valorCentavos: d.valor, mes: mesDe(d.data) },
-        };
-      },
-      { valores: v.valores },
+    const r = comCamposDoFormulario(
+      executar(
+        'lancar',
+        () => {
+          const g = lancarGasto(obterBanco(), dadosDoGasto(d));
+          return {
+            acao: 'lancar',
+            lancado: { id: g.id, valorCentavos: d.valor, mes: mesDe(d.data) },
+          };
+        },
+        { valores: v.valores },
+      ),
     );
     // Sem JavaScript: POST → redirect → GET, para o F5 não lançar o gasto de novo.
     if (!falhou(r) && !viaEnhance(request)) {

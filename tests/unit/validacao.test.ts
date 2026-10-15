@@ -69,6 +69,9 @@ describe('formulários do núcleo', () => {
       categoriaId: 'c',
       data: '2026-10-15',
       contaId: null,
+      meio: 'conta',
+      cartaoId: null,
+      numParcelas: 1,
     });
     expect(gastoForm.parse({ valor: '1', categoriaId: 'c', data: '2026-10-15' })).toMatchObject({
       descricao: null,

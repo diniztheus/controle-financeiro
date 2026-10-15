@@ -92,7 +92,8 @@
 <section class="bloco pad" aria-labelledby="h-evolucao">
   <h2 id="h-evolucao">Evolução do patrimônio</h2>
   <p class="small muted">
-    Contas pelo último saldo registrado em cada mês, mais o bitcoin pelo último preço conhecido.
+    Contas pelo último saldo registrado em cada mês, mais o bitcoin pelo último preço conhecido,
+    menos as parcelas de cartão que ainda não estavam pagas.
   </p>
   <GraficoPatrimonio pontos={data.patrimonio} />
 </section>

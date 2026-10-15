@@ -8,7 +8,9 @@ import { CORES } from '../dominio/categorias.ts';
 import { CATEGORIAS_RECEITA } from '../dominio/receitas.ts';
 import { TIPOS_CONTA } from '../dominio/contas.ts';
 import { ehDia } from '../dominio/datas.ts';
+import { parseValor } from '../dominio/dinheiro.ts';
 import { dia, diaDoMes, mes, textoObrigatorio, valorEmReais, valorPositivo } from './comum.ts';
+import { MAX_PARCELAS } from '../dominio/dinheiro.ts';
 import type { FiltroLancamentos } from '../dominio/relatorios.ts';
 
 /** Texto opcional: vazio ou só espaços vira `null`. */
@@ -52,14 +54,104 @@ export const categoriaForm = z.object({
 });
 export type CategoriaForm = z.output<typeof categoriaForm>;
 
-export const gastoForm = z.object({
-  valor: valorPositivo,
-  descricao: textoOpcional('A descrição', 120),
-  categoriaId: idObrigatorio('uma categoria'),
-  data: dia,
-  contaId: idOpcional,
-});
+/**
+ * Gasto. Saída: os campos de sempre, mais `meio` ('conta' padrão ou 'cartao'), `cartaoId` e
+ * `numParcelas` (1 no gasto à vista). Com cartão, `contaId` sai null.
+ */
+export const gastoForm = z
+  .object({
+    valor: valorPositivo,
+    descricao: textoOpcional('A descrição', 120),
+    categoriaId: idObrigatorio('uma categoria'),
+    data: dia,
+    contaId: idOpcional,
+    meio: z
+      .enum(['conta', 'cartao'], { message: 'Escolha conta ou cartão' })
+      .or(z.literal(''))
+      .optional()
+      .transform((m) => m || 'conta'),
+    cartao: idOpcional,
+    parcelas: z
+      .string()
+      .optional()
+      .transform((s, ctx) => {
+        const n = Number((s ?? '').trim() || '1');
+        if (!Number.isInteger(n) || n < 1 || n > MAX_PARCELAS) {
+          ctx.addIssue({ code: 'custom', message: `Escolha de 1 a ${MAX_PARCELAS} parcelas` });
+          return z.NEVER;
+        }
+        return n;
+      }),
+  })
+  .superRefine((f, ctx) => {
+    if (f.meio === 'cartao' && !f.cartao) {
+      ctx.addIssue({ code: 'custom', path: ['cartao'], message: 'Escolha o cartão' });
+    }
+  })
+  .transform((f) => {
+    const noCartao = f.meio === 'cartao';
+    return {
+      valor: f.valor,
+      descricao: f.descricao,
+      categoriaId: f.categoriaId,
+      data: f.data,
+      contaId: noCartao ? null : f.contaId,
+      meio: f.meio,
+      cartaoId: noCartao ? f.cartao : null,
+      numParcelas: noCartao ? f.parcelas : 1,
+    };
+  });
 export type GastoForm = z.output<typeof gastoForm>;
+
+/** Cartão. Saída: `DadosCartao` (servicos/cartoes.ts). Limite vazio vale 0 (sem limite). */
+export const cartaoForm = z
+  .object({
+    nome: textoObrigatorio('O nome', 60),
+    limite: z
+      .string()
+      .optional()
+      .transform((s) => (s ?? '').trim() || '0')
+      .pipe(valorEmReais)
+      .refine((v) => v >= 0, 'O limite não pode ser negativo'),
+    fechamento: diaDoMes,
+    vencimento: diaDoMes,
+  })
+  .transform((d) => ({
+    nome: d.nome,
+    limiteCentavos: d.limite,
+    diaFechamento: d.fechamento,
+    diaVencimento: d.vencimento,
+  }));
+export type CartaoForm = z.output<typeof cartaoForm>;
+
+export const pagarFaturaForm = z.object({
+  /** Data do pagamento; vazio = hoje (o serviço decide). */
+  pagaEm: z
+    .string()
+    .optional()
+    .transform((s) => (s ?? '').trim())
+    .refine((s) => s === '' || ehDia(s), 'Data inválida')
+    .transform((s) => s || undefined),
+  /** Valor pago em reais; vazio = total da fatura. */
+  valor: z
+    .string()
+    .optional()
+    .transform((s, ctx) => {
+      const t = (s ?? '').trim();
+      if (t === '') return undefined;
+      const r = valorEmReais.safeParse(t);
+      if (!r.success) {
+        ctx.addIssue({ code: 'custom', message: 'Valor inválido. Use, por exemplo, 1.234,56' });
+        return z.NEVER;
+      }
+      if (r.data < 0) {
+        ctx.addIssue({ code: 'custom', message: 'O valor não pode ser negativo' });
+        return z.NEVER;
+      }
+      return r.data;
+    }),
+});
+export type PagarFaturaForm = z.output<typeof pagarFaturaForm>;
 
 /** Receita: a saída já vem no formato de `DadosReceita` (servicos/receitas.ts). */
 export const receitaForm = z
@@ -125,6 +217,42 @@ export const receitaRecorrenteForm = z
     observacao: d.observacao,
   }));
 export type ReceitaRecorrenteForm = z.output<typeof receitaRecorrenteForm>;
+
+/**
+ * "Recebi": valor e data reais, já preenchidos com os previstos. Vazio = manter o que está.
+ * Saída: `{ valorCentavos?, data? }` (servicos/receitas.ts, confirmarRecebimento).
+ */
+export const confirmarRecebimentoForm = z
+  .object({
+    valor: z.string().optional(),
+    data: z.string().optional(),
+  })
+  .transform((f, ctx) => {
+    const texto = (f.valor ?? '').trim();
+    let valorCentavos: number | undefined;
+    if (texto !== '') {
+      const v = parseValor(texto);
+      if (v === null || v <= 0) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['valor'],
+          message: 'Valor inválido. Use, por exemplo, 1.234,56',
+        });
+        return z.NEVER;
+      }
+      valorCentavos = v;
+    }
+    const dataTexto = (f.data ?? '').trim();
+    if (dataTexto !== '' && !ehDia(dataTexto)) {
+      ctx.addIssue({ code: 'custom', path: ['data'], message: 'Data inválida' });
+      return z.NEVER;
+    }
+    return {
+      valorCentavos,
+      data: dataTexto === '' ? undefined : dataTexto,
+    };
+  });
+export type ConfirmarRecebimentoForm = z.output<typeof confirmarRecebimentoForm>;
 
 /** Limite do mês: vazio ou zero remove o limite. */
 export const limiteForm = z.object({

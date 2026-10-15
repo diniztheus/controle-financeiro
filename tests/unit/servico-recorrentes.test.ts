@@ -83,6 +83,14 @@ describe('receitas recorrentes: geração', () => {
     });
   });
 
+  it('receita gerada nasce prevista (confirmadaEm vazio) e conta em "geradas"', () => {
+    const r = criarRecorrente(banco, modelo(), AGORA);
+    const linhas = banco.db.select().from(receitas).where(eq(receitas.recorrenteId, r.id)).all();
+    expect(linhas).toHaveLength(3);
+    expect(linhas.every((x) => x.confirmadaEm === null)).toBe(true);
+    expect(listarRecorrentes(banco, AGORA).find((x) => x.id === r.id)?.geradas).toBe(3);
+  });
+
   it('é idempotente: gerar de novo não cria nada', () => {
     const r = criarRecorrente(banco, modelo(), AGORA);
     expect(gerarReceitasRecorrentes(banco, '2026-10-15', AGORA)).toBe(0);

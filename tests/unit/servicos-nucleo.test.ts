@@ -377,7 +377,7 @@ describe('ajustes da auditoria', () => {
     expect(ultimaCategoriaUsada(banco)).toBe(cat.id);
   });
 
-  it('compra no cartão ou parcelada não é editada pela tela de gastos', () => {
+  it('compra no cartão e parcelada são editadas pela tela de gastos', () => {
     const cat = categoria();
     banco.sqlite.exec(
       `INSERT INTO cartoes (id, nome, limite_centavos, dia_fechamento, dia_vencimento) VALUES ('k', 'Visa', 0, 3, 10)`,
@@ -399,8 +399,31 @@ describe('ajustes da auditoria', () => {
       data: '2026-10-01',
       contaId: null,
     };
-    expect(() => editarGasto(banco, 'c', d)).toThrow(/cartões/);
-    expect(() => editarGasto(banco, 'p', d)).toThrow(/cartões/);
+    // Compra de cartão é editada normalmente: vira uma parcela na fatura do cartão 'k'.
+    editarGasto(banco, 'c', { ...d, meio: 'cartao', cartaoId: 'k', numParcelas: 1 });
+    expect(
+      banco.db
+        .select()
+        .from(parcelas)
+        .all()
+        .filter((p) => p.compraId === 'c'),
+    ).toMatchObject([{ numero: 1, mesCompetencia: '2026-10', faturaId: expect.any(String) }]);
+    // Cartão que não existe é recusado.
+    expect(() =>
+      editarGasto(banco, 'c', { ...d, meio: 'cartao', cartaoId: 'nada', numParcelas: 1 }),
+    ).toThrow(/cartão/);
+    // Compra parcelada à vista volta a ser uma compra de uma parcela.
+    editarGasto(banco, 'p', d);
+    expect(
+      banco.db
+        .select()
+        .from(compras)
+        .all()
+        .find((c) => c.id === 'p'),
+    ).toMatchObject({
+      numParcelas: 1,
+      meio: 'conta',
+    });
   });
 
   it('gasto já na lixeira: remover de novo é recusado; restaurar devolve a compra', () => {

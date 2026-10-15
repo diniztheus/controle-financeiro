@@ -24,8 +24,11 @@ import {
   mesDe,
   mesesEntre,
   somarMeses,
+  ultimoDiaDoMes,
   type Mes,
 } from '../../dominio/datas.ts';
+import { dividaCartaoEmData } from '../../dominio/cartoes.ts';
+import { parcelasDeCartoes } from './cartoes.ts';
 import { somar } from '../../dominio/dinheiro.ts';
 import type { Lancamento } from '../../dominio/lancamentos.ts';
 import type { Banco } from '../db/conexao.ts';
@@ -165,7 +168,13 @@ export function evolucaoPatrimonioMensal(
     .from(btcPrecos)
     .all();
 
-  return evolucaoPatrimonio(meses, saldos, btcMovs, precos);
+  // Dívida de cartões: parcelas de compras feitas até o fim do mês cuja fatura ainda não estava
+  // paga naquele dia (pagaEm da fatura ligada à parcela).
+  const parcelasCartao = parcelasDeCartoes(banco);
+  return evolucaoPatrimonio(meses, saldos, btcMovs, precos).map((p) => {
+    const divida = dividaCartaoEmData(parcelasCartao, ultimoDiaDoMes(p.mes));
+    return { ...p, totalCentavos: p.totalCentavos - divida, dividaCartaoCentavos: divida };
+  });
 }
 
 /**
@@ -187,7 +196,8 @@ export function fluxoDeCaixa(
   const saidasPorMes: Record<Mes, number> = {};
   const receitas: ReceitaDoMes[] = [];
   for (const mes of meses) {
-    const doMes = receitasDoMes(banco, mes);
+    // Só receitas recebidas entram no fluxo e na composição por categoria (previstas não).
+    const doMes = receitasDoMes(banco, mes).filter((r) => r.confirmada !== false);
     receitas.push(...doMes);
     entradasPorMes[mes] = somar(doMes.map((r) => r.valorCentavos));
     saidasPorMes[mes] = somar((gastos[mes] ?? []).map((l) => l.valorCentavos));

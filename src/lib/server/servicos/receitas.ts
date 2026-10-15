@@ -5,11 +5,14 @@
  * segue informado à mão). A conta que recebeu é só informativa.
  * Toda escrita roda numa transação única, com o banco travado para escrita (IMMEDIATE).
  */
-import { and, desc, eq, gte, isNotNull, isNull, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNotNull, isNull, lte } from 'drizzle-orm';
 import {
   primeiroDiaDoMes,
   ultimoDiaDoMes,
   ehDia,
+  hoje,
+  mesDe,
+  nomeMes,
   type Dia,
   type Mes,
 } from '../../dominio/datas.ts';
@@ -63,7 +66,9 @@ function validar(
   }
 }
 
-/** Lança uma receita. Não altera o saldo de nenhuma conta. */
+/**
+ * Lança uma receita à mão. Ela nasce CONFIRMADA (já recebida). Não altera o saldo de nenhuma conta.
+ */
 export function lancarReceita(banco: Banco, d: DadosReceita, agora = new Date()): Receita {
   return banco.db.transaction((tx) => {
     validar(tx, d, null);
@@ -77,6 +82,7 @@ export function lancarReceita(banco: Banco, d: DadosReceita, agora = new Date())
         valorCentavos: d.valorCentavos,
         contaId: d.contaId ?? null,
         observacao: textoOuNulo(d.observacao),
+        confirmadaEm: quando,
         criadoEm: quando,
         atualizadoEm: quando,
       })
@@ -87,6 +93,20 @@ export function lancarReceita(banco: Banco, d: DadosReceita, agora = new Date())
 
 export function obterReceita(banco: Banco, id: string): Receita | undefined {
   return banco.db.select().from(receitas).where(eq(receitas.id, id)).get();
+}
+
+/**
+ * Receita gerada por uma recorrente fica no mês da previsão: o gerador conta "uma por mês" pela
+ * data, então mudar a data para outro mês faria o mês vizinho nunca ser lançado. Dentro do mês
+ * pode ajustar à vontade (recebeu antes ou depois do dia combinado).
+ */
+function exigirMesmoMesDaPrevisao(atual: Receita, novaData: Dia): void {
+  if (atual.recorrenteId !== null && mesDe(novaData) !== mesDe(atual.data)) {
+    throw new ErroDeNegocio(
+      `Esta receita é de uma recorrente e pertence a ${nomeMes(mesDe(atual.data))}: a data precisa ficar nesse mês.`,
+      'data',
+    );
+  }
 }
 
 /** Edita uma receita fora da lixeira. */
@@ -100,6 +120,7 @@ export function editarReceita(
     const atual = tx.select().from(receitas).where(eq(receitas.id, id)).get();
     if (!atual || atual.removidoEm) throw naoEncontrado('Esta receita não existe mais');
     validar(tx, d, atual);
+    exigirMesmoMesDaPrevisao(atual, d.data);
     return tx
       .update(receitas)
       .set({
@@ -146,7 +167,10 @@ export function restaurarReceita(banco: Banco, id: string): Receita {
   }, IMEDIATA);
 }
 
-/** Receitas do mês fora da lixeira, da mais recente para a mais antiga. */
+/**
+ * Receitas do mês fora da lixeira, da mais recente para a mais antiga. Inclui as previstas
+ * (`confirmada: false`); quem soma entradas deve olhar só as confirmadas.
+ */
 export function receitasDoMes(banco: Banco, mes: Mes): ReceitaDoMes[] {
   return banco.db
     .select({
@@ -158,6 +182,7 @@ export function receitasDoMes(banco: Banco, mes: Mes): ReceitaDoMes[] {
       contaNome: contas.nome,
       contaRemovidaEm: contas.removidoEm,
       recorrenteId: receitas.recorrenteId,
+      confirmadaEm: receitas.confirmadaEm,
       criadoEm: receitas.criadoEm,
     })
     .from(receitas)
@@ -180,12 +205,151 @@ export function receitasDoMes(banco: Banco, mes: Mes): ReceitaDoMes[] {
       contaNome: r.contaNome,
       contaRemovida: r.contaRemovidaEm !== null,
       recorrente: r.recorrenteId !== null,
+      confirmada: r.confirmadaEm !== null,
     }));
 }
 
-/** Total das receitas do mês (fora da lixeira). */
+/** Total das receitas RECEBIDAS do mês (fora da lixeira). Previstas não entram. */
 export function totalReceitasDoMes(banco: Banco, mes: Mes): number {
-  return somar(receitasDoMes(banco, mes).map((r) => r.valorCentavos));
+  return somar(
+    receitasDoMes(banco, mes)
+      .filter((r) => r.confirmada !== false)
+      .map((r) => r.valorCentavos),
+  );
+}
+
+/** Previstas do mês (fora da lixeira): quantas e quanto somam. Para o aviso da home. */
+export function aReceberDoMes(
+  banco: Banco,
+  mes: Mes,
+): { quantidade: number; totalCentavos: number } {
+  const previstas = receitasDoMes(banco, mes).filter((r) => r.confirmada === false);
+  return {
+    quantidade: previstas.length,
+    totalCentavos: somar(previstas.map((r) => r.valorCentavos)),
+  };
+}
+
+/** Previsão de uma receita a receber (gerada por recorrente e ainda não confirmada). */
+export interface ReceitaAReceber {
+  id: string;
+  data: Dia;
+  descricao: string | null;
+  categoria: string;
+  valorCentavos: Centavos;
+  contaNome: string | null;
+  recorrente: true;
+  /** Data prevista já chegou (data <= hoje). */
+  atrasada: boolean;
+}
+
+/**
+ * Previstas fora da lixeira, de qualquer mês, com data <= `ate`, da mais antiga para a mais nova.
+ * Padrão de `ate`: hoje, ou seja, só as que já venceram. Passe uma data para ver as futuras também.
+ */
+export function receitasAReceber(banco: Banco, ate: Dia = hoje()): ReceitaAReceber[] {
+  const h = hoje();
+  return banco.db
+    .select({
+      id: receitas.id,
+      data: receitas.data,
+      descricao: receitas.descricao,
+      categoria: receitas.categoria,
+      valorCentavos: receitas.valorCentavos,
+      contaNome: contas.nome,
+    })
+    .from(receitas)
+    .leftJoin(contas, eq(contas.id, receitas.contaId))
+    .where(and(isNull(receitas.removidoEm), isNull(receitas.confirmadaEm), lte(receitas.data, ate)))
+    .orderBy(asc(receitas.data), asc(receitas.criadoEm), asc(receitas.id))
+    .all()
+    .map((r) => ({
+      ...r,
+      recorrente: true as const,
+      atrasada: r.data <= h,
+    }));
+}
+
+/** Busca uma receita fora da lixeira, ou erro. */
+function exigirAtiva(tx: Tx, id: string): Receita {
+  const atual = tx.select().from(receitas).where(eq(receitas.id, id)).get();
+  if (!atual || atual.removidoEm) throw naoEncontrado('Esta receita não existe mais');
+  return atual;
+}
+
+/**
+ * "Recebi": confirma uma receita prevista. `valorCentavos` e `data` são opcionais (sem eles,
+ * vale o que já está); quando vêm, trocam o valor e a data reais (a data pode cair em outro mês).
+ * Grava `confirmadaEm` = agora. Só confirma receita prevista e fora da lixeira.
+ */
+export function confirmarRecebimento(
+  banco: Banco,
+  id: string,
+  d: { valorCentavos?: Centavos; data?: Dia } = {},
+  agora = new Date(),
+): Receita {
+  return banco.db.transaction((tx) => {
+    const atual = exigirAtiva(tx, id);
+    if (atual.confirmadaEm !== null) {
+      throw new ErroDeNegocio('Esta receita já foi confirmada como recebida.');
+    }
+    if (d.valorCentavos !== undefined && (!ehCentavos(d.valorCentavos) || d.valorCentavos <= 0)) {
+      throw new ErroDeNegocio('O valor precisa ser maior que zero.', 'valor');
+    }
+    if (d.data !== undefined && !ehDia(d.data)) {
+      throw new ErroDeNegocio('Data inválida.', 'data');
+    }
+    const data = d.data ?? atual.data;
+    exigirMesmoMesDaPrevisao(atual, data);
+    // O índice único (recorrente, data) conta a lixeira: não há outra receita desse modelo nessa data.
+    if (atual.recorrenteId !== null && data !== atual.data) {
+      const ocupada = tx
+        .select({ id: receitas.id })
+        .from(receitas)
+        .where(and(eq(receitas.recorrenteId, atual.recorrenteId), eq(receitas.data, data)))
+        .get();
+      if (ocupada) {
+        throw new ErroDeNegocio(
+          'Já existe uma receita deste modelo nessa data. Escolha outra data.',
+          'data',
+        );
+      }
+    }
+    const quando = agoraIso(agora);
+    return tx
+      .update(receitas)
+      .set({
+        valorCentavos: d.valorCentavos ?? atual.valorCentavos,
+        data,
+        confirmadaEm: quando,
+        atualizadoEm: quando,
+      })
+      .where(eq(receitas.id, id))
+      .returning()
+      .get();
+  }, IMEDIATA);
+}
+
+/**
+ * Desfaz a confirmação (volta a prevista), para corrigir engano. Só vale para receita gerada por
+ * recorrente: lançamento à mão não tem a que voltar.
+ */
+export function desfazerConfirmacao(banco: Banco, id: string, agora = new Date()): Receita {
+  return banco.db.transaction((tx) => {
+    const atual = exigirAtiva(tx, id);
+    if (atual.confirmadaEm === null) {
+      throw new ErroDeNegocio('Esta receita ainda está prevista.');
+    }
+    if (atual.recorrenteId === null) {
+      throw new ErroDeNegocio('Só receitas previstas de recorrentes podem voltar a prevista.');
+    }
+    return tx
+      .update(receitas)
+      .set({ confirmadaEm: null, atualizadoEm: agoraIso(agora) })
+      .where(eq(receitas.id, id))
+      .returning()
+      .get();
+  }, IMEDIATA);
 }
 
 export interface ReceitaNaLixeira {

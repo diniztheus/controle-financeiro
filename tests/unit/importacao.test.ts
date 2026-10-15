@@ -12,6 +12,7 @@ import {
   garantirCategoriasPadrao,
   listarCategorias,
 } from '../../src/lib/server/servicos/categorias';
+import { aPagarCartoes, listarCartoes } from '../../src/lib/server/servicos/cartoes';
 import { criarConta, historicoDeSaldos, listarContas } from '../../src/lib/server/servicos/contas';
 import { lancamentosDoMes } from '../../src/lib/server/servicos/gastos';
 import { limiteDoMes } from '../../src/lib/server/servicos/limite';
@@ -368,5 +369,26 @@ describe('importar: última revisão', () => {
     const c = structuredClone(EXEMPLO.colecoes);
     (c.btcPrecos as unknown[]).push({ id: '2026-10-14', valor: 1 });
     expect(importarDoApp(banco, lerExportacao(c)).importados.precosBitcoin).toBe(2);
+  });
+});
+
+describe('onda 2: números do cartão e patrimônio batem com o app atual', () => {
+  it('dívida, limite disponível e patrimônio depois de importar', () => {
+    importarDoApp(banco, lerExportacao(EXEMPLO));
+    // Faturas de nov e dez (33.333 cada) estão abertas; a de outubro foi paga no app.
+    expect(aPagarCartoes(banco)).toBe(66666);
+    const [cartao] = listarCartoes(banco);
+    expect(cartao).toMatchObject({
+      nome: 'Cartão Exemplo',
+      aPagarCentavos: 66666,
+      disponivelCentavos: 500000 - 66666,
+    });
+    expect(cartao?.proximaFatura).toMatchObject({ mes: '2026-11', totalCentavos: 33333 });
+
+    const painel = montarPainel(banco, '2026-10', '2026-10-15');
+    expect(painel.patrimonio.aPagarCartoesCentavos).toBe(66666);
+    expect(painel.patrimonio.liquidoCentavos).toBe(
+      painel.patrimonio.contasCentavos + painel.patrimonio.bitcoinCentavos - 66666,
+    );
   });
 });

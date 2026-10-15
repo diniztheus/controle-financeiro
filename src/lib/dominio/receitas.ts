@@ -35,6 +35,8 @@ export interface ReceitaDoMes {
   contaRemovida: boolean;
   /** Veio de uma receita recorrente (salário, bolsa…) e não de um lançamento avulso. */
   recorrente?: boolean;
+  /** false = prevista (gerada por recorrente e ainda não confirmada). Ausente conta como recebida. */
+  confirmada?: boolean;
 }
 
 export interface DiaDeReceitas {

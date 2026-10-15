@@ -4,8 +4,13 @@ import { CATEGORIAS_RECEITA } from '$lib/dominio/receitas';
 import { executar, falhou, validar } from '$lib/server/acoes';
 import { obterBanco } from '$lib/server/db';
 import { listarContas, obterConta } from '$lib/server/servicos/contas';
-import { editarReceita, obterReceita, removerReceita } from '$lib/server/servicos/receitas';
-import { receitaForm } from '$lib/validacao/nucleo';
+import {
+  confirmarRecebimento,
+  editarReceita,
+  obterReceita,
+  removerReceita,
+} from '$lib/server/servicos/receitas';
+import { confirmarRecebimentoForm, receitaForm } from '$lib/validacao/nucleo';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ params }) => {
@@ -22,12 +27,24 @@ export const load: PageServerLoad = ({ params }) => {
 
   return {
     receita: r,
+    /** Gerada por recorrente e ainda não confirmada: não entra nos totais. */
+    previsto: r.confirmadaEm === null,
     categorias: CATEGORIAS_RECEITA,
     contas,
   };
 };
 
 export const actions: Actions = {
+  /** "Recebi" para uma prevista: valor e data reais (vêm preenchidos com os previstos). */
+  confirmar: async ({ request, params }) => {
+    const v = await validar(request, confirmarRecebimentoForm, 'confirmar');
+    if (!v.ok) return v.falha;
+    const r = executar('confirmar', () => confirmarRecebimento(obterBanco(), params.id, v.dados), {
+      valores: v.valores,
+    });
+    if (falhou(r)) return r;
+    redirect(303, `/receitas?mes=${mesDe(r.data)}&aviso=confirmada`);
+  },
   salvar: async ({ request, params }) => {
     const v = await validar(request, receitaForm, 'salvar');
     if (!v.ok) return v.falha;

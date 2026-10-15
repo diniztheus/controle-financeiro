@@ -12,9 +12,11 @@ test('a página de estado mostra o banco criado e o esquema em dia', async ({ pa
   await expect(page.getByTestId('caminho-banco')).toContainText('controle-financeiro-e2e');
   await expect(page.getByTestId('caminho-banco')).toContainText('financas.db');
 
-  // Seções das próximas ondas aparecem desabilitadas (sem link).
-  await expect(page.getByRole('link', { name: 'Gastos', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Cartões' })).toHaveCount(0);
+  // Todas as seções do plano já existem: o menu tem link para cada uma e nada "em breve".
+  for (const nome of ['Gastos', 'Receitas', 'Contas', 'Cartões', 'Bitcoin', 'Relatórios']) {
+    await expect(page.getByRole('link', { name: nome, exact: true }).first()).toBeVisible();
+  }
+  await expect(page.getByText('em breve', { exact: false })).toHaveCount(0);
 });
 
 for (const host of ['127.0.0.1', 'localhost']) {

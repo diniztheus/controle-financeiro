@@ -336,6 +336,11 @@ export const receitas = sqliteTable(
     /** Conta que recebeu; informativa e opcional, como a conta dos gastos à vista. */
     contaId: text('conta_id').references(() => contas.id, { onDelete: 'restrict' }),
     observacao: text('observacao'),
+    /**
+     * Quando o dinheiro foi recebido de fato. Receita lançada à mão já nasce confirmada; a gerada
+     * por uma recorrente nasce vazia ("prevista") até você confirmar. Prevista não entra nos totais.
+     */
+    confirmadaEm: text('confirmada_em'),
     /** Preenchido quando o site gerou esta receita a partir de uma recorrente. */
     recorrenteId: text('recorrente_id').references(() => receitasRecorrentes.id, {
       onDelete: 'set null',

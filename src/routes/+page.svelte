@@ -66,7 +66,9 @@
         {#if p.patrimonio.quantidadeContas}
           A soma dos saldos das suas contas{p.patrimonio.bitcoinCentavos > 0
             ? ' e do seu bitcoin ao último preço informado'
-            : ''}. Cartões entram nesta conta quando chegarem ao site.
+            : ''}{p.patrimonio.aPagarCartoesCentavos > 0
+            ? ', menos o que está a pagar nos cartões'
+            : ''}.
         {:else}
           Comece cadastrando suas contas com o saldo de hoje. O patrimônio sai da soma delas.
         {/if}
@@ -91,6 +93,14 @@
           rotulo="Bitcoin"
           detalhe="ao último preço informado"
           centavos={p.patrimonio.bitcoinCentavos}
+        />
+      {/if}
+      {#if p.patrimonio.aPagarCartoesCentavos > 0}
+        <LinhaRazao
+          rotulo="Cartões a pagar"
+          detalhe="parcelas em faturas não pagas"
+          centavos={-p.patrimonio.aPagarCartoesCentavos}
+          testid="cartoes-a-pagar"
         />
       {/if}
       <LinhaRazao rotulo="Patrimônio líquido" centavos={p.patrimonio.liquidoCentavos} total />
@@ -150,6 +160,13 @@
             </div>
           {/if}
         </dl>
+        {#if p.aReceber.quantidade > 0}
+          <p class="small a-receber" data-testid="a-receber-home">
+            A receber: <span class="num">{formatarBRL(p.aReceber.totalCentavos)}</span>
+            ({plural(p.aReceber.quantidade, 'prevista', 'previstas')}) ·
+            <a href={resolve('/receitas')}>ver receitas</a>
+          </p>
+        {/if}
         <p class="small muted">
           Entradas são as receitas do mês. A sobra é o que entra menos os gastos.
         </p>
@@ -547,6 +564,12 @@
   }
   .pos {
     color: var(--pos);
+  }
+  .a-receber a,
+  .mes-sum p a {
+    color: var(--ink);
+    font-weight: 600;
+    text-underline-offset: 3px;
   }
   .fluxo {
     display: grid;

@@ -1,0 +1,1294 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "1a5536e1-5bc7-4681-b9e4-3714bb51c8bb",
+  "prevId": "71486981-d0ad-403b-b99c-a70e8c9e0552",
+  "tables": {
+    "btc_movimentos": {
+      "name": "btc_movimentos",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sats": {
+          "name": "sats",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "valor_centavos": {
+          "name": "valor_centavos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "data": {
+          "name": "data",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nota": {
+          "name": "nota",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "removido_em": {
+          "name": "removido_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "btc_movimentos_data_idx": {
+          "name": "btc_movimentos_data_idx",
+          "columns": [
+            "data"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "btc_movimentos_sats": {
+          "name": "btc_movimentos_sats",
+          "value": "typeof(\"btc_movimentos\".\"sats\") = 'integer' AND \"btc_movimentos\".\"sats\" <> 0"
+        },
+        "btc_movimentos_valor": {
+          "name": "btc_movimentos_valor",
+          "value": "typeof(\"btc_movimentos\".\"valor_centavos\") = 'integer' AND \"btc_movimentos\".\"valor_centavos\" >= 0"
+        },
+        "btc_movimentos_data": {
+          "name": "btc_movimentos_data",
+          "value": "(typeof(\"btc_movimentos\".\"data\") = 'text' AND \"btc_movimentos\".\"data\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND date(\"btc_movimentos\".\"data\") IS \"btc_movimentos\".\"data\")"
+        }
+      }
+    },
+    "btc_precos": {
+      "name": "btc_precos",
+      "columns": {
+        "data": {
+          "name": "data",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "preco_centavos": {
+          "name": "preco_centavos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "origem": {
+          "name": "origem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'manual'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "btc_precos_data": {
+          "name": "btc_precos_data",
+          "value": "(typeof(\"btc_precos\".\"data\") = 'text' AND \"btc_precos\".\"data\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND date(\"btc_precos\".\"data\") IS \"btc_precos\".\"data\")"
+        },
+        "btc_precos_preco_positivo": {
+          "name": "btc_precos_preco_positivo",
+          "value": "typeof(\"btc_precos\".\"preco_centavos\") = 'integer' AND \"btc_precos\".\"preco_centavos\" > 0"
+        },
+        "btc_precos_origem": {
+          "name": "btc_precos_origem",
+          "value": "\"btc_precos\".\"origem\" IN ('manual', 'implicito', 'api')"
+        }
+      }
+    },
+    "cartoes": {
+      "name": "cartoes",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "limite_centavos": {
+          "name": "limite_centavos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "dia_fechamento": {
+          "name": "dia_fechamento",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "dia_vencimento": {
+          "name": "dia_vencimento",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ativo": {
+          "name": "ativo",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "removido_em": {
+          "name": "removido_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "cartoes_nome_preenchido": {
+          "name": "cartoes_nome_preenchido",
+          "value": "length(trim(\"cartoes\".\"nome\")) > 0"
+        },
+        "cartoes_limite_nao_negativo": {
+          "name": "cartoes_limite_nao_negativo",
+          "value": "typeof(\"cartoes\".\"limite_centavos\") = 'integer' AND \"cartoes\".\"limite_centavos\" >= 0"
+        },
+        "cartoes_dia_fechamento": {
+          "name": "cartoes_dia_fechamento",
+          "value": "typeof(\"cartoes\".\"dia_fechamento\") = 'integer' AND \"cartoes\".\"dia_fechamento\" BETWEEN 1 AND 31"
+        },
+        "cartoes_dia_vencimento": {
+          "name": "cartoes_dia_vencimento",
+          "value": "typeof(\"cartoes\".\"dia_vencimento\") = 'integer' AND \"cartoes\".\"dia_vencimento\" BETWEEN 1 AND 31"
+        },
+        "cartoes_ativo_bool": {
+          "name": "cartoes_ativo_bool",
+          "value": "(typeof(\"cartoes\".\"ativo\") = 'integer' AND \"cartoes\".\"ativo\" IN (0, 1))"
+        }
+      }
+    },
+    "categorias": {
+      "name": "categorias",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "cor": {
+          "name": "cor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ordem": {
+          "name": "ordem",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "arquivada": {
+          "name": "arquivada",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        }
+      },
+      "indexes": {
+        "categorias_nome_unico": {
+          "name": "categorias_nome_unico",
+          "columns": [
+            "lower(\"nome\")"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "categorias_nome_preenchido": {
+          "name": "categorias_nome_preenchido",
+          "value": "length(trim(\"categorias\".\"nome\")) > 0"
+        },
+        "categorias_arquivada_bool": {
+          "name": "categorias_arquivada_bool",
+          "value": "(typeof(\"categorias\".\"arquivada\") = 'integer' AND \"categorias\".\"arquivada\" IN (0, 1))"
+        },
+        "categorias_ordem_inteiro": {
+          "name": "categorias_ordem_inteiro",
+          "value": "typeof(\"categorias\".\"ordem\") = 'integer'"
+        }
+      }
+    },
+    "compras": {
+      "name": "compras",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "descricao": {
+          "name": "descricao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "categoria_id": {
+          "name": "categoria_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "data_compra": {
+          "name": "data_compra",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "valor_total_centavos": {
+          "name": "valor_total_centavos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "meio": {
+          "name": "meio",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "conta_id": {
+          "name": "conta_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "cartao_id": {
+          "name": "cartao_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "num_parcelas": {
+          "name": "num_parcelas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "observacao": {
+          "name": "observacao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "removido_em": {
+          "name": "removido_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "compras_data_idx": {
+          "name": "compras_data_idx",
+          "columns": [
+            "data_compra"
+          ],
+          "isUnique": false
+        },
+        "compras_categoria_idx": {
+          "name": "compras_categoria_idx",
+          "columns": [
+            "categoria_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "compras_categoria_id_categorias_id_fk": {
+          "name": "compras_categoria_id_categorias_id_fk",
+          "tableFrom": "compras",
+          "tableTo": "categorias",
+          "columnsFrom": [
+            "categoria_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "compras_conta_id_contas_id_fk": {
+          "name": "compras_conta_id_contas_id_fk",
+          "tableFrom": "compras",
+          "tableTo": "contas",
+          "columnsFrom": [
+            "conta_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "compras_cartao_id_cartoes_id_fk": {
+          "name": "compras_cartao_id_cartoes_id_fk",
+          "tableFrom": "compras",
+          "tableTo": "cartoes",
+          "columnsFrom": [
+            "cartao_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "compras_descricao_preenchida": {
+          "name": "compras_descricao_preenchida",
+          "value": "\"compras\".\"descricao\" IS NULL OR length(trim(\"compras\".\"descricao\")) > 0"
+        },
+        "compras_data": {
+          "name": "compras_data",
+          "value": "(typeof(\"compras\".\"data_compra\") = 'text' AND \"compras\".\"data_compra\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND date(\"compras\".\"data_compra\") IS \"compras\".\"data_compra\")"
+        },
+        "compras_valor_positivo": {
+          "name": "compras_valor_positivo",
+          "value": "typeof(\"compras\".\"valor_total_centavos\") = 'integer' AND \"compras\".\"valor_total_centavos\" > 0"
+        },
+        "compras_meio_valido": {
+          "name": "compras_meio_valido",
+          "value": "\"compras\".\"meio\" IN ('conta', 'cartao')"
+        },
+        "compras_meio_coerente": {
+          "name": "compras_meio_coerente",
+          "value": "(\"compras\".\"meio\" = 'conta' AND \"compras\".\"cartao_id\" IS NULL) OR (\"compras\".\"meio\" = 'cartao' AND \"compras\".\"cartao_id\" IS NOT NULL AND \"compras\".\"conta_id\" IS NULL)"
+        },
+        "compras_num_parcelas": {
+          "name": "compras_num_parcelas",
+          "value": "typeof(\"compras\".\"num_parcelas\") = 'integer' AND \"compras\".\"num_parcelas\" BETWEEN 1 AND 24"
+        }
+      }
+    },
+    "config": {
+      "name": "config",
+      "columns": {
+        "chave": {
+          "name": "chave",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "valor": {
+          "name": "valor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "config_valor_json": {
+          "name": "config_valor_json",
+          "value": "json_valid(\"config\".\"valor\")"
+        }
+      }
+    },
+    "contas": {
+      "name": "contas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'corrente'"
+        },
+        "saldo_centavos": {
+          "name": "saldo_centavos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "ativa": {
+          "name": "ativa",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "ordem": {
+          "name": "ordem",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "removido_em": {
+          "name": "removido_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "contas_nome_preenchido": {
+          "name": "contas_nome_preenchido",
+          "value": "length(trim(\"contas\".\"nome\")) > 0"
+        },
+        "contas_tipo_valido": {
+          "name": "contas_tipo_valido",
+          "value": "\"contas\".\"tipo\" IN ('corrente', 'poupanca', 'investimento', 'dinheiro', 'outro')"
+        },
+        "contas_ativa_bool": {
+          "name": "contas_ativa_bool",
+          "value": "(typeof(\"contas\".\"ativa\") = 'integer' AND \"contas\".\"ativa\" IN (0, 1))"
+        },
+        "contas_saldo_inteiro": {
+          "name": "contas_saldo_inteiro",
+          "value": "typeof(\"contas\".\"saldo_centavos\") = 'integer'"
+        },
+        "contas_ordem_inteiro": {
+          "name": "contas_ordem_inteiro",
+          "value": "typeof(\"contas\".\"ordem\") = 'integer'"
+        }
+      }
+    },
+    "faturas": {
+      "name": "faturas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "cartao_id": {
+          "name": "cartao_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "mes_vencimento": {
+          "name": "mes_vencimento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "data_fechamento": {
+          "name": "data_fechamento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "data_vencimento": {
+          "name": "data_vencimento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "paga_em": {
+          "name": "paga_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "valor_pago_centavos": {
+          "name": "valor_pago_centavos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        }
+      },
+      "indexes": {
+        "faturas_cartao_mes_unico": {
+          "name": "faturas_cartao_mes_unico",
+          "columns": [
+            "cartao_id",
+            "mes_vencimento"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "faturas_cartao_id_cartoes_id_fk": {
+          "name": "faturas_cartao_id_cartoes_id_fk",
+          "tableFrom": "faturas",
+          "tableTo": "cartoes",
+          "columnsFrom": [
+            "cartao_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "faturas_mes_vencimento": {
+          "name": "faturas_mes_vencimento",
+          "value": "(typeof(\"faturas\".\"mes_vencimento\") = 'text' AND \"faturas\".\"mes_vencimento\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]' AND substr(\"faturas\".\"mes_vencimento\", 6, 2) BETWEEN '01' AND '12')"
+        },
+        "faturas_data_fechamento": {
+          "name": "faturas_data_fechamento",
+          "value": "(typeof(\"faturas\".\"data_fechamento\") = 'text' AND \"faturas\".\"data_fechamento\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND date(\"faturas\".\"data_fechamento\") IS \"faturas\".\"data_fechamento\")"
+        },
+        "faturas_data_vencimento": {
+          "name": "faturas_data_vencimento",
+          "value": "(typeof(\"faturas\".\"data_vencimento\") = 'text' AND \"faturas\".\"data_vencimento\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND date(\"faturas\".\"data_vencimento\") IS \"faturas\".\"data_vencimento\")"
+        },
+        "faturas_paga_em": {
+          "name": "faturas_paga_em",
+          "value": "\"faturas\".\"paga_em\" IS NULL OR (typeof(\"faturas\".\"paga_em\") = 'text' AND \"faturas\".\"paga_em\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND date(\"faturas\".\"paga_em\") IS \"faturas\".\"paga_em\")"
+        },
+        "faturas_valor_pago": {
+          "name": "faturas_valor_pago",
+          "value": "\"faturas\".\"valor_pago_centavos\" IS NULL OR (typeof(\"faturas\".\"valor_pago_centavos\") = 'integer' AND \"faturas\".\"valor_pago_centavos\" >= 0)"
+        }
+      }
+    },
+    "limites_mensais": {
+      "name": "limites_mensais",
+      "columns": {
+        "mes": {
+          "name": "mes",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "valor_centavos": {
+          "name": "valor_centavos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "limites_mensais_mes": {
+          "name": "limites_mensais_mes",
+          "value": "\"limites_mensais\".\"mes\" = 'padrao' OR (typeof(\"limites_mensais\".\"mes\") = 'text' AND \"limites_mensais\".\"mes\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]' AND substr(\"limites_mensais\".\"mes\", 6, 2) BETWEEN '01' AND '12')"
+        },
+        "limites_mensais_valor": {
+          "name": "limites_mensais_valor",
+          "value": "typeof(\"limites_mensais\".\"valor_centavos\") = 'integer' AND \"limites_mensais\".\"valor_centavos\" >= 0"
+        }
+      }
+    },
+    "parcelas": {
+      "name": "parcelas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "compra_id": {
+          "name": "compra_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "numero": {
+          "name": "numero",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "valor_centavos": {
+          "name": "valor_centavos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "mes_competencia": {
+          "name": "mes_competencia",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fatura_id": {
+          "name": "fatura_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "parcelas_mes_competencia_idx": {
+          "name": "parcelas_mes_competencia_idx",
+          "columns": [
+            "mes_competencia"
+          ],
+          "isUnique": false
+        },
+        "parcelas_fatura_idx": {
+          "name": "parcelas_fatura_idx",
+          "columns": [
+            "fatura_id"
+          ],
+          "isUnique": false
+        },
+        "parcelas_compra_numero_unico": {
+          "name": "parcelas_compra_numero_unico",
+          "columns": [
+            "compra_id",
+            "numero"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "parcelas_compra_id_compras_id_fk": {
+          "name": "parcelas_compra_id_compras_id_fk",
+          "tableFrom": "parcelas",
+          "tableTo": "compras",
+          "columnsFrom": [
+            "compra_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "parcelas_fatura_id_faturas_id_fk": {
+          "name": "parcelas_fatura_id_faturas_id_fk",
+          "tableFrom": "parcelas",
+          "tableTo": "faturas",
+          "columnsFrom": [
+            "fatura_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "parcelas_numero": {
+          "name": "parcelas_numero",
+          "value": "typeof(\"parcelas\".\"numero\") = 'integer' AND \"parcelas\".\"numero\" BETWEEN 1 AND 24"
+        },
+        "parcelas_mes_competencia": {
+          "name": "parcelas_mes_competencia",
+          "value": "(typeof(\"parcelas\".\"mes_competencia\") = 'text' AND \"parcelas\".\"mes_competencia\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]' AND substr(\"parcelas\".\"mes_competencia\", 6, 2) BETWEEN '01' AND '12')"
+        },
+        "parcelas_valor": {
+          "name": "parcelas_valor",
+          "value": "typeof(\"parcelas\".\"valor_centavos\") = 'integer' AND \"parcelas\".\"valor_centavos\" >= 0"
+        }
+      }
+    },
+    "receitas": {
+      "name": "receitas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "descricao": {
+          "name": "descricao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "categoria": {
+          "name": "categoria",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "data": {
+          "name": "data",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "valor_centavos": {
+          "name": "valor_centavos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "conta_id": {
+          "name": "conta_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "observacao": {
+          "name": "observacao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "confirmada_em": {
+          "name": "confirmada_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "recorrente_id": {
+          "name": "recorrente_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "removido_em": {
+          "name": "removido_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "receitas_data_idx": {
+          "name": "receitas_data_idx",
+          "columns": [
+            "data"
+          ],
+          "isUnique": false
+        },
+        "receitas_recorrente_data_unico": {
+          "name": "receitas_recorrente_data_unico",
+          "columns": [
+            "recorrente_id",
+            "data"
+          ],
+          "isUnique": true,
+          "where": "\"receitas\".\"recorrente_id\" IS NOT NULL"
+        }
+      },
+      "foreignKeys": {
+        "receitas_conta_id_contas_id_fk": {
+          "name": "receitas_conta_id_contas_id_fk",
+          "tableFrom": "receitas",
+          "tableTo": "contas",
+          "columnsFrom": [
+            "conta_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "receitas_recorrente_id_receitas_recorrentes_id_fk": {
+          "name": "receitas_recorrente_id_receitas_recorrentes_id_fk",
+          "tableFrom": "receitas",
+          "tableTo": "receitas_recorrentes",
+          "columnsFrom": [
+            "recorrente_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "receitas_descricao_preenchida": {
+          "name": "receitas_descricao_preenchida",
+          "value": "\"receitas\".\"descricao\" IS NULL OR length(trim(\"receitas\".\"descricao\")) > 0"
+        },
+        "receitas_categoria_preenchida": {
+          "name": "receitas_categoria_preenchida",
+          "value": "length(trim(\"receitas\".\"categoria\")) > 0"
+        },
+        "receitas_data": {
+          "name": "receitas_data",
+          "value": "(typeof(\"receitas\".\"data\") = 'text' AND \"receitas\".\"data\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND date(\"receitas\".\"data\") IS \"receitas\".\"data\")"
+        },
+        "receitas_valor_positivo": {
+          "name": "receitas_valor_positivo",
+          "value": "typeof(\"receitas\".\"valor_centavos\") = 'integer' AND \"receitas\".\"valor_centavos\" > 0"
+        }
+      }
+    },
+    "receitas_recorrentes": {
+      "name": "receitas_recorrentes",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "descricao": {
+          "name": "descricao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "categoria": {
+          "name": "categoria",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "valor_centavos": {
+          "name": "valor_centavos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "dia_do_mes": {
+          "name": "dia_do_mes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "inicio": {
+          "name": "inicio",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fim": {
+          "name": "fim",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "conta_id": {
+          "name": "conta_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ativa": {
+          "name": "ativa",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "observacao": {
+          "name": "observacao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        },
+        "removido_em": {
+          "name": "removido_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "receitas_recorrentes_conta_id_contas_id_fk": {
+          "name": "receitas_recorrentes_conta_id_contas_id_fk",
+          "tableFrom": "receitas_recorrentes",
+          "tableTo": "contas",
+          "columnsFrom": [
+            "conta_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "receitas_rec_descricao_preenchida": {
+          "name": "receitas_rec_descricao_preenchida",
+          "value": "\"receitas_recorrentes\".\"descricao\" IS NULL OR length(trim(\"receitas_recorrentes\".\"descricao\")) > 0"
+        },
+        "receitas_rec_categoria_preenchida": {
+          "name": "receitas_rec_categoria_preenchida",
+          "value": "length(trim(\"receitas_recorrentes\".\"categoria\")) > 0"
+        },
+        "receitas_rec_valor_positivo": {
+          "name": "receitas_rec_valor_positivo",
+          "value": "typeof(\"receitas_recorrentes\".\"valor_centavos\") = 'integer' AND \"receitas_recorrentes\".\"valor_centavos\" > 0"
+        },
+        "receitas_rec_dia": {
+          "name": "receitas_rec_dia",
+          "value": "typeof(\"receitas_recorrentes\".\"dia_do_mes\") = 'integer' AND \"receitas_recorrentes\".\"dia_do_mes\" BETWEEN 1 AND 31"
+        },
+        "receitas_rec_inicio": {
+          "name": "receitas_rec_inicio",
+          "value": "(typeof(\"receitas_recorrentes\".\"inicio\") = 'text' AND \"receitas_recorrentes\".\"inicio\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND date(\"receitas_recorrentes\".\"inicio\") IS \"receitas_recorrentes\".\"inicio\")"
+        },
+        "receitas_rec_fim": {
+          "name": "receitas_rec_fim",
+          "value": "\"receitas_recorrentes\".\"fim\" IS NULL OR ((typeof(\"receitas_recorrentes\".\"fim\") = 'text' AND \"receitas_recorrentes\".\"fim\" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND date(\"receitas_recorrentes\".\"fim\") IS \"receitas_recorrentes\".\"fim\") AND \"receitas_recorrentes\".\"fim\" >= \"receitas_recorrentes\".\"inicio\")"
+        },
+        "receitas_rec_ativa": {
+          "name": "receitas_rec_ativa",
+          "value": "(typeof(\"receitas_recorrentes\".\"ativa\") = 'integer' AND \"receitas_recorrentes\".\"ativa\" IN (0, 1))"
+        }
+      }
+    },
+    "saldos_historico": {
+      "name": "saldos_historico",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "conta_id": {
+          "name": "conta_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "saldo_centavos": {
+          "name": "saldo_centavos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "registrado_em": {
+          "name": "registrado_em",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        }
+      },
+      "indexes": {
+        "saldos_historico_conta_data_idx": {
+          "name": "saldos_historico_conta_data_idx",
+          "columns": [
+            "conta_id",
+            "registrado_em"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "saldos_historico_conta_id_contas_id_fk": {
+          "name": "saldos_historico_conta_id_contas_id_fk",
+          "tableFrom": "saldos_historico",
+          "tableTo": "contas",
+          "columnsFrom": [
+            "conta_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "saldos_historico_saldo_inteiro": {
+          "name": "saldos_historico_saldo_inteiro",
+          "value": "typeof(\"saldos_historico\".\"saldo_centavos\") = 'integer'"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {
+      "categorias_nome_unico": {
+        "columns": {
+          "lower(\"nome\")": {
+            "isExpression": true
+          }
+        }
+      }
+    }
+  }
+}

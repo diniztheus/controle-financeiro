@@ -1,5 +1,6 @@
 import { campo, executar } from '$lib/server/acoes';
 import { obterBanco } from '$lib/server/db';
+import { cartoesNaLixeira, restaurarCartao } from '$lib/server/servicos/cartoes';
 import { contasNaLixeira, restaurarConta } from '$lib/server/servicos/contas';
 import { gastosNaLixeira, restaurarGasto } from '$lib/server/servicos/gastos';
 import { receitasNaLixeira, restaurarReceita } from '$lib/server/servicos/receitas';
@@ -13,6 +14,7 @@ export const load: PageServerLoad = () => {
     receitas: receitasNaLixeira(banco),
     recorrentes: recorrentesNaLixeira(banco),
     contas: contasNaLixeira(banco),
+    cartoes: cartoesNaLixeira(banco),
   };
 };
 
@@ -57,6 +59,17 @@ export const actions: Actions = {
       () => {
         const c = restaurarConta(obterBanco(), id);
         return { acao: 'conta', id, ok: `Conta "${c.nome}" restaurada.` };
+      },
+      { id },
+    );
+  },
+  cartao: async ({ request }) => {
+    const id = campo(await request.formData(), 'id');
+    return executar(
+      'cartao',
+      () => {
+        const c = restaurarCartao(obterBanco(), id);
+        return { acao: 'cartao', id, ok: `Cartão "${c.nome}" restaurado.` };
       },
       { id },
     );

@@ -18,10 +18,11 @@ import type { Banco } from '../db/conexao.ts';
 import { listarContas, totalDasContas, type Conta } from './contas.ts';
 import { listarCategorias } from './categorias.ts';
 import { valorBitcoinCentavos } from './bitcoin.ts';
+import { aPagarCartoes } from './cartoes.ts';
 import { lancamentosDoMes } from './gastos.ts';
 import { agruparPorDia, type DiaDeLancamentos } from '../../dominio/lancamentos.ts';
 import { limiteDoMes } from './limite.ts';
-import { receitasDoMes } from './receitas.ts';
+import { aReceberDoMes, receitasDoMes } from './receitas.ts';
 import { resumoFluxo, type ResumoFluxo } from '../../dominio/receitas.ts';
 
 export { agruparPorDia, type DiaDeLancamentos };
@@ -43,6 +44,8 @@ export interface Painel {
     quantidadeContas: number;
     /** Valor atual da posição em bitcoin (0 se sem preço). */
     bitcoinCentavos: Centavos;
+    /** Dívida de cartões (parcelas em faturas não pagas); entra com sinal de menos. */
+    aPagarCartoesCentavos: Centavos;
     /** Quando um saldo foi informado pela última vez. */
     saldoAtualizadoEm: string | null;
   };
@@ -57,8 +60,10 @@ export interface Painel {
   dias: DiaDeLancamentos[];
   acumulado: Centavos[];
   acumuladoAnterior: Centavos[];
-  /** Entradas (receitas do mês), saídas (gastos do mês) e o que sobrou. */
+  /** Entradas (receitas RECEBIDAS do mês), saídas (gastos do mês) e o que sobrou. */
   fluxo: ResumoFluxo & { quantidadeReceitas: number };
+  /** Receitas previstas do mês, ainda não confirmadas (não entram no fluxo). */
+  aReceber: { quantidade: number; totalCentavos: number };
 }
 
 /** Lê tudo numa transação só, para os números baterem entre si (um retrato do banco). */
@@ -84,17 +89,20 @@ function ler(banco: Banco, mes: Mes, hoje: Dia): Painel {
   const listaContas = listarContas(banco);
   const contas = totalDasContas(banco, listaContas);
   const bitcoin = valorBitcoinCentavos(banco);
-  const entradas = receitasDoMes(banco, mes);
+  const cartoesAPagar = aPagarCartoes(banco);
+  const entradas = receitasDoMes(banco, mes).filter((r) => r.confirmada !== false);
   return {
     mes,
     patrimonio: {
       liquidoCentavos: patrimonioLiquido({
         saldosContas: [contas.totalCentavos],
         bitcoinCentavos: bitcoin,
+        aPagarCartoesCentavos: cartoesAPagar,
       }),
       contasCentavos: contas.totalCentavos,
       quantidadeContas: contas.quantidade,
       bitcoinCentavos: bitcoin,
+      aPagarCartoesCentavos: cartoesAPagar,
       saldoAtualizadoEm: contas.saldoAtualizadoEm,
     },
     contas: listaContas,
@@ -111,5 +119,6 @@ function ler(banco: Banco, mes: Mes, hoje: Dia): Painel {
       ...resumoFluxo(somar(entradas.map((r) => r.valorCentavos)), total),
       quantidadeReceitas: entradas.length,
     },
+    aReceber: aReceberDoMes(banco, mes),
   };
 }

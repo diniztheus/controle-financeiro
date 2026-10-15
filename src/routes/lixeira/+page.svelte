@@ -7,7 +7,11 @@
 
   let { data, form }: PageProps = $props();
   const vazia = $derived(
-    !data.gastos.length && !data.receitas.length && !data.recorrentes.length && !data.contas.length,
+    !data.gastos.length &&
+      !data.receitas.length &&
+      !data.recorrentes.length &&
+      !data.contas.length &&
+      !data.cartoes.length,
   );
 </script>
 
@@ -19,8 +23,8 @@
   <div>
     <h1>Lixeira</h1>
     <p>
-      Gastos, receitas e contas removidos ficam aqui, fora das somas, até você restaurar. Nada é
-      apagado de vez.
+      Gastos, receitas, contas e cartões removidos ficam aqui, fora das somas, até você restaurar.
+      Nada é apagado de vez.
     </p>
   </div>
 </header>
@@ -35,7 +39,9 @@
   {#if vazia}
     <div class="empty">
       <strong>A lixeira está vazia</strong>
-      <span>Quando você remover um gasto, uma receita ou uma conta, ele aparece aqui.</span>
+      <span
+        >Quando você remover um gasto, uma receita, uma conta ou um cartão, ele aparece aqui.</span
+      >
     </div>
   {:else}
     <div class="col">
@@ -139,6 +145,29 @@
         </ul>
       {:else}
         <p class="muted">Nenhuma conta na lixeira.</p>
+      {/if}
+    </div>
+    <div class="col">
+      <div class="col-head"><h2 class="h">Cartões</h2></div>
+      {#if data.cartoes.length}
+        <ul class="rows" data-testid="lixeira-cartoes">
+          {#each data.cartoes as k (k.id)}
+            <li class="row">
+              <span class="sq" style="--cc: var(--ink)"></span>
+              <span class="row-main">
+                <span class="row-title">{k.nome}</span>
+                <span class="row-meta">removido em {dataDeIso(k.removidoEm ?? k.atualizadoEm)}</span
+                >
+              </span>
+              <form method="POST" action="?/cartao" use:enhance>
+                <input type="hidden" name="id" value={k.id} />
+                <button class="btn sm ink" type="submit">Restaurar</button>
+              </form>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="muted">Nenhum cartão na lixeira.</p>
       {/if}
     </div>
   {/if}

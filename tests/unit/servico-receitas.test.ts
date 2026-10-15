@@ -55,6 +55,13 @@ describe('receitas: lançamento', () => {
     expect(obterConta(banco, conta.id)?.saldoCentavos).toBe(150000);
   });
 
+  it('receita lançada à mão nasce confirmada e editar não muda a confirmação', () => {
+    const r = lancarReceita(banco, receita(), T1);
+    expect(r.confirmadaEm).toBe(T1.toISOString());
+    const editada = editarReceita(banco, r.id, receita({ valorCentavos: 1 }), T2);
+    expect(editada.confirmadaEm).toBe(T1.toISOString());
+  });
+
   it('descrição e observação vazias viram null; campos opcionais ficam de fora', () => {
     const r = lancarReceita(
       banco,

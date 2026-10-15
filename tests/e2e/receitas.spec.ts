@@ -72,11 +72,12 @@ test('mês sem receitas e navegação pelo menu', async ({ page }) => {
   await expect(page).toHaveURL(/\/receitas/);
   await expect(page.getByRole('heading', { name: 'Receitas', level: 1 })).toBeVisible();
 
-  await page.goto('/receitas?mes=2019-04');
-  await expect(page.getByTestId('mes-atual')).toHaveText('Abril de 2019');
+  // 2018: nenhum outro teste lança receitas nesse ano (o banco é compartilhado).
+  await page.goto('/receitas?mes=2018-04');
+  await expect(page.getByTestId('mes-atual')).toHaveText('Abril de 2018');
   await expect(page.getByText('Nada recebido em abril')).toBeVisible();
   await page.getByRole('link', { name: 'Próximo mês' }).click();
-  await expect(page.getByTestId('mes-atual')).toHaveText('Maio de 2019');
+  await expect(page.getByTestId('mes-atual')).toHaveText('Maio de 2018');
 });
 
 test('receita inexistente dá 404', async ({ page }) => {
