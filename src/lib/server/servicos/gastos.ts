@@ -11,7 +11,10 @@
 import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { diaNoMes, type Dia, type Mes } from '../../dominio/datas.ts';
 import type { Centavos } from '../../dominio/dinheiro.ts';
+import type { Lancamento } from '../../dominio/lancamentos.ts';
 import { gerarParcelas } from '../../dominio/parcelas.ts';
+
+export type { Lancamento };
 import type { Banco, BancoDrizzle } from '../db/conexao.ts';
 import { cartoes, categorias, compras, contas, parcelas } from '../db/esquema.ts';
 import { agoraIso, ErroDeNegocio, naoEncontrado } from './erros.ts';
@@ -24,27 +27,6 @@ export interface DadosGasto {
   categoriaId: string;
   data: Dia;
   contaId: string | null;
-}
-
-/** Uma linha do mês: uma parcela (gasto à vista = parcela 1 de 1). */
-export interface Lancamento {
-  compraId: string;
-  /** Dia em que conta no mês (o dia da compra, limitado ao fim do mês). */
-  data: Dia;
-  dataCompra: Dia;
-  valorCentavos: Centavos;
-  valorTotalCentavos: Centavos;
-  parcela: number;
-  numParcelas: number;
-  descricao: string | null;
-  categoriaId: string;
-  categoriaNome: string;
-  categoriaCor: string | null;
-  meio: 'conta' | 'cartao';
-  contaNome: string | null;
-  contaRemovida: boolean;
-  cartaoNome: string | null;
-  criadoEm: string;
 }
 
 const IMEDIATA = { behavior: 'immediate' } as const;

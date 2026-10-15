@@ -17,7 +17,10 @@ import {
 import type { Banco } from '../db/conexao.ts';
 import { listarContas, totalDasContas, type Conta } from './contas.ts';
 import { listarCategorias } from './categorias.ts';
-import { lancamentosDoMes, type Lancamento } from './gastos.ts';
+import { lancamentosDoMes } from './gastos.ts';
+import { agruparPorDia, type DiaDeLancamentos } from '../../dominio/lancamentos.ts';
+
+export { agruparPorDia, type DiaDeLancamentos };
 import { limiteDoMes } from './limite.ts';
 
 export interface CategoriaNoMes {
@@ -27,12 +30,6 @@ export interface CategoriaNoMes {
   totalCentavos: Centavos;
   quantidade: number;
   percentual: number;
-}
-
-export interface DiaDeLancamentos {
-  data: Dia;
-  totalCentavos: Centavos;
-  itens: Lancamento[];
 }
 
 export interface Painel {
@@ -55,17 +52,6 @@ export interface Painel {
   dias: DiaDeLancamentos[];
   acumulado: Centavos[];
   acumuladoAnterior: Centavos[];
-}
-
-export function agruparPorDia(lancamentos: readonly Lancamento[]): DiaDeLancamentos[] {
-  const dias: DiaDeLancamentos[] = [];
-  for (const l of lancamentos) {
-    let d = dias.at(-1);
-    if (!d || d.data !== l.data) dias.push((d = { data: l.data, totalCentavos: 0, itens: [] }));
-    d.itens.push(l);
-    d.totalCentavos = somar([d.totalCentavos, l.valorCentavos]);
-  }
-  return dias;
 }
 
 /** Lê tudo numa transação só, para os números baterem entre si (um retrato do banco). */

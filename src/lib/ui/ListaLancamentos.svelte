@@ -2,7 +2,7 @@
   /** Lançamentos do mês agrupados por dia; cada linha abre o gasto para editar. */
   import { resolve } from '$app/paths';
   import { formatarBRL } from '$lib/dominio/dinheiro';
-  import type { DiaDeLancamentos } from '$lib/server/servicos/painel';
+  import type { DiaDeLancamentos } from '$lib/dominio/lancamentos';
   import { corCss, diaPorExtenso } from './formato';
 
   interface Props {
@@ -25,10 +25,10 @@
 <div class="days" data-testid="lancamentos">
   {#each visiveis as d (d.data)}
     <section class="day" aria-label={diaPorExtenso(d.data)}>
-      <h4 class="day-head">
+      <h3 class="day-head">
         <span>{diaPorExtenso(d.data)}</span>
         <span class="num">{formatarBRL(d.totalCentavos)}</span>
-      </h4>
+      </h3>
       <ul class="itens">
         {#each d.itens as l (l.compraId + ':' + l.parcela)}
           <li>
