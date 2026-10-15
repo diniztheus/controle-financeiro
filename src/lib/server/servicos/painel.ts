@@ -41,7 +41,8 @@ export interface Painel {
     liquidoCentavos: Centavos;
     contasCentavos: Centavos;
     quantidadeContas: number;
-    atualizadoEm: string | null;
+    /** Quando um saldo foi informado pela última vez. */
+    saldoAtualizadoEm: string | null;
   };
   contas: Conta[];
   totalMesCentavos: Centavos;
@@ -67,7 +68,12 @@ export function agruparPorDia(lancamentos: readonly Lancamento[]): DiaDeLancamen
   return dias;
 }
 
+/** Lê tudo numa transação só, para os números baterem entre si (um retrato do banco). */
 export function montarPainel(banco: Banco, mes: Mes, hoje: Dia): Painel {
+  return banco.sqlite.transaction(() => ler(banco, mes, hoje)).deferred();
+}
+
+function ler(banco: Banco, mes: Mes, hoje: Dia): Painel {
   const doMes = lancamentosDoMes(banco, mes);
   const doAnterior = lancamentosDoMes(banco, somarMeses(mes, -1));
   const total = somar(doMes.map((l) => l.valorCentavos));
@@ -82,16 +88,17 @@ export function montarPainel(banco: Banco, mes: Mes, hoje: Dia): Painel {
     cor: nomes.get(f.categoriaId)?.cor ?? null,
   }));
 
-  const contas = totalDasContas(banco);
+  const listaContas = listarContas(banco);
+  const contas = totalDasContas(banco, listaContas);
   return {
     mes,
     patrimonio: {
       liquidoCentavos: patrimonioLiquido({ saldosContas: [contas.totalCentavos] }),
       contasCentavos: contas.totalCentavos,
       quantidadeContas: contas.quantidade,
-      atualizadoEm: contas.atualizadoEm,
+      saldoAtualizadoEm: contas.saldoAtualizadoEm,
     },
-    contas: listarContas(banco),
+    contas: listaContas,
     totalMesCentavos: total,
     quantidade: doMes.length,
     limite: situacaoLimite(total, limiteDoMes(banco, mes)),

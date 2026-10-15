@@ -216,3 +216,45 @@ describe('resumo do mês', () => {
     expect(patrimonioLiquido({ saldosContas: [] })).toBe(0);
   });
 });
+
+describe('casos de borda extras', () => {
+  it('fatura: fechamento 31 em fevereiro bissexto e virada de ano', () => {
+    const c = { diaFechamento: 31, diaVencimento: 10 };
+    // 29/02/2028 é o "dia 31" de fevereiro: cai na fatura seguinte.
+    expect(mesDaFatura(c, '2028-02-29')).toBe('2028-04');
+    expect(mesDaFatura({ diaFechamento: 3, diaVencimento: 10 }, '2026-12-03')).toBe('2027-01');
+    expect(mesDaFatura({ diaFechamento: 25, diaVencimento: 5 }, '2026-12-25')).toBe('2027-02');
+  });
+
+  it('fatura: fechamento 30 e vencimento 31 em fevereiro (os dois limitados)', () => {
+    const c = { diaFechamento: 30, diaVencimento: 31 };
+    expect(venceNoMesSeguinte(c)).toBe(false);
+    expect(dataFechamento(c, '2026-02')).toBe('2026-02-28');
+    expect(dataVencimento(c, '2026-02')).toBe('2026-02-28');
+    expect(mesDaFatura(c, '2026-02-27')).toBe('2026-02');
+    expect(mesDaFatura(c, '2026-02-28')).toBe('2026-03');
+  });
+
+  it('comparação: mês de 31 dias contra fevereiro e contra mês de 30', () => {
+    const l = (data: string, v: number) => ({ data, valorCentavos: v, categoriaId: 'a' });
+    const mar = acumuladoPorDia('2026-03', [l('2026-03-31', 900)]);
+    const fev = acumuladoPorDia('2026-02', [l('2026-02-28', 300)]);
+    expect(compararComAnterior(mar, fev, 31)).toMatchObject({
+      ateDia: 31,
+      atualCentavos: 900,
+      anteriorCentavos: 300,
+      percentual: 200,
+    });
+    const nov = acumuladoPorDia('2026-11', [l('2026-11-30', 100)]);
+    const dez = acumuladoPorDia('2026-12', [l('2026-12-31', 50)]);
+    expect(compararComAnterior(dez, nov, 31)?.anteriorCentavos).toBe(100);
+  });
+
+  it('limite: alerta exatamente em 85% e com valores que não dividem exato', () => {
+    expect(situacaoLimite(85, 100)?.estado).toBe('alerta');
+    expect(situacaoLimite(84, 100)?.estado).toBe('ok');
+    // 85% de 333 = 283,05: 283 ainda é ok, 284 já é alerta.
+    expect(situacaoLimite(283, 333)?.estado).toBe('ok');
+    expect(situacaoLimite(284, 333)?.estado).toBe('alerta');
+  });
+});

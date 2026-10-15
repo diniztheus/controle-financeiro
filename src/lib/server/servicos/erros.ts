@@ -13,8 +13,9 @@ export class ErroDeNegocio extends Error {
   }
 }
 
-export function naoEncontrado(oQue: string): ErroDeNegocio {
-  return new ErroDeNegocio(`${oQue} não encontrado(a). Talvez tenha sido removido(a).`);
+/** Ex.: naoEncontrado('Esta conta não existe mais'). */
+export function naoEncontrado(frase: string): ErroDeNegocio {
+  return new ErroDeNegocio(`${frase}. Atualize a página e tente de novo.`);
 }
 
 /** Momento atual em ISO UTC, no mesmo formato dos defaults do banco. */

@@ -8,12 +8,12 @@
  * Regra da casa: gasto não mexe no saldo da conta. A conta é só informativa.
  * Toda escrita que toca compra e parcelas roda numa transação única.
  */
-import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { diaNoMes, type Dia, type Mes } from '../../dominio/datas.ts';
 import type { Centavos } from '../../dominio/dinheiro.ts';
 import { gerarParcelas } from '../../dominio/parcelas.ts';
 import type { Banco, BancoDrizzle } from '../db/conexao.ts';
-import { categorias, compras, contas, parcelas } from '../db/esquema.ts';
+import { cartoes, categorias, compras, contas, parcelas } from '../db/esquema.ts';
 import { agoraIso, ErroDeNegocio, naoEncontrado } from './erros.ts';
 
 export type Compra = typeof compras.$inferSelect;
@@ -46,6 +46,8 @@ export interface Lancamento {
   cartaoNome: string | null;
   criadoEm: string;
 }
+
+const IMEDIATA = { behavior: 'immediate' } as const;
 
 type Tx = Parameters<Parameters<BancoDrizzle['transaction']>[0]>[0];
 
@@ -108,7 +110,7 @@ export function lancarGasto(banco: Banco, d: DadosGasto, agora = new Date()): Co
       .get();
     gravarParcelas(tx, compra.id, d);
     return compra;
-  });
+  }, IMEDIATA);
 }
 
 export function obterGasto(banco: Banco, id: string): Compra | undefined {
@@ -119,10 +121,10 @@ export function obterGasto(banco: Banco, id: string): Compra | undefined {
 export function editarGasto(banco: Banco, id: string, d: DadosGasto, agora = new Date()): Compra {
   return banco.db.transaction((tx) => {
     const atual = tx.select().from(compras).where(eq(compras.id, id)).get();
-    if (!atual || atual.removidoEm) throw naoEncontrado('Gasto');
-    if (atual.meio !== 'conta') {
+    if (!atual || atual.removidoEm) throw naoEncontrado('Este gasto não existe mais');
+    if (atual.meio !== 'conta' || atual.numParcelas !== 1) {
       throw new ErroDeNegocio(
-        'Compras no cartão serão editadas na tela de cartões (próxima onda).',
+        'Compras no cartão e parceladas serão editadas na tela de cartões, que chega em breve.',
       );
     }
     validarReferencias(tx, d, atual);
@@ -134,6 +136,7 @@ export function editarGasto(banco: Banco, id: string, d: DadosGasto, agora = new
         dataCompra: d.data,
         valorTotalCentavos: d.valorCentavos,
         contaId: d.contaId,
+        numParcelas: 1,
         atualizadoEm: agoraIso(agora),
       })
       .where(eq(compras.id, id))
@@ -141,91 +144,98 @@ export function editarGasto(banco: Banco, id: string, d: DadosGasto, agora = new
       .get();
     gravarParcelas(tx, id, d);
     return compra;
-  });
+  }, IMEDIATA);
 }
 
 /** Manda para a lixeira (as parcelas ficam guardadas e voltam ao restaurar). */
-export function removerGasto(banco: Banco, id: string, agora = new Date()): void {
-  const atual = obterGasto(banco, id);
-  if (!atual || atual.removidoEm) throw naoEncontrado('Gasto');
-  banco.db
-    .update(compras)
-    .set({ removidoEm: agoraIso(agora) })
-    .where(eq(compras.id, id))
-    .run();
+export function removerGasto(banco: Banco, id: string, agora = new Date()): Compra {
+  return banco.db.transaction((tx) => {
+    const atual = tx.select().from(compras).where(eq(compras.id, id)).get();
+    if (!atual || atual.removidoEm) throw naoEncontrado('Este gasto não existe mais');
+    return tx
+      .update(compras)
+      .set({ removidoEm: agoraIso(agora) })
+      .where(eq(compras.id, id))
+      .returning()
+      .get();
+  }, IMEDIATA);
 }
 
-export function restaurarGasto(banco: Banco, id: string): void {
-  const atual = obterGasto(banco, id);
-  if (!atual) throw naoEncontrado('Gasto');
-  banco.db
-    .update(compras)
-    .set({ removidoEm: null })
-    .where(and(eq(compras.id, id), isNotNull(compras.removidoEm)))
-    .run();
-}
-
-interface LinhaLancamento {
-  compraId: string;
-  numero: number;
-  valorCentavos: number;
-  dataCompra: string;
-  valorTotalCentavos: number;
-  numParcelas: number;
-  descricao: string | null;
-  categoriaId: string;
-  categoriaNome: string;
-  categoriaCor: string | null;
-  meio: 'conta' | 'cartao';
-  contaNome: string | null;
-  contaRemovidaEm: string | null;
-  cartaoNome: string | null;
-  criadoEm: string;
+/** Tira da lixeira. Devolve a compra (também se ela já estava fora da lixeira). */
+export function restaurarGasto(banco: Banco, id: string): Compra {
+  return banco.db.transaction((tx) => {
+    const atual = tx.select().from(compras).where(eq(compras.id, id)).get();
+    if (!atual) throw naoEncontrado('Este gasto não existe mais');
+    if (!atual.removidoEm) return atual;
+    return tx
+      .update(compras)
+      .set({ removidoEm: null })
+      .where(and(eq(compras.id, id), isNotNull(compras.removidoEm)))
+      .returning()
+      .get()!;
+  }, IMEDIATA);
 }
 
 /**
  * Lançamentos do mês (uma linha por parcela de competência), do dia mais recente para o mais
- * antigo. Compras na lixeira ficam de fora.
+ * antigo; no mesmo dia, o lançado por último primeiro (id ULID desempata). Compras na lixeira
+ * ficam de fora.
  */
 export function lancamentosDoMes(banco: Banco, mes: Mes): Lancamento[] {
-  const linhas = banco.sqlite
-    .prepare(
-      `SELECT p.compra_id AS compraId, p.numero, p.valor_centavos AS valorCentavos,
-              c.data_compra AS dataCompra, c.valor_total_centavos AS valorTotalCentavos,
-              c.num_parcelas AS numParcelas, c.descricao, c.categoria_id AS categoriaId,
-              cat.nome AS categoriaNome, cat.cor AS categoriaCor, c.meio,
-              ct.nome AS contaNome, ct.removido_em AS contaRemovidaEm,
-              k.nome AS cartaoNome, c.criado_em AS criadoEm
-         FROM parcelas p
-         JOIN compras c ON c.id = p.compra_id AND c.removido_em IS NULL
-         JOIN categorias cat ON cat.id = c.categoria_id
-         LEFT JOIN contas ct ON ct.id = c.conta_id
-         LEFT JOIN cartoes k ON k.id = c.cartao_id
-        WHERE p.mes_competencia = ?`,
+  const linhas = banco.db
+    .select({
+      compraId: parcelas.compraId,
+      numero: parcelas.numero,
+      valorCentavos: parcelas.valorCentavos,
+      dataCompra: compras.dataCompra,
+      valorTotalCentavos: compras.valorTotalCentavos,
+      numParcelas: compras.numParcelas,
+      descricao: compras.descricao,
+      categoriaId: compras.categoriaId,
+      categoriaNome: categorias.nome,
+      categoriaCor: categorias.cor,
+      meio: compras.meio,
+      contaNome: contas.nome,
+      contaRemovidaEm: contas.removidoEm,
+      cartaoNome: cartoes.nome,
+      criadoEm: compras.criadoEm,
+    })
+    .from(parcelas)
+    .innerJoin(compras, and(eq(compras.id, parcelas.compraId), isNull(compras.removidoEm)))
+    .innerJoin(categorias, eq(categorias.id, compras.categoriaId))
+    .leftJoin(contas, eq(contas.id, compras.contaId))
+    .leftJoin(cartoes, eq(cartoes.id, compras.cartaoId))
+    .where(eq(parcelas.mesCompetencia, mes))
+    .orderBy(
+      desc(compras.dataCompra),
+      desc(compras.criadoEm),
+      desc(compras.id),
+      asc(parcelas.numero),
     )
-    .all(mes) as LinhaLancamento[];
-  return linhas
-    .map((l) => ({
-      compraId: l.compraId,
-      data: diaNoMes(mes, Number(l.dataCompra.slice(8, 10))),
-      dataCompra: l.dataCompra,
-      valorCentavos: l.valorCentavos,
-      valorTotalCentavos: l.valorTotalCentavos,
-      parcela: l.numero,
-      numParcelas: l.numParcelas,
-      descricao: l.descricao,
-      categoriaId: l.categoriaId,
-      categoriaNome: l.categoriaNome,
-      categoriaCor: l.categoriaCor,
-      meio: l.meio,
-      contaNome: l.contaNome,
-      contaRemovida: l.contaRemovidaEm !== null,
-      cartaoNome: l.cartaoNome,
-      criadoEm: l.criadoEm,
-    }))
-    .sort((a, b) =>
-      a.data !== b.data ? (a.data < b.data ? 1 : -1) : b.criadoEm.localeCompare(a.criadoEm),
-    );
+    .all();
+  return (
+    linhas
+      .map((l) => ({
+        compraId: l.compraId,
+        data: diaNoMes(mes, Number(l.dataCompra.slice(8, 10))),
+        dataCompra: l.dataCompra,
+        valorCentavos: l.valorCentavos,
+        valorTotalCentavos: l.valorTotalCentavos,
+        parcela: l.numero,
+        numParcelas: l.numParcelas,
+        descricao: l.descricao,
+        categoriaId: l.categoriaId,
+        categoriaNome: l.categoriaNome,
+        categoriaCor: l.categoriaCor,
+        meio: l.meio,
+        contaNome: l.contaNome,
+        contaRemovida: l.contaRemovidaEm !== null,
+        cartaoNome: l.cartaoNome,
+        criadoEm: l.criadoEm,
+      }))
+      // O dia no mês pode empatar dias diferentes da compra (31 → 30); a ordem do SQL desempata.
+      .sort((a, b) => (a.data === b.data ? 0 : a.data < b.data ? 1 : -1))
+  );
 }
 
 /** Categoria do gasto lançado por último, se ainda estiver ativa. */
@@ -269,6 +279,7 @@ export function gastosNaLixeira(banco: Banco): GastoNaLixeira[] {
     .from(compras)
     .innerJoin(categorias, eq(categorias.id, compras.categoriaId))
     .where(isNotNull(compras.removidoEm))
-    .orderBy(desc(compras.removidoEm))
-    .all() as GastoNaLixeira[];
+    .orderBy(desc(compras.removidoEm), desc(compras.id))
+    .all()
+    .map((g) => ({ ...g, removidoEm: g.removidoEm ?? '' }));
 }

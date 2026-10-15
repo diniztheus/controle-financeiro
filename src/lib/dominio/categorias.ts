@@ -43,7 +43,5 @@ export function proximaCor(usadas: readonly string[]): Cor {
   return melhor;
 }
 
-/** Nome comparável: sem espaços nas pontas, espaços internos únicos, minúsculo. */
-export function chaveCategoria(nome: string): string {
-  return nome.trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
-}
+/** Nome comparável (ver nomes.ts): NFC, espaços normalizados, minúsculo. */
+export { chaveNome as chaveCategoria } from './nomes.ts';

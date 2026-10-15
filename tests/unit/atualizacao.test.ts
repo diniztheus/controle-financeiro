@@ -77,6 +77,7 @@ describe('atualização v0.0 → esquema atual', () => {
     const tags = migrationsDoProjeto(PASTA_MIGRATIONS).map((m) => m.tag);
     expect(novo.migracao.aplicadas).toEqual(tags.slice(1));
     expect(novo.migracao.aplicadas).toContain('0001_tipos_e_datas');
+    expect(novo.migracao.aplicadas).toContain('0002_gasto_conta_e_descricao_opcionais');
 
     // Backup antes, com o esquema antigo e os dados.
     expect(novo.migracao.backup).toMatch(/financas-\d{4}-\d{2}-\d{2}-\d{6}\.db$/);
@@ -97,6 +98,18 @@ describe('atualização v0.0 → esquema atual', () => {
     expect(s.prepare("SELECT saldo_centavos FROM contas WHERE id = 'conta'").get()).toEqual({
       saldo_centavos: 123456,
     });
+    // 0002: a compra recriada manteve a conta, e agora aceita gasto sem conta e sem descrição.
+    expect(s.prepare("SELECT conta_id FROM compras WHERE id = 'avista'").get()).toEqual({
+      conta_id: 'conta',
+    });
+    expect(() =>
+      s
+        .prepare(
+          "INSERT INTO compras (id, descricao, categoria_id, data_compra, valor_total_centavos, meio) VALUES ('semconta', NULL, 'cat', '2026-10-16', 100, 'conta')",
+        )
+        .run(),
+    ).not.toThrow();
+    s.prepare("DELETE FROM compras WHERE id = 'semconta'").run();
     expect(s.pragma('foreign_key_check')).toEqual([]);
     expect(s.pragma('foreign_keys', { simple: true })).toBe(1);
     expect(lerStatus(novo).ok).toBe(true);
@@ -114,6 +127,8 @@ describe('atualização v0.0 → esquema atual', () => {
       'faturas_cartao_mes_unico',
       'parcelas_compra_numero_unico',
       'parcelas_mes_competencia_idx',
+      'compras_data_idx',
+      'compras_categoria_idx',
     ]) {
       expect(nomes.map((x) => x.name)).toContain(idx);
     }

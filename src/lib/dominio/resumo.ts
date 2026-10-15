@@ -27,7 +27,8 @@ export interface SituacaoLimite {
   estado: EstadoLimite;
 }
 
-export const LIMIAR_ALERTA = 0.85;
+/** Alerta a partir de 85% do limite. */
+export const LIMIAR_ALERTA_PCT = 85;
 
 /** `null` quando não há limite definido (0 = sem limite, como no app atual). */
 export function situacaoLimite(
@@ -35,13 +36,20 @@ export function situacaoLimite(
   limiteCentavos: Centavos | null,
 ): SituacaoLimite | null {
   if (!limiteCentavos || limiteCentavos <= 0) return null;
-  const frac = gastoCentavos / limiteCentavos;
+  // Comparações em inteiros (sem divisão): gasto > limite; gasto ≥ 85% do limite.
+  const estado: EstadoLimite =
+    gastoCentavos > limiteCentavos
+      ? 'estourado'
+      : gastoCentavos * 100 >= limiteCentavos * LIMIAR_ALERTA_PCT
+        ? 'alerta'
+        : 'ok';
   return {
     limiteCentavos,
     gastoCentavos,
     restanteCentavos: limiteCentavos - gastoCentavos,
-    percentual: Math.round(frac * 100),
-    estado: frac > 1 ? 'estourado' : frac >= LIMIAR_ALERTA ? 'alerta' : 'ok',
+    // Só para exibir.
+    percentual: Math.round((gastoCentavos * 100) / limiteCentavos),
+    estado,
   };
 }
 

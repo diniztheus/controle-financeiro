@@ -22,10 +22,13 @@ import {
   uniqueIndex,
   type AnySQLiteColumn,
 } from 'drizzle-orm/sqlite-core';
-import { ulid } from 'ulid';
+import { monotonicFactory } from 'ulid';
 import { TIPOS_CONTA } from '../../dominio/contas.ts';
 
 // ---------------------------------------------------------------- auxiliares
+
+// Monotônico: ids criados no mesmo milissegundo continuam em ordem de criação.
+const ulid = monotonicFactory();
 
 const AGORA = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
 

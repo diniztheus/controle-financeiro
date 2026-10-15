@@ -58,7 +58,7 @@ describe('contas', () => {
     expect(totalDasContas(banco)).toEqual({
       totalCentavos: 155000,
       quantidade: 2,
-      atualizadoEm: T2.toISOString(),
+      saldoAtualizadoEm: T2.toISOString(),
     });
   });
 
@@ -340,5 +340,106 @@ describe('painel do mês', () => {
     expect(p.comparacao).toMatchObject({ atualCentavos: 10000, anteriorCentavos: 4000 });
     expect(p.patrimonio.liquidoCentavos).toBe(200000);
     expect(p.ateDia).toBe(15);
+  });
+});
+
+describe('ajustes da auditoria', () => {
+  it('renomear não muda a data do saldo; confirmar o mesmo saldo registra', () => {
+    const a = criarConta(banco, { nome: 'Nubank', tipo: 'corrente', saldoCentavos: 100 }, T1);
+    editarConta(banco, a.id, { nome: 'Nu', tipo: 'corrente', saldoCentavos: 100 }, T2);
+    expect(totalDasContas(banco).saldoAtualizadoEm).toBe(T1.toISOString());
+    atualizarSaldo(banco, a.id, 100, T3);
+    expect(totalDasContas(banco).saldoAtualizadoEm).toBe(T3.toISOString());
+    expect(historicoDeSaldos(banco, a.id)).toHaveLength(2);
+  });
+
+  it('nomes em NFD e com espaços extras contam como o mesmo nome e são gravados limpos', () => {
+    const nfd = 'Sau\u0301de';
+    const c = criarCategoria(banco, { nome: '  Saúde  ', cor: null });
+    expect(c.nome).toBe('Saúde');
+    expect(() => criarCategoria(banco, { nome: nfd, cor: null })).toThrow(/Já existe/);
+    const conta = criarConta(banco, { nome: 'Nu   bank ', tipo: 'corrente', saldoCentavos: 0 });
+    expect(conta.nome).toBe('Nu bank');
+    expect(() =>
+      criarConta(banco, { nome: 'nu bank', tipo: 'corrente', saldoCentavos: 0 }),
+    ).toThrow(/Já existe/);
+    expect(criarConta(banco, { nome: nfd, tipo: 'corrente', saldoCentavos: 0 }).nome).toBe('Saúde');
+  });
+
+  it('lançamentos do mesmo dia e mesmo instante saem em ordem estável (último criado primeiro)', () => {
+    const cat = categoria();
+    const base = { valorCentavos: 1, descricao: null, categoriaId: cat.id, contaId: null };
+    const ids = [1, 2, 3, 4, 5].map(
+      (i) => lancarGasto(banco, { ...base, descricao: `g${i}`, data: '2026-10-10' }, T1).id,
+    );
+    const ordem = lancamentosDoMes(banco, '2026-10').map((l) => l.compraId);
+    expect(ordem).toEqual([...ids].reverse());
+    expect(ultimaCategoriaUsada(banco)).toBe(cat.id);
+  });
+
+  it('compra no cartão ou parcelada não é editada pela tela de gastos', () => {
+    const cat = categoria();
+    banco.sqlite.exec(
+      `INSERT INTO cartoes (id, nome, limite_centavos, dia_fechamento, dia_vencimento) VALUES ('k', 'Visa', 0, 3, 10)`,
+    );
+    banco.sqlite
+      .prepare(
+        `INSERT INTO compras (id, descricao, categoria_id, data_compra, valor_total_centavos, meio, cartao_id, num_parcelas) VALUES ('c', 'TV', ?, '2026-10-01', 100, 'cartao', 'k', 1)`,
+      )
+      .run(cat.id);
+    banco.sqlite
+      .prepare(
+        `INSERT INTO compras (id, descricao, categoria_id, data_compra, valor_total_centavos, meio, num_parcelas) VALUES ('p', 'Sofá', ?, '2026-10-01', 100, 'conta', 2)`,
+      )
+      .run(cat.id);
+    const d = {
+      valorCentavos: 1,
+      descricao: null,
+      categoriaId: cat.id,
+      data: '2026-10-01',
+      contaId: null,
+    };
+    expect(() => editarGasto(banco, 'c', d)).toThrow(/cartões/);
+    expect(() => editarGasto(banco, 'p', d)).toThrow(/cartões/);
+  });
+
+  it('gasto já na lixeira: remover de novo é recusado; restaurar devolve a compra', () => {
+    const cat = categoria();
+    const conta = criarConta(banco, { nome: 'X', tipo: 'corrente', saldoCentavos: 0 });
+    const g = lancarGasto(banco, {
+      valorCentavos: 1,
+      descricao: null,
+      categoriaId: cat.id,
+      data: '2026-10-01',
+      contaId: conta.id,
+    });
+    removerGasto(banco, g.id);
+    expect(() => removerGasto(banco, g.id)).toThrow(ErroDeNegocio);
+    // A conta foi para a lixeira depois: o gasto volta mesmo assim e mostra a conta.
+    removerConta(banco, conta.id);
+    expect(restaurarGasto(banco, g.id).removidoEm).toBeNull();
+    expect(restaurarGasto(banco, g.id).id).toBe(g.id);
+    expect(lancamentosDoMes(banco, '2026-10')[0]).toMatchObject({
+      contaNome: 'X',
+      contaRemovida: true,
+    });
+  });
+
+  it('restaurar conta a coloca no fim da lista', () => {
+    const a = criarConta(banco, { nome: 'A', tipo: 'corrente', saldoCentavos: 0 }, T1);
+    criarConta(banco, { nome: 'B', tipo: 'corrente', saldoCentavos: 0 }, T2);
+    removerConta(banco, a.id);
+    criarConta(banco, { nome: 'C', tipo: 'corrente', saldoCentavos: 0 }, T3);
+    restaurarConta(banco, a.id);
+    expect(listarContas(banco).map((c) => c.nome)).toEqual(['B', 'C', 'A']);
+  });
+
+  it('limite de um mês específico vence o padrão, inclusive zero', () => {
+    definirLimitePadrao(banco, 5000);
+    banco.sqlite.exec(`INSERT INTO limites_mensais (mes, valor_centavos) VALUES ('2026-12', 0)`);
+    banco.sqlite.exec(`INSERT INTO limites_mensais (mes, valor_centavos) VALUES ('2026-11', 900)`);
+    expect(limiteDoMes(banco, '2026-10')).toBe(5000);
+    expect(limiteDoMes(banco, '2026-11')).toBe(900);
+    expect(limiteDoMes(banco, '2026-12')).toBeNull();
   });
 });
