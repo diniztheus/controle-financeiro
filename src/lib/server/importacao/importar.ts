@@ -62,7 +62,11 @@ export interface Relatorio {
     contas: number;
     categorias: number;
     categoriasArquivadas: number;
+    /** Categorias que já existiam no site e não estavam na lista do app (ficam arquivadas). */
+    categoriasDoSiteArquivadas: number;
     cartoes: number;
+    /** Cartões que não existiam mais no app, mas tinham compras (entram na lixeira). */
+    cartoesRemovidos: number;
     gastos: number;
     gastosNoCartao: number;
     parcelas: number;
@@ -139,9 +143,28 @@ function isoOu(v: string | undefined, padrao: string): string {
   return v && !Number.isNaN(new Date(v).getTime()) ? new Date(v).toISOString() : padrao;
 }
 
-function diaCartao(v: unknown, padrao: number): number {
-  const n = Number(v);
-  return Number.isInteger(n) && n >= 1 && n <= 31 ? n : padrao;
+/**
+ * Dia de fechamento/vencimento como o app usava: vazio ou 0 vira o padrão (`|| 1`, `|| 10`);
+ * acima de 31 vale como o fim do mês (o app limitava ao tamanho do mês), então vira 31.
+ */
+function diaCartao(v: unknown, padrao: number, avisar: (msg: string) => void): number {
+  const n = Math.trunc(Number(v));
+  if (Number.isFinite(n) && n >= 1 && n <= 31) return n;
+  if (Number.isFinite(n) && n > 31) {
+    avisar(`dia ${String(v)} virou 31 (fim do mês, como o app tratava)`);
+    return 31;
+  }
+  if (v !== undefined && v !== null && v !== '' && v !== 0)
+    avisar(`dia "${String(v)}" virou ${padrao}`);
+  return padrao;
+}
+
+/** "2026-09-05" ou "2026-09-05T12:00:00Z" → "2026-09-05"; outra coisa → null. */
+function dataDoApp(v: string): { dia: Dia; ajustada: boolean } | null {
+  const curta = v.slice(0, 10);
+  if (!ehDia(curta)) return null;
+  if (curta === v) return { dia: curta, ajustada: false };
+  return /^\d{4}-\d{2}-\d{2}T/.test(v) ? { dia: curta, ajustada: true } : null;
 }
 
 function contarLinhas(banco: Banco, tabela: string): number {
@@ -160,7 +183,13 @@ export function bancoSemDados(banco: Banco): boolean {
 export function importarDoApp(
   banco: Banco,
   dados: ColecoesApp,
-  opcoes: { simular?: boolean; agora?: Date } = {},
+  opcoes: {
+    simular?: boolean;
+    agora?: Date;
+    aceitarDiferencas?: boolean;
+    /** Só para testes: altera a conferência antes da decisão de gravar. */
+    aoConferir?: (c: Relatorio['conferencia']) => void;
+  } = {},
 ): Relatorio {
   if (!bancoSemDados(banco)) {
     throw new ErroImportacao([
@@ -173,8 +202,20 @@ export function importarDoApp(
   try {
     banco.sqlite
       .transaction(() => {
-        relatorio = gravar(banco, dados, agoraIso, !!opcoes.simular);
+        const r = gravar(banco, dados, agoraIso, !!opcoes.simular);
+        opcoes.aoConferir?.(r.conferencia);
+        relatorio = r;
         if (opcoes.simular) throw new Simulacao();
+        // Totais que não batem cancelam tudo: nada fica gravado pela metade.
+        if (r.conferencia.diferencas.length && !opcoes.aceitarDiferencas) {
+          throw new ErroImportacao([
+            ...r.conferencia.diferencas.map(
+              (d) => `${d.item}: app ${d.noApp} × banco ${d.noBanco} (centavos/sats)`,
+            ),
+            'Os totais não bateram com as regras do app atual. Rode com --simular para ver o ' +
+              'relatório; se as diferenças forem esperadas, use --aceitar-diferencas.',
+          ]);
+        }
       })
       .immediate();
   } catch (e) {
@@ -214,7 +255,7 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
     const chave = chaveCategoria(nome);
     const atual = existentes.get(chave);
     // Cor como o app atual mostrava: pela posição na lista.
-    const valores = { nome, cor: corPorPosicao(ordem), ordem, arquivada };
+    const valores = { nome, cor: corPorPosicao(ordem), ordem, arquivada, atualizadoEm: agoraIso };
     if (atual) {
       db.update(categorias)
         .set(valores)
@@ -227,7 +268,24 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
       categoriasNovas++;
     }
   });
-  // Categorias padrão do site que o app não tinha ficam no fim, sem mexer.
+  // Categorias que o site já tinha (as padrão) e o app não usava: ficam arquivadas, no fim,
+  // com cores seguintes, para a lista ficar igual à do app.
+  const casadas = new Set(idCategoria.values());
+  let doSiteArquivadas = 0;
+  for (const c of existentes.values()) {
+    if (casadas.has(c.id)) continue;
+    const ordem = lista.length + extras.length + doSiteArquivadas;
+    db.update(categorias)
+      .set({ arquivada: true, ordem, cor: corPorPosicao(ordem), atualizadoEm: agoraIso })
+      .where(sql`${categorias.id} = ${c.id}`)
+      .run();
+    doSiteArquivadas++;
+  }
+  if (doSiteArquivadas) {
+    avisos.push(
+      `${doSiteArquivadas} categoria(s) padrão do site que o app não tinha ficaram arquivadas.`,
+    );
+  }
 
   // ---- contas (+ primeiro registro do histórico)
   const idConta = new Map<string, string>();
@@ -240,7 +298,8 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
     for (let n = 2; nomesConta.has(chaveCategoria(nome)); n++) {
       nome = `${normalizarNome(c.nome)} (${n})`;
     }
-    if (nome !== normalizarNome(c.nome))
+    if (!normalizarNome(c.nome)) avisos.push(`Conta sem nome: entrou como "${nome}".`);
+    else if (nome !== normalizarNome(c.nome))
       avisos.push(`Conta "${c.nome}" repetida: entrou como "${nome}".`);
     nomesConta.add(chaveCategoria(nome));
     const tipo = ehTipoConta(c.tipo) ? c.tipo : 'outro';
@@ -275,8 +334,9 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
   for (const k of [...dados.cartoes].sort((a, b) =>
     (a.criadoEm ?? '').localeCompare(b.criadoEm ?? ''),
   )) {
-    const diaFechamento = diaCartao(k.fechamento, 1);
-    const diaVencimento = diaCartao(k.vencimento, 10);
+    const avisar = (msg: string) => avisos.push(`Cartão "${k.nome}": ${msg}.`);
+    const diaFechamento = diaCartao(k.fechamento, 1, (m) => avisar(`fechamento, ${m}`));
+    const diaVencimento = diaCartao(k.vencimento, 10, (m) => avisar(`vencimento, ${m}`));
     if ((k.limite ?? 0) < 0) problemas.push(`Cartão "${k.nome}": limite negativo.`);
     const criado = isoOu(k.criadoEm, agoraIso);
     const novo = db
@@ -293,6 +353,32 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
       .get();
     cartaoNovo.set(k.id, { id: novo.id, diaFechamento, diaVencimento });
     cartaoApp.set(k.id, k);
+  }
+
+  // Compras de um cartão que não existe mais no app: o app usava o ciclo padrão (1 e 10).
+  // Entra um cartão na lixeira com esse ciclo, para nada se perder.
+  let cartoesRemovidos = 0;
+  function cartaoRemovido(appId: string): string {
+    if (cartaoNovo.has(appId)) return appId;
+    const novo = db
+      .insert(cartoes)
+      .values({
+        nome: `Cartão removido no app (${appId.slice(0, 8)})`,
+        diaFechamento: 1,
+        diaVencimento: 10,
+        ativo: false,
+        criadoEm: agoraIso,
+        atualizadoEm: agoraIso,
+        removidoEm: agoraIso,
+      })
+      .returning()
+      .get();
+    cartaoNovo.set(appId, { id: novo.id, diaFechamento: 1, diaVencimento: 10 });
+    cartoesRemovidos++;
+    avisos.push(
+      `Compras de um cartão que não existe mais no app entraram num cartão na lixeira (${novo.nome}).`,
+    );
+    return appId;
   }
 
   // ---- faturas (criadas sob demanda, uma por cartão e mês de vencimento)
@@ -324,16 +410,27 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
   );
   for (const g of gastosOrdenados) {
     const rotulo = `Gasto "${g.descricao || g.categoria || g.id}" de ${g.data}`;
-    if (!ehDia(g.data)) {
+    const data = dataDoApp(g.data);
+    if (!data) {
       problemas.push(`${rotulo}: data inválida.`);
       continue;
     }
+    if (data.ajustada) avisos.push(`${rotulo}: data com hora; ficou ${data.dia}.`);
+    const dia = data.dia;
     if (g.valor <= 0) {
       problemas.push(`${rotulo}: valor precisa ser maior que zero (${g.valor}).`);
       continue;
     }
     const meio = g.meio === 'cartao' ? 'cartao' : 'conta';
     const n = nParcelasApp(g);
+    if (!Number.isInteger(n)) {
+      problemas.push(`${rotulo}: número de parcelas "${String(g.parcelas)}" não é inteiro.`);
+      continue;
+    }
+    if (meio === 'cartao' && g.parcelas != null && Number(g.parcelas) !== n) {
+      avisos.push(`${rotulo}: parcelas "${String(g.parcelas)}" viraram ${n}, como no app.`);
+    }
+    // O formulário do app só oferecia de 1 a 24 parcelas.
     if (n > MAX_PARCELAS) {
       problemas.push(`${rotulo}: ${n} parcelas (o site aceita até ${MAX_PARCELAS}).`);
       continue;
@@ -344,20 +441,14 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
       contaId = idConta.get(g.contaId) ?? null;
       if (!contaId) avisos.push(`${rotulo}: a conta não existe mais no app; entrou sem conta.`);
     }
-    if (meio === 'cartao') {
-      cartaoAppId = g.cartaoId && cartaoNovo.has(g.cartaoId) ? g.cartaoId : null;
-      if (!cartaoAppId) {
-        problemas.push(`${rotulo}: o cartão da compra não existe no arquivo.`);
-        continue;
-      }
-    }
+    if (meio === 'cartao') cartaoAppId = cartaoRemovido(g.cartaoId || '(sem cartão)');
     const criado = isoOu(g.criadoEm, agoraIso);
     const compra = db
       .insert(compras)
       .values({
         descricao: normalizarNome(g.descricao ?? '') || null,
         categoriaId: idCategoria.get(chaveCategoria(normalizarNome(g.categoria || 'Outros')))!,
-        dataCompra: g.data,
+        dataCompra: dia,
         valorTotalCentavos: g.valor,
         meio,
         contaId,
@@ -369,14 +460,14 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
       .returning()
       .get();
     const k = cartaoAppId ? cartaoNovo.get(cartaoAppId)! : null;
-    for (const p of gerarParcelas(g.data, g.valor, n)) {
+    for (const p of gerarParcelas(dia, g.valor, n)) {
       db.insert(parcelas)
         .values({
           compraId: compra.id,
           numero: p.numero,
           valorCentavos: p.valorCentavos,
           mesCompetencia: p.mesCompetencia,
-          faturaId: k ? fatura(cartaoAppId!, mesDaFatura(k, g.data, p.numero - 1)) : null,
+          faturaId: k ? fatura(cartaoAppId!, mesDaFatura(k, dia, p.numero - 1)) : null,
         })
         .run();
       nParcelas++;
@@ -387,9 +478,15 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
   // ---- faturas pagas
   let pagas = 0;
   for (const f of dados.faturas) {
-    const [idCartaoApp, mesId] = f.id.split('__');
-    const cartaoAppId = f.cartaoId ?? idCartaoApp ?? '';
-    const mes = f.mes ?? mesId ?? '';
+    // Id do app: "<cartaoId>__AAAA-MM" (o id do cartão pode ter "__").
+    const corte = f.id.lastIndexOf('__');
+    const cartaoAppId = f.cartaoId ?? (corte > 0 ? f.id.slice(0, corte) : '');
+    const mes = f.mes ?? (corte > 0 ? f.id.slice(corte + 2) : '');
+    const pagaEm = diaCurto(f.pagaEm);
+    if (!pagaEm) {
+      avisos.push(`Fatura "${f.id}" sem data de pagamento: entrou como não paga.`);
+      continue;
+    }
     if (!cartaoNovo.has(cartaoAppId) || !/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) {
       avisos.push(`Fatura paga "${f.id}" ignorada: cartão ou mês inexistente.`);
       continue;
@@ -401,7 +498,7 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
         .get(id) as { t: number }
     ).t;
     db.update(faturas)
-      .set({ pagaEm: diaCurto(f.pagaEm) ?? hoje(new Date(agoraIso)), valorPagoCentavos: total })
+      .set({ pagaEm, valorPagoCentavos: total })
       .where(sql`${faturas.id} = ${id}`)
       .run();
     pagas++;
@@ -409,20 +506,26 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
 
   // ---- bitcoin
   for (const m of dados.bitcoin) {
-    if (!ehDia(m.data)) {
+    const data = dataDoApp(m.data);
+    if (!data) {
       problemas.push(`Movimento de bitcoin ${m.id}: data inválida (${m.data}).`);
       continue;
     }
+    if (data.ajustada)
+      avisos.push(`Movimento de bitcoin ${m.id}: data com hora; ficou ${data.dia}.`);
     if (m.sats === 0) {
       avisos.push(`Movimento de bitcoin de ${m.data} com 0 sats ignorado.`);
       continue;
+    }
+    if ((m.valor ?? 0) < 0) {
+      avisos.push(`Movimento de bitcoin de ${data.dia}: valor negativo guardado como positivo.`);
     }
     const criado = isoOu(m.criadoEm, agoraIso);
     db.insert(btcMovimentos)
       .values({
         sats: m.sats,
-        valorCentavos: Math.max(0, m.valor ?? 0),
-        data: m.data,
+        valorCentavos: Math.abs(m.valor ?? 0),
+        data: data.dia,
         nota: normalizarNome(m.nota ?? '') || null,
         criadoEm: criado,
         atualizadoEm: criado,
@@ -430,18 +533,43 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
       .run();
   }
   let nPrecos = 0;
+  const vistosPreco = new Set<string>();
   for (const p of dados.btcPrecos) {
     if (!ehDia(p.id) || p.valor <= 0) {
       avisos.push(`Preço do bitcoin "${p.id}" ignorado (data ou valor inválido).`);
       continue;
     }
-    db.insert(btcPrecos).values({ data: p.id, precoCentavos: p.valor, origem: 'manual' }).run();
+    db.insert(btcPrecos)
+      .values({ data: p.id, precoCentavos: p.valor, origem: 'manual' })
+      .onConflictDoUpdate({ target: btcPrecos.data, set: { precoCentavos: p.valor } })
+      .run();
+    if (vistosPreco.has(p.id)) avisos.push(`Preço do bitcoin de ${p.id} repetido: ficou o último.`);
+    vistosPreco.add(p.id);
     nPrecos++;
   }
 
   // ---- limite
   const lim = dados.config.find((c) => c.id === 'limite')?.valor ?? 0;
-  if (lim > 0) db.insert(limitesMensais).values({ mes: 'padrao', valorCentavos: lim }).run();
+  if (lim > 0) {
+    const antes = db
+      .select()
+      .from(limitesMensais)
+      .where(sql`${limitesMensais.mes} = 'padrao'`)
+      .get();
+    if (antes && antes.valorCentavos !== lim) {
+      avisos.push('O limite do mês definido no site foi substituído pelo do app.');
+    }
+    db.insert(limitesMensais)
+      .values({ mes: 'padrao', valorCentavos: lim })
+      .onConflictDoUpdate({ target: limitesMensais.mes, set: { valorCentavos: lim } })
+      .run();
+  }
+  // Outras preferências do app que o site não usa: só avisa.
+  for (const c of dados.config) {
+    if (c.id !== 'categorias' && c.id !== 'limite') {
+      avisos.push(`Preferência "${c.id}" do app não tem equivalente no site e foi ignorada.`);
+    }
+  }
 
   if (problemas.length) throw new ErroImportacao(problemas);
 
@@ -451,7 +579,9 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
       contas: idConta.size,
       categorias: categoriasNovas,
       categoriasArquivadas: extras.length,
-      cartoes: cartaoNovo.size,
+      categoriasDoSiteArquivadas: doSiteArquivadas,
+      cartoes: cartaoNovo.size - cartoesRemovidos,
+      cartoesRemovidos,
       gastos: gastosOrdenados.length,
       gastosNoCartao: noCartao,
       parcelas: nParcelas,
@@ -462,7 +592,12 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
       limite: lim > 0 ? lim : null,
     },
     avisos,
-    conferencia: conferir(banco, dados, cartaoApp),
+    conferencia: conferir(
+      banco,
+      dados,
+      cartaoApp,
+      new Map([...cartaoNovo].map(([appId, k]) => [appId, k.id])),
+    ),
   };
 }
 
@@ -471,6 +606,8 @@ function conferir(
   banco: Banco,
   dados: ColecoesApp,
   cartaoApp: Map<string, CartaoApp>,
+  /** id do cartão no app → id no banco */
+  idCartao: Map<string, string>,
 ): Relatorio['conferencia'] {
   const s = banco.sqlite;
   const diferencas: Diferenca[] = [];
@@ -487,10 +624,11 @@ function conferir(
   // Gastos por mês (competência), como o painel do app atual soma.
   const porMesApp = new Map<string, number>();
   for (const g of dados.gastos) {
-    if (!ehDia(g.data)) continue;
+    const data = dataDoApp(g.data);
+    if (!data) continue;
     const n = nParcelasApp(g);
     for (let i = 0; i < n; i++) {
-      const mes = shiftMesApp(g.data.slice(0, 7), i);
+      const mes = shiftMesApp(data.dia.slice(0, 7), i);
       porMesApp.set(mes, (porMesApp.get(mes) ?? 0) + valorParcelaApp(g.valor, n, i));
     }
   }
@@ -509,16 +647,22 @@ function conferir(
     if (a !== b) diferencas.push({ item: `Gastos de ${mes}`, noApp: a, noBanco: b });
   }
 
-  // Faturas: total por cartão e mês de vencimento.
+  // Faturas: total por cartão (pelo id, não pelo nome) e mês de vencimento. Como no app, só
+  // cartões que ainda existem têm faturas.
+  const nomeCartao = new Map([...cartaoApp].map(([appId, k]) => [idCartao.get(appId)!, k.nome]));
   const porFaturaApp = new Map<string, number>();
   for (const g of dados.gastos) {
-    if (g.meio !== 'cartao' || !g.cartaoId || !ehDia(g.data)) continue;
+    const data = dataDoApp(g.data);
+    if (g.meio !== 'cartao' || !g.cartaoId || !data) continue;
     const k = cartaoApp.get(g.cartaoId);
     if (!k) continue;
-    const ciclo = { fechamento: Number(k.fechamento) || 1, vencimento: Number(k.vencimento) || 10 };
+    const ciclo = {
+      fechamento: Math.min(31, Number(k.fechamento) || 1),
+      vencimento: Math.min(31, Number(k.vencimento) || 10),
+    };
     const n = nParcelasApp(g);
     for (let i = 0; i < n; i++) {
-      const chave = `${k.nome} ${faturaDeApp(ciclo, g.data, i)}`;
+      const chave = `${idCartao.get(g.cartaoId)} ${faturaDeApp(ciclo, data.dia, i)}`;
       porFaturaApp.set(chave, (porFaturaApp.get(chave) ?? 0) + valorParcelaApp(g.valor, n, i));
     }
   }
@@ -526,8 +670,8 @@ function conferir(
     (
       s
         .prepare(
-          `SELECT k.nome || ' ' || f.mes_vencimento AS c, coalesce(sum(p.valor_centavos), 0) AS t
-             FROM faturas f JOIN cartoes k ON k.id = f.cartao_id
+          `SELECT k.id || ' ' || f.mes_vencimento AS c, coalesce(sum(p.valor_centavos), 0) AS t
+             FROM faturas f JOIN cartoes k ON k.id = f.cartao_id AND k.removido_em IS NULL
              LEFT JOIN parcelas p ON p.fatura_id = f.id
             GROUP BY f.id`,
         )
@@ -539,7 +683,10 @@ function conferir(
   for (const chave of new Set([...porFaturaApp.keys(), ...porFaturaBanco.keys()])) {
     const a = porFaturaApp.get(chave) ?? 0;
     const b = porFaturaBanco.get(chave) ?? 0;
-    if (a !== b) diferencas.push({ item: `Fatura ${chave}`, noApp: a, noBanco: b });
+    const [id, mes] = chave.split(' ');
+    if (a !== b) {
+      diferencas.push({ item: `Fatura ${nomeCartao.get(id!) ?? id} ${mes}`, noApp: a, noBanco: b });
+    }
   }
 
   const satsApp = dados.bitcoin.reduce((t, m) => t + m.sats, 0);
@@ -549,6 +696,15 @@ function conferir(
     }
   ).t;
   if (satsApp !== satsBanco) diferencas.push({ item: 'Sats', noApp: satsApp, noBanco: satsBanco });
+  const valorBtcApp = dados.bitcoin.reduce((t, m) => t + Math.abs(m.valor ?? 0), 0);
+  const valorBtcBanco = (
+    s.prepare('SELECT coalesce(sum(valor_centavos), 0) AS t FROM btc_movimentos').get() as {
+      t: number;
+    }
+  ).t;
+  if (valorBtcApp !== valorBtcBanco) {
+    diferencas.push({ item: 'Valores do bitcoin', noApp: valorBtcApp, noBanco: valorBtcBanco });
+  }
 
   return {
     saldoContas: { noApp: saldoApp, noBanco: saldoBanco },

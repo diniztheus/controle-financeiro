@@ -193,3 +193,152 @@ describe('importar do app atual', () => {
     expect(r.avisos[0]).toMatch(/repetida/);
   });
 });
+
+describe('importar: casos da auditoria final', () => {
+  const comDados = (f: (c: Record<string, unknown[]>) => void) => {
+    const c = structuredClone(EXEMPLO.colecoes);
+    f(c);
+    return lerExportacao(c);
+  };
+
+  it('site já aberto (categorias padrão criadas): lista igual à do app, sem cores repetidas', () => {
+    garantirCategoriasPadrao(banco);
+    const r = importarDoApp(banco, lerExportacao(EXEMPLO));
+    const todas = listarCategorias(banco, { incluirArquivadas: true });
+    const ativas = todas.filter((c) => !c.arquivada).map((c) => c.nome);
+    expect(ativas).toEqual(['Mercado', 'Transporte', 'Alimentação', 'Compras', 'Pets']);
+    expect(new Set(todas.map((c) => c.ordem)).size).toBe(todas.length);
+    expect(new Set(todas.slice(0, 11).map((c) => c.cor)).size).toBe(11);
+    // 11 padrão − 4 que o app tinha = 7 arquivadas do site, mais Restaurantes (só em gastos).
+    expect(r.importados.categoriasDoSiteArquivadas).toBe(7);
+    expect(todas.filter((c) => c.arquivada)).toHaveLength(8);
+  });
+
+  it('diferença na conferência cancela tudo, a menos que seja aceita', () => {
+    const forcar = (c: { diferencas: unknown[] }) =>
+      c.diferencas.push({ item: 'teste', noApp: 1, noBanco: 2 });
+    expect(() => importarDoApp(banco, lerExportacao(EXEMPLO), { aoConferir: forcar })).toThrow(
+      /não bateram/,
+    );
+    expect(bancoSemDados(banco)).toBe(true);
+    const r = importarDoApp(banco, lerExportacao(EXEMPLO), {
+      aoConferir: forcar,
+      aceitarDiferencas: true,
+    });
+    expect(r.conferencia.diferencas).toHaveLength(1);
+    expect(bancoSemDados(banco)).toBe(false);
+  });
+
+  it('compra de cartão que não existe mais entra num cartão na lixeira, sem cancelar', () => {
+    const r = importarDoApp(
+      banco,
+      comDados((c) => {
+        (c.gastos as { cartaoId: string }[])[3]!.cartaoId = 'apagado';
+      }),
+    );
+    expect(r.importados.cartoesRemovidos).toBe(1);
+    expect(r.conferencia.diferencas).toEqual([]);
+    const k = banco.sqlite
+      .prepare('SELECT ativo, removido_em AS r, dia_fechamento AS f FROM cartoes WHERE ativo = 0')
+      .get() as { ativo: number; r: string | null; f: number };
+    expect(k).toMatchObject({ ativo: 0, f: 1 });
+    expect(k.r).not.toBeNull();
+  });
+
+  it('limite já definido no site e preço repetido não quebram', () => {
+    banco.sqlite.exec(`INSERT INTO limites_mensais (mes, valor_centavos) VALUES ('padrao', 100)`);
+    const r = importarDoApp(
+      banco,
+      comDados((c) => {
+        (c.btcPrecos as unknown[]).push({ id: '2026-10-14', valor: 37000000 });
+      }),
+    );
+    expect(limiteDoMes(banco, '2026-10')).toBe(300000);
+    expect(r.avisos.join('\n')).toMatch(/limite do mês definido no site/);
+    expect(r.avisos.join('\n')).toMatch(/repetido: ficou o último/);
+    expect(
+      banco.sqlite
+        .prepare("SELECT preco_centavos AS p FROM btc_precos WHERE data = '2026-10-14'")
+        .get(),
+    ).toEqual({ p: 37000000 });
+  });
+
+  it('valor negativo no bitcoin é guardado positivo, com aviso, e conferido', () => {
+    const r = importarDoApp(
+      banco,
+      comDados((c) => {
+        (c.bitcoin as { valor: number }[])[1]!.valor = -9000;
+      }),
+    );
+    expect(r.avisos.join('\n')).toMatch(/negativo/);
+    expect(r.conferencia.diferencas).toEqual([]);
+  });
+
+  it('dois cartões com o mesmo nome não geram falso alarme', () => {
+    const r = importarDoApp(
+      banco,
+      comDados((c) => {
+        (c.cartoes as unknown[]).push({
+          id: 'k2',
+          nome: 'Cartão Exemplo',
+          fechamento: 20,
+          vencimento: 1,
+        });
+        (c.gastos as { cartaoId: string }[])[3]!.cartaoId = 'k2';
+      }),
+    );
+    expect(r.conferencia.diferencas).toEqual([]);
+  });
+
+  it('fatura sem data de pagamento entra como não paga; id de cartão com "__"', () => {
+    const r = importarDoApp(
+      banco,
+      comDados((c) => {
+        (c.faturas as { pagaEm: string | null }[])[0]!.pagaEm = null;
+        (c.faturas as unknown[]).push({ id: 'k1__2026-11', pagaEm: '2026-11-08' });
+      }),
+    );
+    expect(r.importados.faturasPagas).toBe(1);
+    expect(r.avisos.join('\n')).toMatch(/não paga/);
+    const pagas = banco.sqlite
+      .prepare('SELECT mes_vencimento AS m FROM faturas WHERE paga_em IS NOT NULL')
+      .all();
+    expect(pagas).toEqual([{ m: '2026-11' }]);
+  });
+
+  it('data com hora é aceita com aviso; parcelas não inteiras cancelam com mensagem própria', () => {
+    const r = importarDoApp(
+      banco,
+      comDados((c) => {
+        (c.gastos as { data: string }[])[0]!.data = '2026-09-05T12:00:00.000Z';
+      }),
+    );
+    expect(r.avisos.join('\n')).toMatch(/data com hora; ficou 2026-09-05/);
+    expect(r.conferencia.diferencas).toEqual([]);
+
+    const outro = bancoEmMemoria();
+    try {
+      expect(() =>
+        importarDoApp(
+          outro,
+          comDados((c) => {
+            (c.gastos as { parcelas: string }[])[2]!.parcelas = '2.5';
+          }),
+        ),
+      ).toThrow(/não é inteiro/);
+    } finally {
+      outro.sqlite.close();
+    }
+  });
+
+  it('fechamento acima de 31 vale como 31 (como o app), com aviso', () => {
+    const r = importarDoApp(
+      banco,
+      comDados((c) => {
+        (c.cartoes as { fechamento: number }[])[0]!.fechamento = 35;
+      }),
+    );
+    expect(r.avisos.join('\n')).toMatch(/virou 31/);
+    expect(r.conferencia.diferencas).toEqual([]);
+  });
+});
