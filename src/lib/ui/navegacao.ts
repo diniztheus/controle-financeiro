@@ -12,7 +12,7 @@ export const NAVEGACAO: readonly ItemNav[] = [
   { rotulo: 'Contas', href: '/contas', onda: null },
   { rotulo: 'Categorias', href: '/categorias', onda: null },
   { rotulo: 'Cartões', href: '/cartoes', onda: 2 },
-  { rotulo: 'Bitcoin', href: '/bitcoin', onda: 3 },
+  { rotulo: 'Bitcoin', href: '/bitcoin', onda: null },
   { rotulo: 'Relatórios', href: '/relatorios', onda: 4 },
 ];
 

@@ -3,6 +3,7 @@
  * Os campos chegam como texto (FormData); aqui viram valores do domínio.
  */
 import { z } from 'zod';
+import { parseSats } from '../dominio/bitcoin.ts';
 import { CORES } from '../dominio/categorias.ts';
 import { TIPOS_CONTA } from '../dominio/contas.ts';
 import { dia, textoObrigatorio, valorEmReais, valorPositivo } from './comum.ts';
@@ -83,3 +84,48 @@ export function errosPorCampo(e: z.ZodError): Record<string, string> {
   }
   return r;
 }
+
+/** Quantidade de sats (inteiro positivo, "1.500" ou "1500"); o sinal vem do tipo da operação. */
+const satsPositivos = z
+  .string({ message: 'Informe a quantidade de sats' })
+  .transform((texto, ctx) => {
+    const v = parseSats(texto);
+    if (v === null || v <= 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Quantidade de sats inválida. Use um número inteiro, como 1.500',
+      });
+      return z.NEVER;
+    }
+    return v;
+  });
+
+/** Compra ou venda de bitcoin. Saída: `sats` com sinal (+ compra, − venda). */
+export const btcForm = z
+  .object({
+    tipo: z.enum(['compra', 'venda'], { message: 'Escolha compra ou venda' }),
+    sats: satsPositivos,
+    /** Vazio = não informado (0). */
+    valor: z
+      .string()
+      .optional()
+      .transform((s) => (s ?? '').trim() || '0')
+      .pipe(valorEmReais)
+      .refine((v) => v >= 0, 'O valor não pode ser negativo'),
+    data: dia,
+    nota: textoOpcional('A nota', 120),
+  })
+  .transform((d) => ({
+    sats: d.tipo === 'venda' ? -d.sats : d.sats,
+    valorCentavos: d.valor,
+    data: d.data,
+    nota: d.nota,
+  }));
+export type BtcForm = z.output<typeof btcForm>;
+
+/** Preço manual do BTC em um dia. Saída: `preco` em centavos por 1 BTC. */
+export const precoForm = z.object({
+  data: dia,
+  preco: valorPositivo,
+});
+export type PrecoForm = z.output<typeof precoForm>;

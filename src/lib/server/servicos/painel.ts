@@ -17,6 +17,7 @@ import {
 import type { Banco } from '../db/conexao.ts';
 import { listarContas, totalDasContas, type Conta } from './contas.ts';
 import { listarCategorias } from './categorias.ts';
+import { valorBitcoinCentavos } from './bitcoin.ts';
 import { lancamentosDoMes } from './gastos.ts';
 import { agruparPorDia, type DiaDeLancamentos } from '../../dominio/lancamentos.ts';
 import { limiteDoMes } from './limite.ts';
@@ -38,6 +39,8 @@ export interface Painel {
     liquidoCentavos: Centavos;
     contasCentavos: Centavos;
     quantidadeContas: number;
+    /** Valor atual da posição em bitcoin (0 se sem preço). */
+    bitcoinCentavos: Centavos;
     /** Quando um saldo foi informado pela última vez. */
     saldoAtualizadoEm: string | null;
   };
@@ -76,12 +79,17 @@ function ler(banco: Banco, mes: Mes, hoje: Dia): Painel {
 
   const listaContas = listarContas(banco);
   const contas = totalDasContas(banco, listaContas);
+  const bitcoin = valorBitcoinCentavos(banco);
   return {
     mes,
     patrimonio: {
-      liquidoCentavos: patrimonioLiquido({ saldosContas: [contas.totalCentavos] }),
+      liquidoCentavos: patrimonioLiquido({
+        saldosContas: [contas.totalCentavos],
+        bitcoinCentavos: bitcoin,
+      }),
       contasCentavos: contas.totalCentavos,
       quantidadeContas: contas.quantidade,
+      bitcoinCentavos: bitcoin,
       saldoAtualizadoEm: contas.saldoAtualizadoEm,
     },
     contas: listaContas,
