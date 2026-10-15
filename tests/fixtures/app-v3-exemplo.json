@@ -1,0 +1,121 @@
+{
+  "app": "controle-financeiro",
+  "versao": 1,
+  "exportadoEm": "2026-10-15T12:00:00.000Z",
+  "colecoes": {
+    "contas": [
+      {
+        "id": "c1",
+        "nome": "Banco Exemplo",
+        "tipo": "corrente",
+        "saldo": 254090,
+        "criadoEm": "2026-08-01T10:00:00.000Z",
+        "atualizadoEm": "2026-10-10T10:00:00.000Z"
+      },
+      {
+        "id": "c2",
+        "nome": "Carteira",
+        "tipo": "dinheiro",
+        "saldo": -1500,
+        "criadoEm": "2026-08-02T10:00:00.000Z"
+      }
+    ],
+    "gastos": [
+      {
+        "id": "g1",
+        "valor": 4290,
+        "descricao": "Feira",
+        "categoria": "Mercado",
+        "data": "2026-09-05",
+        "meio": "conta",
+        "contaId": "c1",
+        "contaId2": "ignorado",
+        "parcelas": 1,
+        "criadoEm": "2026-09-05T12:00:00.000Z"
+      },
+      {
+        "id": "g2",
+        "valor": 1200,
+        "descricao": "",
+        "categoria": "Transporte",
+        "data": "2026-10-01",
+        "meio": "conta",
+        "contaId": null,
+        "cartaoId": null,
+        "parcelas": 1,
+        "criadoEm": "2026-10-01T12:00:00.000Z"
+      },
+      {
+        "id": "g3",
+        "valor": 100000,
+        "descricao": "Notebook",
+        "categoria": "Compras",
+        "data": "2026-09-03",
+        "meio": "cartao",
+        "contaId": null,
+        "cartaoId": "k1",
+        "parcelas": 3,
+        "criadoEm": "2026-09-03T12:00:00.000Z"
+      },
+      {
+        "id": "g4",
+        "valor": 5990,
+        "descricao": "Jantar",
+        "categoria": "Restaurantes",
+        "data": "2026-10-02",
+        "meio": "cartao",
+        "cartaoId": "k1",
+        "parcelas": 1,
+        "criadoEm": "2026-10-02T12:00:00.000Z"
+      },
+      {
+        "id": "g5",
+        "valor": 800,
+        "descricao": "Café",
+        "categoria": "Alimentação",
+        "data": "2026-10-03",
+        "meio": "conta",
+        "contaId": "conta-apagada",
+        "parcelas": 1,
+        "criadoEm": "2026-10-03T12:00:00.000Z"
+      }
+    ],
+    "config": [
+      { "id": "categorias", "lista": ["Mercado", "Transporte", "Alimentação", "Compras", "Pets"] },
+      { "id": "limite", "valor": 300000 }
+    ],
+    "cartoes": [
+      {
+        "id": "k1",
+        "nome": "Cartão Exemplo",
+        "limite": 500000,
+        "fechamento": 3,
+        "vencimento": 10,
+        "criadoEm": "2026-08-01T10:00:00.000Z"
+      }
+    ],
+    "faturas": [
+      {
+        "id": "k1__2026-10",
+        "cartaoId": "k1",
+        "mes": "2026-10",
+        "pagaEm": "2026-10-09T15:00:00.000Z"
+      }
+    ],
+    "bitcoin": [
+      {
+        "id": "b1",
+        "sats": 150000,
+        "valor": 52000,
+        "data": "2026-09-01",
+        "nota": "DCA",
+        "criadoEm": "2026-09-01T10:00:00.000Z"
+      },
+      { "id": "b2", "sats": -20000, "valor": 0, "data": "2026-10-01", "nota": null }
+    ],
+    "btcPrecos": [
+      { "id": "2026-09-01", "valor": 34666666 },
+      { "id": "2026-10-14", "valor": 36000000 }
+    ]
+  }
+}

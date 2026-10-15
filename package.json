@@ -22,6 +22,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "backup": "node scripts/backup.ts",
+    "importar": "node scripts/importar.ts",
     "db:generate": "drizzle-kit generate",
     "verificar": "pnpm check && pnpm lint && pnpm test && pnpm test:e2e"
   },

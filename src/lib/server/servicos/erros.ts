@@ -3,12 +3,12 @@
  * As páginas mostram a mensagem; qualquer outro erro vira "algo deu errado" e vai para o log.
  */
 export class ErroDeNegocio extends Error {
-  constructor(
-    message: string,
-    /** Campo do formulário ao qual o erro se refere, se houver. */
-    readonly campo?: string,
-  ) {
+  /** Campo do formulário ao qual o erro se refere, se houver. */
+  readonly campo: string | undefined;
+  // Sem "parameter properties": os scripts rodam no Node com remoção simples de tipos.
+  constructor(message: string, campo?: string) {
     super(message);
+    this.campo = campo;
     this.name = 'ErroDeNegocio';
   }
 }
