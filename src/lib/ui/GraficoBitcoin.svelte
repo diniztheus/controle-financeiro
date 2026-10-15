@@ -241,6 +241,7 @@
     align-items: center;
   }
   .rolagem {
+    position: relative;
     max-height: 320px;
     overflow: auto;
     margin-top: 8px;

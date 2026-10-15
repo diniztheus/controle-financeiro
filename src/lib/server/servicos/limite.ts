@@ -1,9 +1,9 @@
 /**
- * Limite de gastos do mês. Nesta onda existe o limite padrão (vale para todo mês), como no app
- * atual; limites por mês específico chegam na Onda 4 e já têm lugar na mesma tabela.
+ * Limite de gastos do mês: o do próprio mês, se houver, senão o padrão (vale para todo mês).
+ * A mesma tabela guarda o padrão (mes = 'padrao') e os ajustes por mês.
  */
 import { eq } from 'drizzle-orm';
-import type { Mes } from '../../dominio/datas.ts';
+import { ehMes, type Mes } from '../../dominio/datas.ts';
 import type { Centavos } from '../../dominio/dinheiro.ts';
 import type { Banco } from '../db/conexao.ts';
 import { limitesMensais } from '../db/esquema.ts';
@@ -34,4 +34,35 @@ export function definirLimitePadrao(banco: Banco, valorCentavos: Centavos): void
     .values({ mes: PADRAO, valorCentavos })
     .onConflictDoUpdate({ target: limitesMensais.mes, set: { valorCentavos } })
     .run();
+}
+
+/** Define o limite de um mês específico. Zero remove só esse ajuste: o mês volta ao padrão. */
+export function definirLimiteMes(banco: Banco, mes: Mes, valorCentavos: Centavos): void {
+  if (!ehMes(mes)) throw new ErroDeNegocio('Mês inválido (use AAAA-MM).', 'mes');
+  if (!Number.isSafeInteger(valorCentavos) || valorCentavos < 0) {
+    throw new ErroDeNegocio('O limite não pode ser negativo.', 'valor');
+  }
+  if (valorCentavos === 0) {
+    banco.db.delete(limitesMensais).where(eq(limitesMensais.mes, mes)).run();
+    return;
+  }
+  banco.db
+    .insert(limitesMensais)
+    .values({ mes, valorCentavos })
+    .onConflictDoUpdate({ target: limitesMensais.mes, set: { valorCentavos } })
+    .run();
+}
+
+/** Limite padrão e os limites por mês (mais recente primeiro). */
+export function listarLimites(banco: Banco): {
+  padrao: Centavos | null;
+  porMes: { mes: Mes; valorCentavos: Centavos }[];
+} {
+  const linhas = banco.db.select().from(limitesMensais).all();
+  const padrao = linhas.find((l) => l.mes === PADRAO)?.valorCentavos ?? 0;
+  const porMes = linhas
+    .filter((l) => l.mes !== PADRAO && l.valorCentavos > 0)
+    .map((l) => ({ mes: l.mes, valorCentavos: l.valorCentavos }))
+    .sort((a, b) => b.mes.localeCompare(a.mes));
+  return { padrao: padrao > 0 ? padrao : null, porMes };
 }

@@ -2,6 +2,52 @@
 
 Uma nota curta por onda. Versões seguem as tags do git (`v0.0`, `v0.1`…).
 
+## Receitas recorrentes (15/10/2026)
+
+- **Receitas recorrentes** (`/receitas/recorrentes`): salário, bolsa, aluguel recebido e afins.
+  Cadastre o valor, o dia do mês, a partir de quando e, se houver, até quando. O site lança a
+  receita de cada mês sozinho, até o dia de hoje, uma por mês. Dia 29, 30 ou 31 cai no último
+  dia dos meses mais curtos.
+- Depois de lançada, a receita é comum: dá para editar, mandar para a lixeira (e ela não volta
+  a ser lançada) e ela entra nos relatórios, marcada com o selo "Recorrente".
+- Editar o modelo, pausar ou retomar vale só dali para frente: o que já foi lançado não muda, e
+  retomar (ou restaurar da lixeira) nunca lança de uma vez os meses em que ficou parado.
+- Categoria nova: **Bolsa**. Migration `0004_receitas_recorrentes` (só acrescenta).
+
+## Receitas e fluxo de caixa (15/10/2026)
+
+Receita é só registro, como o gasto: **não altera o saldo das contas**, que continua informado à
+mão.
+
+- **Receitas** (`/receitas`): lançar com valor, data, categoria (Salário, Freelance, Rendimentos,
+  Reembolso, Presente, Outros), descrição, conta que recebeu e observação; lista do mês por dia,
+  total e divisão por categoria; editar, mandar para a lixeira e restaurar.
+- **Tela inicial**: entradas do mês, sobra (entradas − gastos) e taxa de poupança. O bitcoin
+  aparece na composição do patrimônio.
+- **Relatórios**: seção "Receitas e despesas" com barras por mês, tabela mês a mês e receitas por
+  categoria.
+- Migration `0003_receitas` (só cria a tabela nova). Busca e exportação continuam só com gastos.
+
+## Onda 4: Relatórios, busca e exportação (15/10/2026)
+
+- **Relatórios** (`/relatorios`): evolução do patrimônio mês a mês (contas pelo último saldo
+  registrado + bitcoin pelo último preço conhecido), gastos por categoria nos meses com total e
+  média, comparativo mês a mês e os 10 maiores gastos. Período de 3, 6, 12 ou 24 meses.
+- **Busca** (`/busca`): por texto (sem diferenciar maiúsculas e acentos), período, categoria,
+  conta ou cartão e faixa de valor. Funciona sem JavaScript.
+- **Exportar** (`/relatorios/exportar`): CSV (UTF-8 com BOM, `;`, vírgula decimal, protegido
+  contra fórmulas) ou JSON, de qualquer período de até 120 meses.
+- **Limite por mês**: na tela inicial o limite pode valer só para o mês ou para todos (padrão).
+- Fora desta onda: limite por categoria e dívida de cartão no patrimônio (dependem da onda 2).
+
+## Onda 3: Bitcoin em sats (15/10/2026)
+
+- **Bitcoin** (`/bitcoin`): compras e vendas em sats com valor opcional, posição, preço médio de
+  compra, ganho ou perda não realizado, gráfico de evolução e conversor sats ⇄ R$ (também sem
+  JavaScript). Preço do dia manual ou buscado numa API pública; o manual sempre vence e, sem
+  internet, nada quebra. Venda nunca passa do saldo de sats na data dela. O patrimônio da tela
+  inicial passa a incluir o bitcoin.
+
 ## v0.1 — Onda 1: Núcleo (15/10/2026)
 
 O site substitui o app atual para contas e gastos à vista.

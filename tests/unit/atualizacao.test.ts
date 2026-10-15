@@ -87,7 +87,10 @@ describe('atualização v0.0 → esquema atual', () => {
     expect(copia.prepare('SELECT count(*) AS n FROM __drizzle_migrations').get()).toEqual({ n: 1 });
 
     // Nada se perdeu: mesmas contagens, parcelas ainda ligadas às compras e à fatura.
-    expect(contarLinhas(novo)).toEqual(antes);
+    // (Tabelas que só passam a existir depois, como receitas, aparecem vazias.)
+    expect(contarLinhas(novo)).toEqual(
+      antes.map((t) => (t.linhas === -1 ? { ...t, linhas: 0 } : t)),
+    );
     const s = novo.sqlite;
     expect(
       s.prepare("SELECT sum(valor_centavos) AS t FROM parcelas WHERE compra_id = 'tv'").get(),

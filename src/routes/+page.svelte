@@ -22,6 +22,14 @@
   let editandoLimite = $derived(
     data.editarLimite || (form?.acao === 'limite' && !('ok' in form && form.ok)),
   );
+  /** Escopo marcado no formulário: o último envio (se falhou), senão o que está em vigor. */
+  const escopoMarcado = $derived(
+    form?.acao === 'limite' && form.valores?.escopo
+      ? form.valores.escopo
+      : data.limiteDoMes === 'mes'
+        ? 'mes'
+        : 'padrao',
+  );
   /** Nome do mês com o ano quando não for o ano corrente. */
   const mesNoTitulo = $derived(
     p.mes.slice(0, 4) === mesAtual().slice(0, 4) ? nomeMes : tituloMes(p.mes).toLowerCase(),
@@ -56,8 +64,9 @@
     <div>
       <p class="hero-lead">
         {#if p.patrimonio.quantidadeContas}
-          A soma dos saldos das suas contas. Cartões e bitcoin entram nesta conta quando chegarem ao
-          site.
+          A soma dos saldos das suas contas{p.patrimonio.bitcoinCentavos > 0
+            ? ' e do seu bitcoin ao último preço informado'
+            : ''}. Cartões entram nesta conta quando chegarem ao site.
         {:else}
           Comece cadastrando suas contas com o saldo de hoje. O patrimônio sai da soma delas.
         {/if}
@@ -77,6 +86,13 @@
           : 'nenhuma conta ainda'}
         centavos={p.patrimonio.contasCentavos}
       />
+      {#if p.patrimonio.bitcoinCentavos > 0}
+        <LinhaRazao
+          rotulo="Bitcoin"
+          detalhe="ao último preço informado"
+          centavos={p.patrimonio.bitcoinCentavos}
+        />
+      {/if}
       <LinhaRazao rotulo="Patrimônio líquido" centavos={p.patrimonio.liquidoCentavos} total />
     </div>
   </div>
@@ -105,9 +121,52 @@
         </p>
       {/if}
 
+      {#if p.fluxo.quantidadeReceitas}
+        <dl class="fluxo">
+          <div>
+            <dt>Entradas do mês</dt>
+            <dd>
+              <Valor class="pos" centavos={p.fluxo.entradasCentavos} testid="entradas-mes" />
+            </dd>
+          </div>
+          <div>
+            <dt>Sobra do mês</dt>
+            <dd>
+              <Valor
+                class={p.fluxo.saldoCentavos < 0 ? 'neg' : 'pos'}
+                centavos={p.fluxo.saldoCentavos}
+                testid="sobra-mes"
+              />
+            </dd>
+          </div>
+          {#if p.fluxo.taxaPoupancaPercentual !== null}
+            <div>
+              <dt>Taxa de poupança</dt>
+              <dd class="num" data-testid="taxa-poupanca">
+                {p.fluxo.taxaPoupancaPercentual.toLocaleString('pt-BR', {
+                  maximumFractionDigits: 1,
+                })}%
+              </dd>
+            </div>
+          {/if}
+        </dl>
+        <p class="small muted">
+          Entradas são as receitas do mês. A sobra é o que entra menos os gastos.
+        </p>
+      {:else}
+        <p class="small muted">
+          Nenhuma receita neste mês. <a href={resolve('/receitas')}>Lançar receita</a>
+        </p>
+      {/if}
+
       <div class="limite">
         {#if p.limite && !editandoLimite}
           <Medidor s={p.limite} />
+          <p class="small muted" data-testid="limite-tipo">
+            {data.limiteDoMes === 'mes'
+              ? 'Limite deste mês.'
+              : 'Limite padrão, que vale para todos os meses.'}
+          </p>
         {:else if !editandoLimite}
           <p>Defina quanto quer gastar por mês e acompanhe quanto ainda resta.</p>
         {/if}
@@ -123,6 +182,23 @@
                 if (result.type === 'success') editandoLimite = false;
               }}
           >
+            <input type="hidden" name="mes" value={p.mes} />
+            <fieldset class="field escopo">
+              <legend class="lbl">Vale para</legend>
+              <label class="opc">
+                <input type="radio" name="escopo" value="mes" checked={escopoMarcado === 'mes'} />
+                Só este mês
+              </label>
+              <label class="opc">
+                <input
+                  type="radio"
+                  name="escopo"
+                  value="padrao"
+                  checked={escopoMarcado === 'padrao'}
+                />
+                Todos os meses (padrão)
+              </label>
+            </fieldset>
             <div class="field">
               <label for="limite-valor">Limite por mês (R$)</label>
               <input
@@ -382,6 +458,27 @@
   .limite .field input {
     background: var(--paper);
   }
+  .escopo {
+    gap: 8px;
+  }
+  .escopo legend {
+    padding: 0;
+    margin-bottom: 2px;
+  }
+  .opc {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9375rem;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .escopo .opc input {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    accent-color: var(--orange);
+  }
   .form-limite,
   .acts {
     display: grid;
@@ -447,6 +544,27 @@
   }
   .neg {
     color: var(--neg);
+  }
+  .pos {
+    color: var(--pos);
+  }
+  .fluxo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px 24px;
+    margin: 0;
+  }
+  .fluxo dt {
+    color: var(--muted);
+    font-size: var(--s-small);
+    font-weight: 600;
+  }
+  .fluxo dd {
+    margin: 2px 0 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
   }
   .two-col > .col > .btn {
     justify-self: start;

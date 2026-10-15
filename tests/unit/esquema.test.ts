@@ -46,7 +46,7 @@ function base() {
 }
 
 describe('esquema', () => {
-  it('cria as 11 tabelas da seção 3', () => {
+  it('cria as 13 tabelas (as 11 da seção 3 mais receitas e recorrentes)', () => {
     expect(tabelasDoBanco(banco).sort()).toEqual([...TABELAS].sort());
     expect(contarLinhas(banco).every((t) => t.linhas === 0)).toBe(true);
   });

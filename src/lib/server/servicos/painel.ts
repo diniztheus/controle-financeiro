@@ -21,6 +21,8 @@ import { valorBitcoinCentavos } from './bitcoin.ts';
 import { lancamentosDoMes } from './gastos.ts';
 import { agruparPorDia, type DiaDeLancamentos } from '../../dominio/lancamentos.ts';
 import { limiteDoMes } from './limite.ts';
+import { receitasDoMes } from './receitas.ts';
+import { resumoFluxo, type ResumoFluxo } from '../../dominio/receitas.ts';
 
 export { agruparPorDia, type DiaDeLancamentos };
 
@@ -55,6 +57,8 @@ export interface Painel {
   dias: DiaDeLancamentos[];
   acumulado: Centavos[];
   acumuladoAnterior: Centavos[];
+  /** Entradas (receitas do mês), saídas (gastos do mês) e o que sobrou. */
+  fluxo: ResumoFluxo & { quantidadeReceitas: number };
 }
 
 /** Lê tudo numa transação só, para os números baterem entre si (um retrato do banco). */
@@ -80,6 +84,7 @@ function ler(banco: Banco, mes: Mes, hoje: Dia): Painel {
   const listaContas = listarContas(banco);
   const contas = totalDasContas(banco, listaContas);
   const bitcoin = valorBitcoinCentavos(banco);
+  const entradas = receitasDoMes(banco, mes);
   return {
     mes,
     patrimonio: {
@@ -102,5 +107,9 @@ function ler(banco: Banco, mes: Mes, hoje: Dia): Painel {
     dias: agruparPorDia(doMes),
     acumulado,
     acumuladoAnterior,
+    fluxo: {
+      ...resumoFluxo(somar(entradas.map((r) => r.valorCentavos)), total),
+      quantidadeReceitas: entradas.length,
+    },
   };
 }

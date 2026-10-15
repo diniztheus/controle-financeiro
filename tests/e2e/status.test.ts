@@ -7,7 +7,7 @@ test('a página de estado mostra o banco criado e o esquema em dia', async ({ pa
   await expect(page.getByTestId('status')).toHaveAttribute('data-ok', 'sim');
   await expect(page.getByTestId('veredito')).toHaveText('Tudo ok');
   await expect(page.getByTestId('indicador-banco')).toContainText('Banco conectado');
-  await expect(page.getByTestId('linha-tabelas')).toContainText('11');
+  await expect(page.getByTestId('linha-tabelas')).toContainText('13');
   await expect(page.getByTestId('linha-migrations')).toContainText(/\d{4}_[a-z_]+/);
   await expect(page.getByTestId('caminho-banco')).toContainText('controle-financeiro-e2e');
   await expect(page.getByTestId('caminho-banco')).toContainText('financas.db');

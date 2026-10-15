@@ -1,6 +1,7 @@
 import type { Handle, ServerInit } from '@sveltejs/kit';
 import { obterBanco } from '$lib/server/db';
 import { garantirCategoriasPadrao } from '$lib/server/servicos/categorias';
+import { gerarReceitasRecorrentes } from '$lib/server/servicos/recorrentes';
 import { verificarPedido } from '$lib/server/seguranca';
 
 /** Ao subir o servidor: cria a pasta de dados, abre o banco e aplica migrations pendentes. */
@@ -9,7 +10,12 @@ export const init: ServerInit = () => {
   garantirCategoriasPadrao(obterBanco());
 };
 
-/** Só atende esta máquina e só aceita formulários desta mesma origem (ver seguranca.ts). */
+/**
+ * Só atende esta máquina e só aceita formulários desta mesma origem (ver seguranca.ts).
+ * Antes de qualquer tela carregar, lança as receitas recorrentes que já venceram: aqui (e não
+ * no layout) elas valem em toda navegação e sempre antes de a página ler as receitas.
+ * É barato: sem nada pendente, só lê. Falha aqui nunca derruba a página.
+ */
 export const handle: Handle = ({ event, resolve }) => {
   const h = event.request.headers;
   const recusa = verificarPedido({
@@ -23,6 +29,11 @@ export const handle: Handle = ({ event, resolve }) => {
       status: recusa.status,
       headers: { 'content-type': 'text/plain; charset=utf-8' },
     });
+  }
+  try {
+    gerarReceitasRecorrentes(obterBanco());
+  } catch (e) {
+    console.error('[recorrentes]', e);
   }
   return resolve(event);
 };

@@ -272,6 +272,94 @@ export const parcelas = sqliteTable(
   ],
 );
 
+// ---------------------------------------------------------------- receitas
+
+/**
+ * Modelo de uma receita que se repete todo mês (salário, bolsa…). Não é um lançamento: o site
+ * GERA as receitas de verdade (tabela `receitas`, com `recorrente_id`) a cada mês que chega, uma
+ * por mês, e a partir daí cada uma é um registro comum (editável, na lixeira, nos relatórios).
+ * Mudar o modelo vale só para as próximas; o que já foi gerado não muda.
+ */
+export const receitasRecorrentes = sqliteTable(
+  'receitas_recorrentes',
+  {
+    id: id(),
+    descricao: text('descricao'),
+    categoria: text('categoria').notNull(),
+    valorCentavos: integer('valor_centavos').notNull(),
+    /** Dia do mês em que cai (1..31; em mês mais curto vale o último dia). */
+    diaDoMes: integer('dia_do_mes').notNull(),
+    /** A primeira receita é a primeira data com esse dia a partir daqui. */
+    inicio: text('inicio').notNull(),
+    /** Última data possível (bolsa com prazo, por exemplo); vazio = sem fim. */
+    fim: text('fim'),
+    contaId: text('conta_id').references(() => contas.id, { onDelete: 'restrict' }),
+    /** Pausada não gera novas receitas. */
+    ativa: booleano('ativa', true),
+    observacao: text('observacao'),
+    criadoEm: criadoEm(),
+    atualizadoEm: atualizadoEm(),
+    removidoEm: removidoEm(),
+  },
+  (t) => [
+    check(
+      'receitas_rec_descricao_preenchida',
+      sql`${t.descricao} IS NULL OR length(trim(${t.descricao})) > 0`,
+    ),
+    check('receitas_rec_categoria_preenchida', sql`length(trim(${t.categoria})) > 0`),
+    check(
+      'receitas_rec_valor_positivo',
+      sql`${inteiro(t.valorCentavos)} AND ${t.valorCentavos} > 0`,
+    ),
+    check('receitas_rec_dia', sql`${inteiro(t.diaDoMes)} AND ${t.diaDoMes} BETWEEN 1 AND 31`),
+    check('receitas_rec_inicio', ehDiaSql(t.inicio)),
+    check(
+      'receitas_rec_fim',
+      sql`${t.fim} IS NULL OR (${ehDiaSql(t.fim)} AND ${t.fim} >= ${t.inicio})`,
+    ),
+    check('receitas_rec_ativa', boolSql(t.ativa)),
+  ],
+);
+
+/**
+ * Entradas de dinheiro. Só registro, como os gastos: não mexe no saldo das contas (o saldo
+ * continua informado à mão). A categoria é um texto da lista fixa do domínio (dominio/receitas.ts).
+ */
+export const receitas = sqliteTable(
+  'receitas',
+  {
+    id: id(),
+    descricao: text('descricao'),
+    categoria: text('categoria').notNull(),
+    data: text('data').notNull(),
+    valorCentavos: integer('valor_centavos').notNull(),
+    /** Conta que recebeu; informativa e opcional, como a conta dos gastos à vista. */
+    contaId: text('conta_id').references(() => contas.id, { onDelete: 'restrict' }),
+    observacao: text('observacao'),
+    /** Preenchido quando o site gerou esta receita a partir de uma recorrente. */
+    recorrenteId: text('recorrente_id').references(() => receitasRecorrentes.id, {
+      onDelete: 'set null',
+    }),
+    criadoEm: criadoEm(),
+    atualizadoEm: atualizadoEm(),
+    removidoEm: removidoEm(),
+  },
+  (t) => [
+    check(
+      'receitas_descricao_preenchida',
+      sql`${t.descricao} IS NULL OR length(trim(${t.descricao})) > 0`,
+    ),
+    check('receitas_categoria_preenchida', sql`length(trim(${t.categoria})) > 0`),
+    check('receitas_data', ehDiaSql(t.data)),
+    check('receitas_valor_positivo', sql`${inteiro(t.valorCentavos)} AND ${t.valorCentavos} > 0`),
+    index('receitas_data_idx').on(t.data),
+    // Uma receita por recorrente e data: gerar de novo (ou depois de mandar para a lixeira) não duplica.
+    uniqueIndex('receitas_recorrente_data_unico')
+      .on(t.recorrenteId, t.data)
+      .where(sql`${t.recorrenteId} IS NOT NULL`),
+  ],
+);
+
 // ---------------------------------------------------------------- bitcoin
 
 export const btcMovimentos = sqliteTable(
@@ -345,6 +433,8 @@ export const TABELAS = [
   'compras',
   'parcelas',
   'faturas',
+  'receitas_recorrentes',
+  'receitas',
   'btc_movimentos',
   'btc_precos',
   'limites_mensais',

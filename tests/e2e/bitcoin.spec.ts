@@ -92,6 +92,13 @@ test('celular: sem rolagem lateral', async ({ page }) => {
   expect(cabe).toBe(true);
 });
 
+test('a tela inicial mostra o bitcoin na composição do patrimônio', async ({ page }) => {
+  await page.goto('/');
+  const razao = page.getByLabel('Composição do patrimônio');
+  await expect(razao).toContainText('Bitcoin');
+  await expect(razao).toContainText('ao último preço informado');
+});
+
 // Banco compartilhado: o bitcoin que sobrar contaria no patrimônio dos outros testes.
 test('limpeza: manda os movimentos restantes para a lixeira', async ({ page }) => {
   await page.goto('/bitcoin');

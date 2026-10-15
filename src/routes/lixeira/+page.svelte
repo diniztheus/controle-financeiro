@@ -6,7 +6,9 @@
   import type { PageProps } from './$types';
 
   let { data, form }: PageProps = $props();
-  const vazia = $derived(!data.gastos.length && !data.contas.length);
+  const vazia = $derived(
+    !data.gastos.length && !data.receitas.length && !data.recorrentes.length && !data.contas.length,
+  );
 </script>
 
 <svelte:head>
@@ -17,8 +19,8 @@
   <div>
     <h1>Lixeira</h1>
     <p>
-      Gastos e contas removidos ficam aqui, fora das somas, até você restaurar. Nada é apagado de
-      vez.
+      Gastos, receitas e contas removidos ficam aqui, fora das somas, até você restaurar. Nada é
+      apagado de vez.
     </p>
   </div>
 </header>
@@ -33,7 +35,7 @@
   {#if vazia}
     <div class="empty">
       <strong>A lixeira está vazia</strong>
-      <span>Quando você remover um gasto ou uma conta, ele aparece aqui.</span>
+      <span>Quando você remover um gasto, uma receita ou uma conta, ele aparece aqui.</span>
     </div>
   {:else}
     <div class="col">
@@ -60,6 +62,60 @@
         </ul>
       {:else}
         <p class="muted">Nenhum gasto na lixeira.</p>
+      {/if}
+    </div>
+    <div class="col">
+      <div class="col-head"><h2 class="h">Receitas</h2></div>
+      {#if data.receitas.length}
+        <ul class="rows" data-testid="lixeira-receitas">
+          {#each data.receitas as r (r.id)}
+            <li class="row">
+              <span class="sq" style="--cc: var(--pos)"></span>
+              <span class="row-main">
+                <span class="row-title"
+                  >{r.descricao ?? r.categoria} · {formatarBRL(r.valorCentavos)}</span
+                >
+                <span class="row-meta"
+                  >{formatarDia(r.data)} · removida em {dataDeIso(r.removidoEm)}</span
+                >
+              </span>
+              <form method="POST" action="?/receita" use:enhance>
+                <input type="hidden" name="id" value={r.id} />
+                <button class="btn sm ink" type="submit">Restaurar</button>
+              </form>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="muted">Nenhuma receita na lixeira.</p>
+      {/if}
+    </div>
+    <div class="col">
+      <div class="col-head"><h2 class="h">Receitas recorrentes</h2></div>
+      {#if data.recorrentes.length}
+        <ul class="rows" data-testid="lixeira-recorrentes">
+          {#each data.recorrentes as m (m.id)}
+            <li class="row">
+              <span class="sq" style="--cc: var(--pos)"></span>
+              <span class="row-main">
+                <span class="row-title"
+                  >{m.descricao ?? m.categoria} · {formatarBRL(m.valorCentavos)}</span
+                >
+                <span class="row-meta"
+                  >Todo dia {m.diaDoMes} · removida em {dataDeIso(
+                    m.removidoEm ?? m.atualizadoEm,
+                  )}</span
+                >
+              </span>
+              <form method="POST" action="?/recorrente" use:enhance>
+                <input type="hidden" name="id" value={m.id} />
+                <button class="btn sm ink" type="submit">Restaurar</button>
+              </form>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="muted">Nenhuma receita recorrente na lixeira.</p>
       {/if}
     </div>
     <div class="col">

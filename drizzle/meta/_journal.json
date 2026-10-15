@@ -22,6 +22,20 @@
       "when": 1792083805182,
       "tag": "0002_gasto_conta_e_descricao_opcionais",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1792105946973,
+      "tag": "0003_receitas",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1792106745177,
+      "tag": "0004_receitas_recorrentes",
+      "breakpoints": true
     }
   ]
 }
