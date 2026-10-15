@@ -22,6 +22,8 @@
     config: 'Preferências',
   };
 
+  /** Última onda do plano já entregue. */
+  const ONDA_ATUAL = 1;
   const ONDAS = [
     { n: 0, nome: 'Fundação', o: 'Projeto de pé, banco criado sozinho, backup e esta página.' },
     { n: 1, nome: 'Núcleo', o: 'Contas, categorias, gastos à vista, painel do mês e importação.' },
@@ -73,8 +75,8 @@
     <div>
       {#if st?.ok}
         <p class="hero-lead">
-          O banco {st.criadoAgora ? 'foi criado agora' : 'está conectado'} e o esquema está em dia. As
-          telas de contas, gastos, cartões e bitcoin chegam nas próximas ondas.
+          O banco {st.criadoAgora ? 'foi criado agora' : 'está conectado'} e o esquema está em dia. Contas,
+          categorias e gastos já funcionam; cartões e bitcoin chegam nas próximas ondas.
         </p>
       {:else if st}
         <p class="hero-lead">
@@ -288,28 +290,23 @@
     <div>
       <h2 id="h-ondas">O que vem a seguir</h2>
       <p>
-        Cada onda termina com o site funcionando e os testes passando. O uso diário começa na Onda
-        1.
+        Cada onda termina com o site funcionando e os testes passando. Numeração do plano
+        (docs/PLANO-SITE-LOCAL.md).
       </p>
     </div>
   </div>
   <ol class="ondas">
     {#each ONDAS as o (o.n)}
-      <li class:feita={o.n === 0}>
+      <li class:feita={o.n <= ONDA_ATUAL}>
         <span class="onda-n num">Onda {o.n}</span>
         <span class="onda-nome"
-          >{o.nome}{#if o.n === 0}<span class="tag">pronta</span>{/if}</span
+          >{o.nome}{#if o.n <= ONDA_ATUAL}<span class="tag">pronta</span>{/if}</span
         >
         <span class="onda-o">{o.o}</span>
       </li>
     {/each}
   </ol>
 </section>
-
-<footer class="foot pad">
-  <p class="name">Controle Financeiro</p>
-  <p>Versão 0.0, Onda 0. Rodando só neste computador, em 127.0.0.1: nada fica exposto na rede.</p>
-</footer>
 
 <style>
   /* Campo laranja */
@@ -462,22 +459,5 @@
     .ondas li {
       grid-template-columns: minmax(0, 1fr);
     }
-  }
-
-  /* Rodapé */
-  .foot {
-    padding-block: 56px 120px;
-    display: grid;
-    gap: 14px;
-  }
-  .foot .name {
-    font-size: clamp(2.5rem, 1rem + 7vw, 7.5rem);
-    font-weight: 700;
-    letter-spacing: -0.045em;
-    line-height: 0.9;
-  }
-  .foot p:not(.name) {
-    color: var(--muted);
-    max-width: 70ch;
   }
 </style>

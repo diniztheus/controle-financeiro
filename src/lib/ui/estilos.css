@@ -186,12 +186,22 @@ button {
 .skip:focus {
   top: calc(8px + env(safe-area-inset-top, 0px));
 }
+/* Só para leitores de tela (rótulos de botões de ícone). */
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px; /* taste-skill-ignore */
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 main:focus {
   outline: none;
 }
 .note {
   font-size: 0.9375rem;
   color: var(--muted);
+  max-width: 60ch;
 }
 .small {
   font-size: var(--s-small);
@@ -374,6 +384,27 @@ main:focus {
 
 /* Movimento: só transform e opacidade, e nada se o sistema pedir menos movimento */
 @media (prefers-reduced-motion: no-preference) {
+  /* Entrada das partes de cada seção, em sequência (sem JavaScript: nada fica escondido). */
+  .sec > *,
+  .page-head > * {
+    animation: entrar 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .sec > :nth-child(2),
+  .page-head > :nth-child(2) {
+    animation-delay: 0.07s;
+  }
+  .sec > :nth-child(3) {
+    animation-delay: 0.14s;
+  }
+  .sec > :nth-child(n + 4) {
+    animation-delay: 0.21s;
+  }
+  @keyframes entrar {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+  }
   .rise {
     animation: rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
@@ -387,4 +418,164 @@ main:focus {
   html {
     scroll-behavior: auto;
   }
+}
+
+/* Formulários (como os da v3): campos sem borda sobre um degrau de tom */
+.field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.field label,
+.lbl {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.field input,
+.field select,
+.inp {
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: var(--paper);
+  padding: 11px 12px;
+  min-width: 0;
+  min-height: 44px;
+}
+.sec:not(.alt) .field input,
+.sec:not(.alt) .field select,
+.sec:not(.alt) .inp {
+  background: var(--surface);
+}
+.field input:focus,
+.field select:focus,
+.inp:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: 0;
+}
+.field input[aria-invalid='true'] {
+  outline: 2px solid var(--neg);
+  outline-offset: 0;
+}
+.field.big input {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.duo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+@media (max-width: 420px) {
+  .duo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.hint {
+  font-size: 0.875rem;
+  color: var(--muted);
+  max-width: 60ch;
+}
+.err {
+  color: var(--neg);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.ok-msg {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+.btn.sm {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.875rem;
+}
+.btn.text {
+  background: transparent;
+  padding-inline: 10px;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
+.btn.text:hover {
+  background: transparent;
+  text-decoration-color: currentColor;
+}
+.btn.perigo {
+  background: var(--neg);
+  color: #fff;
+}
+.btn.perigo:hover {
+  background: color-mix(in srgb, var(--neg) 85%, #000 15%);
+}
+.btn.ink:active,
+.btn.go:active,
+.btn.perigo:active {
+  transform: scale(0.97) translateY(1px);
+}
+
+/* Cabeça de página (telas de cadastro): título grande, ação ao lado */
+.page-head {
+  padding-block: clamp(32px, 5vw, 64px) clamp(24px, 3vw, 40px);
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px 32px;
+  flex-wrap: wrap;
+}
+.page-head h1 {
+  font-size: clamp(2.5rem, 1.4rem + 4.4vw, 5.5rem);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+}
+.page-head p {
+  color: var(--muted);
+  max-width: 52ch;
+  margin-top: 12px;
+}
+.page-head .voltar-l {
+  margin-top: 16px;
+}
+.voltar {
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  text-underline-offset: 4px;
+}
+
+/* Painel lateral de formulário */
+.painel-form {
+  background: var(--surface);
+  padding: clamp(20px, 2.4vw, 32px);
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+.sec.alt .painel-form {
+  background: var(--paper);
+}
+.painel-form h2,
+.painel-form h3 {
+  font-size: var(--s-lead);
+}
+/* Campos e chips sempre num tom diferente do painel em que estão */
+.painel-form {
+  --chip-bg: var(--paper);
+}
+.sec.alt .painel-form {
+  --chip-bg: var(--surface);
+}
+.painel-form .field input,
+.painel-form .field select,
+.painel-form .inp {
+  background: var(--paper);
+}
+.sec.alt .painel-form .field input,
+.sec.alt .painel-form .field select,
+.sec.alt .painel-form .inp {
+  background: var(--surface);
 }

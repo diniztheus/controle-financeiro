@@ -6,10 +6,12 @@
   import '$lib/ui/estilos.css';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { NAVEGACAO } from '$lib/ui/navegacao';
+  import { ativo, NAVEGACAO } from '$lib/ui/navegacao';
   import type { LayoutProps } from './$types';
 
   let { data, children }: LayoutProps = $props();
+  const caminho = $derived(page.url.pathname);
+  const naTelaDeGastos = $derived(caminho === '/gastos');
 </script>
 
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
@@ -23,23 +25,39 @@
   <nav class="nav" aria-label="Seções">
     {#each NAVEGACAO as item (item.href)}
       {#if item.onda === null}
-        <!-- As rotas das próximas ondas ainda não existem; quando existirem, trocar por resolve(). -->
-        <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-        <a href={item.href} aria-current={page.url.pathname === item.href ? 'page' : undefined}
+        <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- rotas fixas e existentes -->
+        <a href={resolve(item.href as '/')} aria-current={ativo(item, caminho) ? 'page' : undefined}
           >{item.rotulo}</a
         >
       {:else}
-        <span class="breve" aria-disabled="true" title="Chega na Onda {item.onda}"
-          >{item.rotulo}<span class="sr">, em breve (Onda {item.onda})</span></span
+        <span class="breve" aria-disabled="true" title="Em breve"
+          >{item.rotulo}<span class="sr">, em breve</span></span
         >
       {/if}
     {/each}
   </nav>
+  <a class="btn novo" href="{resolve('/gastos')}#novo">Novo gasto</a>
 </header>
 
 <main id="conteudo" tabindex="-1">
   {@render children()}
 </main>
+
+<footer class="foot pad">
+  <p class="name">Controle Financeiro</p>
+  <p>
+    Tudo aqui é cadastrado à mão por você. Valores em reais, guardados num banco SQLite só neste
+    computador.
+  </p>
+  <p class="foot-links">
+    <a href={resolve('/lixeira')}>Lixeira</a>
+    <a href={resolve('/sistema')}>Estado do sistema e backup</a>
+  </p>
+</footer>
+
+{#if !naTelaDeGastos}
+  <a class="fab" href="{resolve('/gastos')}#novo" aria-label="Novo gasto">+</a>
+{/if}
 
 <style>
   .bar {
@@ -49,7 +67,7 @@
     background: var(--orange);
     color: var(--orange-ink);
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 4px 24px;
     padding-block: 12px;
@@ -68,6 +86,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    white-space: nowrap;
   }
   .dot {
     width: 8px;
@@ -89,6 +108,7 @@
     display: flex;
     gap: 22px;
     align-items: center;
+    justify-content: flex-end;
   }
   .nav a,
   .breve {
@@ -117,22 +137,87 @@
     opacity: 0.5;
     cursor: default;
   }
-  .sr {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+  .novo {
+    background: var(--orange-ink);
+    color: var(--orange);
   }
-  /* Como na v3: no celular a barra fica só com o nome e o estado do banco. Hoje só existe o
-     Painel; quando as próximas ondas trouxerem páginas, o celular ganha um menu próprio. */
+  .novo:hover {
+    background: color-mix(in srgb, var(--orange-ink) 85%, var(--orange) 15%);
+  }
+  @media (max-width: 1100px) {
+    .breve {
+      display: none;
+    }
+  }
+  /* No celular: nome e estado em cima, seções numa linha que rola de lado, "+" flutuante. */
   @media (max-width: 760px) {
     .bar {
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(0, 1fr) auto;
+      padding-bottom: 0;
     }
     .nav {
+      grid-column: 1 / -1;
+      justify-content: flex-start;
+      overflow-x: auto;
+      scrollbar-width: none;
+      margin-inline: calc(-1 * var(--gut));
+      padding-inline: var(--gut);
+      gap: 20px;
+    }
+    .novo {
       display: none;
+    }
+  }
+
+  .foot {
+    padding-block: 56px 120px;
+    display: grid;
+    gap: 14px;
+  }
+  .foot .name {
+    font-size: clamp(2.5rem, 1rem + 7vw, 7.5rem);
+    font-weight: 700;
+    letter-spacing: -0.045em;
+    line-height: 0.9;
+  }
+  .foot p:not(.name) {
+    color: var(--muted);
+    max-width: 70ch;
+  }
+  .foot-links {
+    display: flex;
+    gap: 8px 24px;
+    flex-wrap: wrap;
+  }
+  .foot-links a {
+    color: var(--ink);
+    font-weight: 600;
+    text-underline-offset: 4px;
+  }
+
+  .fab {
+    position: fixed;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: 60px;
+    height: 60px;
+    background: var(--ink);
+    color: var(--paper);
+    display: none;
+    place-items: center;
+    font-size: 2rem;
+    text-decoration: none;
+    z-index: var(--z-fab);
+    /* O botão flutua sobre a página: a sombra separa do conteúdo. */
+    box-shadow: 0 6px 20px rgb(11 16 21 / 0.28); /* taste-skill-ignore */
+    transition: transform var(--t);
+  }
+  .fab:active {
+    transform: scale(0.94);
+  }
+  @media (max-width: 760px) {
+    .fab {
+      display: grid;
     }
   }
 </style>
