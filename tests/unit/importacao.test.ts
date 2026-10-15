@@ -342,3 +342,31 @@ describe('importar: casos da auditoria final', () => {
     expect(r.conferencia.diferencas).toEqual([]);
   });
 });
+
+describe('importar: última revisão', () => {
+  it('movimento de 0 sats com valor não gera diferença falsa', () => {
+    const c = structuredClone(EXEMPLO.colecoes);
+    (c.bitcoin as unknown[]).push({ id: 'b0', sats: 0, valor: 1000, data: '2026-10-02' });
+    const r = importarDoApp(banco, lerExportacao(c));
+    expect(r.conferencia.diferencas).toEqual([]);
+    expect(r.avisos.join('\n')).toMatch(/0 sats ignorado/);
+  });
+
+  it('campos e coleções desconhecidos viram aviso; fatura com paga:false não entra paga', () => {
+    const c = structuredClone(EXEMPLO.colecoes) as Record<string, unknown>;
+    (c.gastos as Record<string, unknown>[])[0]!.observacao = 'algo';
+    c.extras = [{ id: 'x' }];
+    (c.faturas as Record<string, unknown>[])[0]!.paga = false;
+    const r = importarDoApp(banco, lerExportacao(c));
+    const avisos = r.avisos.join('\n');
+    expect(avisos).toMatch(/Campo "observacao" em gastos foi ignorado \(1 documento/);
+    expect(avisos).toMatch(/Coleção "extras" do arquivo foi ignorada/);
+    expect(r.importados.faturasPagas).toBe(0);
+  });
+
+  it('preço repetido conta uma vez no relatório', () => {
+    const c = structuredClone(EXEMPLO.colecoes);
+    (c.btcPrecos as unknown[]).push({ id: '2026-10-14', valor: 1 });
+    expect(importarDoApp(banco, lerExportacao(c)).importados.precosBitcoin).toBe(2);
+  });
+});

@@ -7,14 +7,15 @@
  *   `{ contas, gastos, config, cartoes, faturas, bitcoin, btcPrecos }`.
  *
  * Cada documento tem o `id` do app atual. Valores em centavos e sats inteiros. Campos que o site
- * não usa são ignorados; campos com tipo errado viram erro com o id do documento.
+ * não usa são mantidos na leitura e listados como avisos pelo importador; campos com tipo errado
+ * viram erro com o caminho do campo.
  */
 import { z } from 'zod';
 
 const inteiro = z.number().int();
 const texto = z.string();
 
-const conta = z.object({
+const conta = z.looseObject({
   id: texto,
   nome: texto,
   tipo: texto.optional(),
@@ -23,7 +24,7 @@ const conta = z.object({
   atualizadoEm: texto.optional(),
 });
 
-const gasto = z.object({
+const gasto = z.looseObject({
   id: texto,
   valor: inteiro,
   descricao: texto.nullish(),
@@ -36,7 +37,7 @@ const gasto = z.object({
   criadoEm: texto.optional(),
 });
 
-const cartao = z.object({
+const cartao = z.looseObject({
   id: texto,
   nome: texto,
   limite: inteiro.optional(),
@@ -45,14 +46,15 @@ const cartao = z.object({
   criadoEm: texto.optional(),
 });
 
-const fatura = z.object({
+const fatura = z.looseObject({
   id: texto,
   cartaoId: texto.optional(),
   mes: texto.optional(),
   pagaEm: texto.nullish(),
+  paga: z.boolean().optional(),
 });
 
-const movimento = z.object({
+const movimento = z.looseObject({
   id: texto,
   sats: inteiro,
   valor: inteiro.nullish(),
@@ -61,13 +63,15 @@ const movimento = z.object({
   criadoEm: texto.optional(),
 });
 
-const preco = z.object({ id: texto, valor: inteiro });
+const preco = z.looseObject({ id: texto, valor: inteiro });
 
-const config = z
-  .object({ id: texto, lista: z.array(texto).optional(), valor: inteiro.optional() })
-  .loose();
+const config = z.looseObject({
+  id: texto,
+  lista: z.array(texto).optional(),
+  valor: inteiro.optional(),
+});
 
-export const colecoesApp = z.object({
+export const colecoesApp = z.looseObject({
   contas: z.array(conta).default([]),
   gastos: z.array(gasto).default([]),
   config: z.array(config).default([]),
@@ -95,4 +99,47 @@ export function lerExportacao(bruto: unknown): ColecoesApp {
     return `  ${caminho || '(raiz)'}: ${i.message}`;
   });
   throw new Error(`O arquivo não tem o formato do app atual:\n${linhas.join('\n')}`);
+}
+
+/** Campos que o importador usa, por coleção (o resto vira aviso). */
+export const CAMPOS_CONHECIDOS: Record<string, readonly string[]> = {
+  contas: ['id', 'nome', 'tipo', 'saldo', 'criadoEm', 'atualizadoEm'],
+  gastos: [
+    'id',
+    'valor',
+    'descricao',
+    'categoria',
+    'data',
+    'meio',
+    'contaId',
+    'cartaoId',
+    'parcelas',
+    'criadoEm',
+  ],
+  cartoes: ['id', 'nome', 'limite', 'fechamento', 'vencimento', 'criadoEm'],
+  faturas: ['id', 'cartaoId', 'mes', 'pagaEm', 'paga'],
+  bitcoin: ['id', 'sats', 'valor', 'data', 'nota', 'criadoEm'],
+  btcPrecos: ['id', 'valor'],
+  config: ['id', 'lista', 'valor'],
+};
+
+/** Campos e coleções do arquivo que o site não usa, para avisar em vez de sumir calado. */
+export function camposIgnorados(dados: ColecoesApp): string[] {
+  const avisos: string[] = [];
+  const obj = dados as Record<string, unknown>;
+  for (const chave of Object.keys(obj)) {
+    if (!(chave in CAMPOS_CONHECIDOS)) avisos.push(`Coleção "${chave}" do arquivo foi ignorada.`);
+  }
+  for (const [colecao, conhecidos] of Object.entries(CAMPOS_CONHECIDOS)) {
+    const contagem = new Map<string, number>();
+    for (const doc of (obj[colecao] as Record<string, unknown>[] | undefined) ?? []) {
+      for (const k of Object.keys(doc)) {
+        if (!conhecidos.includes(k)) contagem.set(k, (contagem.get(k) ?? 0) + 1);
+      }
+    }
+    for (const [k, n] of contagem) {
+      avisos.push(`Campo "${k}" em ${colecao} foi ignorado (${n} documento(s)).`);
+    }
+  }
+  return avisos;
 }

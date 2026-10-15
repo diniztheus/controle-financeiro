@@ -33,7 +33,7 @@ import {
   parcelas,
   saldosHistorico,
 } from '../db/esquema.ts';
-import type { CartaoApp, ColecoesApp, GastoApp } from './formato.ts';
+import { camposIgnorados, type CartaoApp, type ColecoesApp, type GastoApp } from './formato.ts';
 
 /** As mesmas do app atual, usadas quando o arquivo não traz a lista de categorias. */
 const CATEGORIAS_APP = [
@@ -227,7 +227,7 @@ export function importarDoApp(
 function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: boolean): Relatorio {
   const { db } = banco;
   const problemas: string[] = [];
-  const avisos: string[] = [];
+  const avisos: string[] = camposIgnorados(dados);
 
   // ---- categorias: lista do app (na ordem) + as que só aparecem em gastos (arquivadas)
   const cfgCat = dados.config.find((c) => c.id === 'categorias');
@@ -482,7 +482,7 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
     const corte = f.id.lastIndexOf('__');
     const cartaoAppId = f.cartaoId ?? (corte > 0 ? f.id.slice(0, corte) : '');
     const mes = f.mes ?? (corte > 0 ? f.id.slice(corte + 2) : '');
-    const pagaEm = diaCurto(f.pagaEm);
+    const pagaEm = f.paga === false ? null : diaCurto(f.pagaEm);
     if (!pagaEm) {
       avisos.push(`Fatura "${f.id}" sem data de pagamento: entrou como não paga.`);
       continue;
@@ -544,8 +544,8 @@ function gravar(banco: Banco, dados: ColecoesApp, agoraIso: string, simulado: bo
       .onConflictDoUpdate({ target: btcPrecos.data, set: { precoCentavos: p.valor } })
       .run();
     if (vistosPreco.has(p.id)) avisos.push(`Preço do bitcoin de ${p.id} repetido: ficou o último.`);
+    else nPrecos++;
     vistosPreco.add(p.id);
-    nPrecos++;
   }
 
   // ---- limite
@@ -657,8 +657,9 @@ function conferir(
     const k = cartaoApp.get(g.cartaoId);
     if (!k) continue;
     const ciclo = {
-      fechamento: Math.min(31, Number(k.fechamento) || 1),
-      vencimento: Math.min(31, Number(k.vencimento) || 10),
+      // Mesmo arredondamento da gravação (dias inteiros; acima de 31 vale 31).
+      fechamento: Math.min(31, Math.trunc(Number(k.fechamento)) || 1),
+      vencimento: Math.min(31, Math.trunc(Number(k.vencimento)) || 10),
     };
     const n = nParcelasApp(g);
     for (let i = 0; i < n; i++) {
@@ -689,14 +690,17 @@ function conferir(
     }
   }
 
-  const satsApp = dados.bitcoin.reduce((t, m) => t + m.sats, 0);
+  const satsApp = dados.bitcoin.filter((m) => dataDoApp(m.data)).reduce((t, m) => t + m.sats, 0);
   const satsBanco = (
     s.prepare('SELECT coalesce(sum(sats), 0) AS t FROM btc_movimentos').get() as {
       t: number;
     }
   ).t;
   if (satsApp !== satsBanco) diferencas.push({ item: 'Sats', noApp: satsApp, noBanco: satsBanco });
-  const valorBtcApp = dados.bitcoin.reduce((t, m) => t + Math.abs(m.valor ?? 0), 0);
+  // Mesmos movimentos que a importação grava (pula 0 sats e data inválida).
+  const valorBtcApp = dados.bitcoin
+    .filter((m) => m.sats !== 0 && dataDoApp(m.data))
+    .reduce((t, m) => t + Math.abs(m.valor ?? 0), 0);
   const valorBtcBanco = (
     s.prepare('SELECT coalesce(sum(valor_centavos), 0) AS t FROM btc_movimentos').get() as {
       t: number;
