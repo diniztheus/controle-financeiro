@@ -131,7 +131,7 @@ describe('CHECKs', () => {
     recusa(() => banco.db.insert(categorias).values({ nome: 'mercado' }).run(), /UNIQUE/);
   });
 
-  it('compra: meio conta ⇒ conta_id; meio cartão ⇒ cartao_id', () => {
+  it('compra: meio cartão ⇒ cartao_id; meio conta aceita conta em branco', () => {
     const { conta, cat, cartao } = base();
     const c = {
       descricao: 'Feira',
@@ -139,12 +139,13 @@ describe('CHECKs', () => {
       dataCompra: '2026-10-15',
       valorTotalCentavos: 1000,
     };
-    recusa(() =>
+    // Gasto à vista sem conta ("Não informar") e sem descrição, como no app atual.
+    expect(() =>
       banco.db
         .insert(compras)
-        .values({ ...c, meio: 'conta' })
+        .values({ ...c, descricao: null, meio: 'conta' })
         .run(),
-    );
+    ).not.toThrow();
     recusa(() =>
       banco.db
         .insert(compras)

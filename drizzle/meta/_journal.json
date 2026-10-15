@@ -15,6 +15,13 @@
       "when": 1792032825247,
       "tag": "0001_tipos_e_datas",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792083805182,
+      "tag": "0002_gasto_conta_e_descricao_opcionais",
+      "breakpoints": true
     }
   ]
 }

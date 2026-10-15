@@ -205,13 +205,15 @@ export const compras = sqliteTable(
   'compras',
   {
     id: id(),
-    descricao: text('descricao').notNull(),
+    /** Opcional, como no app atual: sem descrição, a tela mostra o nome da categoria. */
+    descricao: text('descricao'),
     categoriaId: text('categoria_id')
       .notNull()
       .references(() => categorias.id, { onDelete: 'restrict' }),
     dataCompra: text('data_compra').notNull(),
     valorTotalCentavos: integer('valor_total_centavos').notNull(),
     meio: text('meio', { enum: MEIOS }).notNull(),
+    /** Em gasto à vista a conta é informativa e pode ficar em branco ("Não informar"). */
     contaId: text('conta_id').references(() => contas.id, { onDelete: 'restrict' }),
     cartaoId: text('cartao_id').references(() => cartoes.id, { onDelete: 'restrict' }),
     numParcelas: integer('num_parcelas').notNull().default(1),
@@ -221,7 +223,10 @@ export const compras = sqliteTable(
     removidoEm: removidoEm(),
   },
   (t) => [
-    check('compras_descricao_preenchida', sql`length(trim(${t.descricao})) > 0`),
+    check(
+      'compras_descricao_preenchida',
+      sql`${t.descricao} IS NULL OR length(trim(${t.descricao})) > 0`,
+    ),
     check('compras_data', ehDiaSql(t.dataCompra)),
     check(
       'compras_valor_positivo',
@@ -230,7 +235,7 @@ export const compras = sqliteTable(
     check('compras_meio_valido', sql`${t.meio} IN ('conta', 'cartao')`),
     check(
       'compras_meio_coerente',
-      sql`(${t.meio} = 'conta' AND ${t.contaId} IS NOT NULL AND ${t.cartaoId} IS NULL) OR (${t.meio} = 'cartao' AND ${t.cartaoId} IS NOT NULL AND ${t.contaId} IS NULL)`,
+      sql`(${t.meio} = 'conta' AND ${t.cartaoId} IS NULL) OR (${t.meio} = 'cartao' AND ${t.cartaoId} IS NOT NULL AND ${t.contaId} IS NULL)`,
     ),
     check(
       'compras_num_parcelas',
