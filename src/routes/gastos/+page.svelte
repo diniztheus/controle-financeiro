@@ -1,5 +1,9 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { replaceState } from '$app/navigation';
+  import { page } from '$app/state';
+  import type { Mes } from '$lib/dominio/datas';
+  import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { formatarBRL } from '$lib/dominio/dinheiro';
   import FormGasto from '$lib/ui/FormGasto.svelte';
@@ -11,13 +15,19 @@
 
   let { data, form }: PageProps = $props();
   const nomeMes = $derived(soNomeMes(data.mes));
-  const linkMes = (m: string) => resolve(`/gastos?mes=${m}`);
+  const linkMes = (m: Mes) => resolve(`/gastos?mes=${m}`);
   const falhou = $derived(form?.acao === 'lancar' && !('lancado' in form));
+  // O aviso de "desfazer" vem pela URL; depois de mostrado, o parâmetro sai da barra.
+  onMount(() => {
+    if (page.url.searchParams.has('removido')) {
+      replaceState(resolve(`/gastos?mes=${data.mes}`), page.state);
+    }
+  });
   const lancado = $derived(form && 'lancado' in form ? form.lancado : null);
 </script>
 
 <svelte:head>
-  <title>Controle Financeiro · Gastos de {nomeMes}</title>
+  <title>Controle Financeiro · Gastos de {tituloMes(data.mes).toLowerCase()}</title>
 </svelte:head>
 
 <header class="page-head pad">
@@ -39,7 +49,7 @@
   <p class="aviso pad err" role="alert">{form.erro}</p>
 {/if}
 
-<section class="sec alt pad grade" aria-label="Lançar e listar gastos">
+<section class="sec alt pad grade form-primeiro" aria-label="Lançar e listar gastos">
   <div class="painel-form" id="novo">
     <h2>Novo gasto</h2>
     <FormGasto
@@ -48,7 +58,7 @@
       categorias={data.categorias}
       contas={data.contas}
       inicial={{
-        data: data.mes === data.hoje.slice(0, 7) ? data.hoje : `${data.mes}-01`,
+        data: data.hoje,
         categoriaId: data.ultimaCategoria,
       }}
       erros={falhou ? form?.erros : undefined}
@@ -85,18 +95,6 @@
 </section>
 
 <style>
-  .grade {
-    display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    gap: 48px 64px;
-    align-items: start;
-    padding-block: clamp(32px, 5vw, 64px) clamp(64px, 10vw, 144px);
-  }
-  @media (max-width: 900px) {
-    .grade {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
   .aviso {
     background: var(--orange-soft);
     padding-block: 12px;

@@ -8,16 +8,24 @@
   import Medidor from '$lib/ui/Medidor.svelte';
   import NavMes from '$lib/ui/NavMes.svelte';
   import Valor from '$lib/ui/Valor.svelte';
-  import { corCss, dataDeIso, plural, soNomeMes } from '$lib/ui/formato';
-  import { somarMeses } from '$lib/dominio/datas';
+  import { corCss, dataDeIso, plural, soNomeMes, tituloMes } from '$lib/ui/formato';
+  import { ariaErro } from '$lib/ui/formularios';
+  import { mesAtual, somarMeses, type Mes } from '$lib/dominio/datas';
   import type { PageProps } from './$types';
 
   let { data, form }: PageProps = $props();
   const p = $derived(data.painel);
   const nomeMes = $derived(soNomeMes(p.mes));
-  const linkMes = (m: string) => `${resolve('/')}?mes=${m}`;
-  const linkGastos = $derived(`${resolve('/gastos')}?mes=${p.mes}`);
-  let editandoLimite = $state(false);
+  const linkMes = (m: Mes) => resolve(`/?mes=${m}`);
+  const linkGastos = $derived(resolve(`/gastos?mes=${p.mes}`));
+  // Sem JavaScript o formulário abre pela URL (?limite); depois de um erro, continua aberto.
+  let editandoLimite = $derived(
+    data.editarLimite || (form?.acao === 'limite' && !('ok' in form && form.ok)),
+  );
+  /** Nome do mês com o ano quando não for o ano corrente. */
+  const mesNoTitulo = $derived(
+    p.mes.slice(0, 4) === mesAtual().slice(0, 4) ? nomeMes : tituloMes(p.mes).toLowerCase(),
+  );
 </script>
 
 <svelte:head>
@@ -29,14 +37,18 @@
     <h1 id="h-pat">Patrimônio líquido</h1>
     <p class="hero-note">
       {#if p.patrimonio.saldoAtualizadoEm}
-        Saldos atualizados em {dataDeIso(p.patrimonio.saldoAtualizadoEm)}
+        Último saldo informado em {dataDeIso(p.patrimonio.saldoAtualizadoEm)}
       {:else}
         Nenhum saldo informado ainda
       {/if}
     </p>
   </div>
 
-  <p class="giant" aria-live="polite">
+  <p
+    class="giant"
+    aria-live="polite"
+    style="--n: {formatarBRL(p.patrimonio.liquidoCentavos).length}"
+  >
     <span class="rise"><Valor centavos={p.patrimonio.liquidoCentavos} testid="patrimonio" /></span>
   </p>
 
@@ -72,7 +84,7 @@
 
 <section class="sec pad" aria-labelledby="h-mes" data-testid="painel-mes">
   <div class="sec-head">
-    <h2 id="h-mes">Gastos de {nomeMes}</h2>
+    <h2 id="h-mes">Gastos de {mesNoTitulo}</h2>
     <NavMes mes={p.mes} href={linkMes} />
   </div>
 
@@ -118,6 +130,10 @@
                 name="valor"
                 inputmode="decimal"
                 placeholder="Vazio para não ter limite"
+                {...ariaErro(
+                  form?.acao === 'limite' ? form.erros?.valor : undefined,
+                  'limite-valor',
+                )}
                 value={form?.acao === 'limite' && form.valores
                   ? form.valores.valor
                   : p.limite
@@ -127,20 +143,32 @@
             </div>
             <div class="acts">
               <button class="btn ink sm" type="submit">Salvar limite</button>
-              <button class="btn sm" type="button" onclick={() => (editandoLimite = false)}
-                >Cancelar</button
+              <a
+                class="btn sm"
+                href={resolve(`/?mes=${p.mes}`)}
+                onclick={(e) => {
+                  e.preventDefault();
+                  editandoLimite = false;
+                }}>Cancelar</a
               >
             </div>
           </form>
         {:else}
           <div>
-            <button class="btn ink sm" type="button" onclick={() => (editandoLimite = true)}
-              >{p.limite ? 'Alterar limite' : 'Definir limite'}</button
+            <a
+              class="btn ink sm"
+              href={resolve(`/?mes=${p.mes}&limite`)}
+              onclick={(e) => {
+                e.preventDefault();
+                editandoLimite = true;
+              }}>{p.limite ? 'Alterar limite' : 'Definir limite'}</a
             >
           </div>
         {/if}
         {#if form?.acao === 'limite'}
-          {#if form.erros?.valor}<p class="err" role="alert">{form.erros.valor}</p>{/if}
+          {#if form.erros?.valor}<p class="err" role="alert" id="limite-valor-erro">
+              {form.erros.valor}
+            </p>{/if}
           {#if form.erro}<p class="err" role="alert">{form.erro}</p>{/if}
           {#if 'ok' in form && form.ok}<p class="ok-msg" role="status">{form.ok}</p>{/if}
         {/if}
@@ -189,7 +217,6 @@
       </div>
       {#if p.dias.length}
         <ListaLancamentos dias={p.dias} limiteDias={5} />
-        <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- resolve() + query -->
         <a class="btn" href={linkGastos}>Ver todos os gastos de {nomeMes}</a>
       {:else}
         <div class="empty">
@@ -255,12 +282,12 @@
     font-size: 0.9375rem;
   }
   .giant {
-    font-size: var(--s-giant);
+    /* Encolhe com a quantidade de dígitos: um valor nunca é cortado. */
+    font-size: min(var(--s-giant), calc((100vw - 2 * var(--gut)) / (var(--n, 12) * 0.56)));
     font-weight: 700;
     letter-spacing: -0.045em;
     line-height: 0.88;
     white-space: nowrap;
-    overflow: hidden;
     padding-bottom: 0.06em;
   }
   .giant span {

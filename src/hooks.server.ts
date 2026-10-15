@@ -1,10 +1,12 @@
 import type { Handle, ServerInit } from '@sveltejs/kit';
 import { obterBanco } from '$lib/server/db';
+import { garantirCategoriasPadrao } from '$lib/server/servicos/categorias';
 import { verificarPedido } from '$lib/server/seguranca';
 
 /** Ao subir o servidor: cria a pasta de dados, abre o banco e aplica migrations pendentes. */
 export const init: ServerInit = () => {
-  obterBanco();
+  // Na primeira vez, as categorias do app atual já ficam prontas para lançar.
+  garantirCategoriasPadrao(obterBanco());
 };
 
 /** Só atende esta máquina e só aceita formulários desta mesma origem (ver seguranca.ts). */

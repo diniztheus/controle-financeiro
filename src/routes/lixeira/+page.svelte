@@ -89,18 +89,6 @@
 </section>
 
 <style>
-  .grade {
-    display: grid;
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    gap: 48px 64px;
-    align-items: start;
-    padding-block: clamp(32px, 5vw, 64px) clamp(64px, 10vw, 144px);
-  }
-  @media (max-width: 900px) {
-    .grade {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
   .h {
     font-size: var(--s-lead);
   }

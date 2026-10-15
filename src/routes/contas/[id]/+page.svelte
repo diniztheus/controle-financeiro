@@ -3,14 +3,15 @@
   import { resolve } from '$app/paths';
   import { ROTULO_TIPO, TIPOS_CONTA } from '$lib/dominio/contas';
   import { centavosParaCampo, formatarBRL } from '$lib/dominio/dinheiro';
+  import ConfirmarRemocao from '$lib/ui/ConfirmarRemocao.svelte';
   import Valor from '$lib/ui/Valor.svelte';
   import { dataDeIso } from '$lib/ui/formato';
+  import { ariaErro, manterCampos } from '$lib/ui/formularios';
   import type { PageProps } from './$types';
 
   let { data, form }: PageProps = $props();
   const c = $derived(data.conta);
   const erro = $derived(form?.acao === 'salvar' && !('ok' in form) ? form : null);
-  let confirmar = $state(false);
 </script>
 
 <svelte:head>
@@ -26,17 +27,10 @@
   <p class="saldo" class:neg={c.saldoCentavos < 0}><Valor centavos={c.saldoCentavos} /></p>
 </header>
 
-<section class="sec alt pad grade">
+<section class="sec alt pad grade form-primeiro">
   <div class="painel-form">
     <h2>Editar</h2>
-    <form
-      class="fc"
-      method="POST"
-      action="?/salvar"
-      use:enhance={() =>
-        async ({ update }) =>
-          update({ reset: false })}
-    >
+    <form class="fc" method="POST" action="?/salvar" use:enhance={manterCampos}>
       <div class="field">
         <label for="e-nome">Nome</label>
         <input
@@ -45,8 +39,9 @@
           maxlength="60"
           required
           value={erro?.valores?.nome ?? c.nome}
+          {...ariaErro(erro?.erros?.nome, 'e-nome')}
         />
-        {#if erro?.erros?.nome}<span class="err">{erro.erros.nome}</span>{/if}
+        {#if erro?.erros?.nome}<span class="err" id="e-nome-erro">{erro.erros.nome}</span>{/if}
       </div>
       <div class="field">
         <label for="e-tipo">Tipo</label>
@@ -64,8 +59,9 @@
           inputmode="decimal"
           required
           value={erro?.valores?.saldo ?? centavosParaCampo(c.saldoCentavos)}
+          {...ariaErro(erro?.erros?.saldo, 'e-saldo')}
         />
-        {#if erro?.erros?.saldo}<span class="err">{erro.erros.saldo}</span>{/if}
+        {#if erro?.erros?.saldo}<span class="err" id="e-saldo-erro">{erro.erros.saldo}</span>{/if}
         <span class="hint">Se o saldo mudar, o anterior fica no histórico ao lado.</span>
       </div>
       {#if erro?.erro}<p class="err" role="alert">{erro.erro}</p>{/if}
@@ -92,7 +88,9 @@
       {/each}
     </ul>
     <p class="note">
-      Os últimos {data.historico.length} registros. É daqui que sai a evolução do patrimônio.
+      {data.historico.length === 1
+        ? 'O único registro até agora.'
+        : `Os últimos ${data.historico.length} registros.`} É daqui que sai a evolução do patrimônio.
     </p>
 
     <div class="remover">
@@ -100,23 +98,7 @@
       <p class="note">
         A conta vai para a lixeira e sai do patrimônio. Gastos ligados a ela continuam lançados.
       </p>
-      {#if confirmar}
-        <form method="POST" action="?/remover" use:enhance class="acts">
-          <button class="btn perigo" type="submit">Sim, mandar para a lixeira</button>
-          <button class="btn" type="button" onclick={() => (confirmar = false)}>Cancelar</button>
-        </form>
-      {:else}
-        <form
-          method="POST"
-          action="?/remover"
-          onsubmit={(e) => {
-            e.preventDefault();
-            confirmar = true;
-          }}
-        >
-          <button class="btn" type="submit">Mandar para a lixeira</button>
-        </form>
-      {/if}
+      <ConfirmarRemocao />
       {#if form?.acao === 'remover' && form.erro}<p class="err" role="alert">{form.erro}</p>{/if}
     </div>
   </div>
@@ -132,18 +114,6 @@
   .neg {
     color: var(--neg);
   }
-  .grade {
-    display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    gap: 48px 64px;
-    align-items: start;
-    padding-block: clamp(32px, 5vw, 64px) clamp(64px, 10vw, 144px);
-  }
-  @media (max-width: 900px) {
-    .grade {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
   .fc {
     display: grid;
     gap: 16px;
@@ -155,10 +125,5 @@
     display: grid;
     gap: 12px;
     margin-top: 32px;
-  }
-  .acts {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
   }
 </style>

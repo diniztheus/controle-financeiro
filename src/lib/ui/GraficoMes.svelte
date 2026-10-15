@@ -15,7 +15,7 @@
 
   const L = 640;
   const A = 240;
-  const M = { e: 4, d: 4, t: 12, b: 26 };
+  const M = { e: 4, d: 4, t: 12, b: 8 };
 
   const dias = $derived(Math.max(atual.length, anterior.length) - 1);
   const topo = $derived(Math.max(1, ...atual.slice(0, ateDia + 1), ...anterior) * 1.08);
@@ -46,15 +46,15 @@
       <path class="atu" d={linhaAtual} pathLength="1" />
       <circle class="pt" cx={x(Math.min(ateDia, atual.length - 1))} cy={y(ultimo)} r="5" />
     {/if}
+  </svg>
+  <!-- Rótulos em HTML: legíveis em qualquer largura (dentro do SVG encolheriam com ele). -->
+  <div class="eixo" aria-hidden="true">
     {#each marcas as d (d)}
-      <text
-        class="ax"
-        x={x(d)}
-        y={A - 6}
-        text-anchor={d === 1 ? 'start' : d === dias ? 'end' : 'middle'}>dia {d}</text
+      <span style="left: {(x(d) / L) * 100}%" class:ini={d === 1} class:fim={d === dias}
+        >dia {d}</span
       >
     {/each}
-  </svg>
+  </div>
   <figcaption class="legenda">
     <span
       ><i class="sw"></i>Este mês{#if ateDia > 0}, até o dia {ateDia}: {formatarBRL(
@@ -95,10 +95,24 @@
   .pt {
     fill: var(--orange);
   }
-  .ax {
-    fill: var(--muted);
-    font-size: 12px;
-    font-family: var(--font);
+  .eixo {
+    position: relative;
+    height: 1.4em;
+    margin-top: -6px;
+    font-size: var(--s-small);
+    color: var(--muted);
+  }
+  .eixo span {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  .eixo .ini {
+    transform: none;
+  }
+  .eixo .fim {
+    transform: translateX(-100%);
   }
   .legenda {
     display: flex;

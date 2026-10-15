@@ -3,24 +3,29 @@ import { somar } from '$lib/dominio/dinheiro';
 import { redirect } from '@sveltejs/kit';
 import { campo, executar, falhou, validar } from '$lib/server/acoes';
 import { obterBanco } from '$lib/server/db';
-import { garantirCategoriasPadrao, listarCategorias } from '$lib/server/servicos/categorias';
+import { listarCategorias } from '$lib/server/servicos/categorias';
 import { listarContas } from '$lib/server/servicos/contas';
 import {
   lancamentosDoMes,
   lancarGasto,
+  obterGasto,
   restaurarGasto,
   ultimaCategoriaUsada,
 } from '$lib/server/servicos/gastos';
 import { agruparPorDia } from '$lib/server/servicos/painel';
-import { mesDaUrl } from '$lib/ui/formato';
+import { mesDaRota, viaEnhance } from '$lib/server/rotas';
 import { gastoForm } from '$lib/validacao/nucleo';
 import type { Actions, PageServerLoad } from './$types';
 
+/** O "desfazer" só aparece enquanto o gasto continua na lixeira. */
+function gastoAindaNaLixeira(banco: ReturnType<typeof obterBanco>, id: string | null) {
+  return id && obterGasto(banco, id)?.removidoEm ? id : null;
+}
+
 export const load: PageServerLoad = ({ url }) => {
   const banco = obterBanco();
-  garantirCategoriasPadrao(banco);
   const agora = new Date();
-  const mes = mesDaUrl(url, agora);
+  const mes = mesDaRota(url, agora);
   const lancamentos = lancamentosDoMes(banco, mes);
   return {
     mes,
@@ -32,7 +37,7 @@ export const load: PageServerLoad = ({ url }) => {
     contas: listarContas(banco).map((c) => ({ id: c.id, nome: c.nome })),
     ultimaCategoria: ultimaCategoriaUsada(banco),
     /** Gasto que acabou de ir para a lixeira (para oferecer "desfazer"). */
-    removido: url.searchParams.get('removido'),
+    removido: gastoAindaNaLixeira(banco, url.searchParams.get('removido')),
   };
 };
 
@@ -41,7 +46,7 @@ export const actions: Actions = {
     const v = await validar(request, gastoForm, 'lancar');
     if (!v.ok) return v.falha;
     const d = v.dados;
-    return executar(
+    const r = executar(
       'lancar',
       () => {
         const g = lancarGasto(obterBanco(), {
@@ -58,6 +63,9 @@ export const actions: Actions = {
       },
       { valores: v.valores },
     );
+    // Sem JavaScript: POST → redirect → GET, para o F5 não lançar o gasto de novo.
+    if (!falhou(r) && !viaEnhance(request)) redirect(303, `/gastos?mes=${r.lancado.mes}`);
+    return r;
   },
   restaurar: async ({ request }) => {
     const id = campo(await request.formData(), 'id');

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import type { SubmitFunction } from '@sveltejs/kit';
+  import { ariaErro } from '$lib/ui/formularios';
   import { resolve } from '$app/paths';
   import EscolhaCor from '$lib/ui/EscolhaCor.svelte';
   import { corCss, plural } from '$lib/ui/formato';
@@ -7,12 +9,14 @@
 
   let { data, form }: PageProps = $props();
   const erroCriar = $derived(form?.acao === 'criar' && !('ok' in form) ? form : null);
-  /** Linha aberta para edição. */
-  let editando = $state<string | null>(null);
-  const manter =
+  /** Linha aberta para edição (sem JavaScript, vem da URL: ?editar=<id>). */
+  let editando = $derived<string | null>(data.editar);
+  const salvarEdicao: SubmitFunction =
     () =>
-    async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) =>
-      update({ reset: false });
+    async ({ result, update }) => {
+      await update({ reset: false });
+      if (result.type === 'success') editando = null;
+    };
 </script>
 
 <svelte:head>
@@ -35,6 +39,10 @@
     <ul class="cats" data-testid="lista-categorias">
       {#each data.ativas as c, i (c.id)}
         {@const erroLinha = form?.id === c.id && !('ok' in form) ? form : null}
+        {@const erroEdicao =
+          erroLinha && (erroLinha.acao === 'editar' || erroLinha.acao === 'arquivar')
+            ? erroLinha
+            : null}
         <li class="cat">
           <div class="cat-linha">
             <span class="sq" style="--cc: {corCss(c.cor)}"></span>
@@ -58,17 +66,24 @@
                   aria-label="Descer {c.nome}">↓</button
                 >
               </form>
-              <button
+              <a
                 class="btn sm"
-                type="button"
+                href={resolve(`/categorias?editar=${c.id}`)}
                 aria-expanded={editando === c.id}
-                onclick={() => (editando = editando === c.id ? null : c.id)}>Editar</button
+                onclick={(e) => {
+                  e.preventDefault();
+                  editando = editando === c.id ? null : c.id;
+                }}>Editar</a
               >
             </div>
           </div>
-          {#if editando === c.id || erroLinha}
+          {#if erroLinha?.acao === 'mover'}<p class="err" role="alert">{erroLinha.erro}</p>{/if}
+          {#if form?.acao === 'editar' && form.id === c.id && 'ok' in form}
+            <p class="ok-msg" role="status">{form.ok}</p>
+          {/if}
+          {#if editando === c.id || erroEdicao}
             <div class="editar">
-              <form class="fe" method="POST" action="?/editar" use:enhance={manter}>
+              <form class="fe" method="POST" action="?/editar" use:enhance={salvarEdicao}>
                 <input type="hidden" name="id" value={c.id} />
                 <div class="field">
                   <label for="n-{c.id}">Nome</label>
@@ -77,11 +92,14 @@
                     name="nome"
                     maxlength="40"
                     required
-                    value={erroLinha?.valores?.nome ?? c.nome}
+                    value={erroEdicao?.valores?.nome ?? c.nome}
+                    {...ariaErro(erroEdicao?.erros?.nome, `n-${c.id}`)}
                   />
-                  {#if erroLinha?.erros?.nome}<span class="err">{erroLinha.erros.nome}</span>{/if}
+                  {#if erroEdicao?.erros?.nome}<span class="err" id="n-{c.id}-erro"
+                      >{erroEdicao.erros.nome}</span
+                    >{/if}
                 </div>
-                <EscolhaCor id="cor-{c.id}" valor={erroLinha?.valores?.cor ?? c.cor} />
+                <EscolhaCor id="cor-{c.id}" valor={erroEdicao?.valores?.cor ?? c.cor} />
                 <div class="acts">
                   <button class="btn ink sm" type="submit">Salvar</button>
                 </div>
@@ -91,7 +109,7 @@
                 <input type="hidden" name="arquivar" value="sim" />
                 <button class="btn sm" type="submit">Arquivar</button>
               </form>
-              {#if erroLinha?.erro}<p class="err" role="alert">{erroLinha.erro}</p>{/if}
+              {#if erroEdicao?.erro}<p class="err" role="alert">{erroEdicao.erro}</p>{/if}
             </div>
           {/if}
         </li>
@@ -131,8 +149,11 @@
           required
           placeholder="Ex.: Pets, Viagens"
           value={erroCriar?.valores?.nome ?? ''}
+          {...ariaErro(erroCriar?.erros?.nome, 'nova-nome')}
         />
-        {#if erroCriar?.erros?.nome}<span class="err">{erroCriar.erros.nome}</span>{/if}
+        {#if erroCriar?.erros?.nome}<span class="err" id="nova-nome-erro"
+            >{erroCriar.erros.nome}</span
+          >{/if}
       </div>
       <EscolhaCor id="nova-cor" valor={erroCriar?.valores?.cor || null} automatica />
       {#if erroCriar?.erro}<p class="err" role="alert">{erroCriar.erro}</p>{/if}
@@ -143,18 +164,6 @@
 </section>
 
 <style>
-  .grade {
-    display: grid;
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    gap: 48px 64px;
-    align-items: start;
-    padding-block: clamp(32px, 5vw, 64px) clamp(64px, 10vw, 144px);
-  }
-  @media (max-width: 900px) {
-    .grade {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
   .cats {
     display: grid;
     gap: 4px;
@@ -188,7 +197,7 @@
     gap: 4px;
   }
   .cat-acts .btn {
-    min-width: 40px;
+    min-width: 44px;
   }
   .btn:disabled {
     cursor: default;

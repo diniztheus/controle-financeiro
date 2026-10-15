@@ -5,6 +5,7 @@
   import { centavosParaCampo } from '$lib/dominio/dinheiro';
   import Valor from '$lib/ui/Valor.svelte';
   import { dataDeIso, plural } from '$lib/ui/formato';
+  import { ariaErro } from '$lib/ui/formularios';
   import type { PageProps } from './$types';
 
   let { data, form }: PageProps = $props();
@@ -68,6 +69,7 @@
                   inputmode="decimal"
                   placeholder="Saldo de hoje"
                   value={erroLinha?.valores?.saldo ?? centavosParaCampo(c.saldoCentavos)}
+                  {...ariaErro(erroLinha?.erros?.saldo ?? erroLinha?.erro, `saldo-${c.id}`)}
                 />
                 <button class="btn ink" type="submit">Atualizar saldo</button>
               </form>
@@ -91,7 +93,9 @@
               </form>
             </div>
             {#if erroLinha}
-              <p class="err" role="alert">{erroLinha.erros?.saldo ?? erroLinha.erro}</p>
+              <p class="err" role="alert" id="saldo-{c.id}-erro">
+                {erroLinha.erros?.saldo ?? erroLinha.erro}
+              </p>
             {:else if form?.acao === 'saldo' && form.id === c.id && 'ok' in form}
               <p class="ok-msg" role="status">{form.ok}</p>
             {/if}
@@ -121,8 +125,10 @@
           required
           placeholder="Ex.: Nubank, Carteira"
           value={erroCriar?.valores?.nome ?? ''}
+          {...ariaErro(erroCriar?.erros?.nome, 'c-nome')}
         />
-        {#if erroCriar?.erros?.nome}<span class="err">{erroCriar.erros.nome}</span>{/if}
+        {#if erroCriar?.erros?.nome}<span class="err" id="c-nome-erro">{erroCriar.erros.nome}</span
+          >{/if}
       </div>
       <div class="field">
         <label for="c-tipo">Tipo</label>
@@ -141,8 +147,11 @@
           placeholder="0,00"
           required
           value={erroCriar?.valores?.saldo ?? ''}
+          {...ariaErro(erroCriar?.erros?.saldo, 'c-saldo')}
         />
-        {#if erroCriar?.erros?.saldo}<span class="err">{erroCriar.erros.saldo}</span>{/if}
+        {#if erroCriar?.erros?.saldo}<span class="err" id="c-saldo-erro"
+            >{erroCriar.erros.saldo}</span
+          >{/if}
         <span class="hint">Pode ser negativo, por exemplo -150,00 no cheque especial.</span>
       </div>
       {#if erroCriar?.erro}<p class="err" role="alert">{erroCriar.erro}</p>{/if}
@@ -169,17 +178,7 @@
       text-align: left;
     }
   }
-  .grade {
-    display: grid;
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    gap: 48px 64px;
-    align-items: start;
-    padding-block: clamp(32px, 5vw, 64px) clamp(64px, 10vw, 144px);
-  }
   @media (max-width: 900px) {
-    .grade {
-      grid-template-columns: minmax(0, 1fr);
-    }
     .painel-form {
       order: -1;
     }

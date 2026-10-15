@@ -209,7 +209,8 @@
     text-decoration: none;
     z-index: var(--z-fab);
     /* O botão flutua sobre a página: a sombra separa do conteúdo. */
-    box-shadow: 0 6px 20px rgb(11 16 21 / 0.28); /* taste-skill-ignore */
+    /* Sem sombra: um contorno grosso na cor do papel separa o botão do que passa por baixo. */
+    outline: 3px solid var(--paper);
     transition: transform var(--t);
   }
   .fab:active {

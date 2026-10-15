@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
   import { resolve } from '$app/paths';
   import { formatarBRL } from '$lib/dominio/dinheiro';
   import { formatarDia } from '$lib/dominio/datas';
+  import ConfirmarRemocao from '$lib/ui/ConfirmarRemocao.svelte';
   import FormGasto from '$lib/ui/FormGasto.svelte';
   import type { PageProps } from './$types';
 
@@ -10,7 +10,6 @@
   const g = $derived(data.gasto);
   const voltar = $derived(resolve(`/gastos?mes=${g.dataCompra.slice(0, 7)}`));
   const erroSalvar = $derived(form?.acao === 'salvar' ? form : null);
-  let confirmar = $state(false);
 </script>
 
 <svelte:head>
@@ -19,7 +18,13 @@
 
 <header class="page-head pad">
   <div>
-    <h1>{data.editavel ? 'Editar gasto' : 'Compra no cartão'}</h1>
+    <h1>
+      {data.editavel
+        ? 'Editar gasto'
+        : g.meio === 'cartao'
+          ? 'Compra no cartão'
+          : 'Compra parcelada'}
+    </h1>
     <p>{g.descricao ?? data.categoriaNome} · {formatarBRL(g.valorTotalCentavos)}</p>
     <p class="voltar-l"><a class="voltar" href={voltar}>‹ Voltar aos gastos</a></p>
   </div>
@@ -75,48 +80,14 @@
   <div class="col remover">
     <h2>Remover</h2>
     <p class="note">O gasto vai para a lixeira e sai das somas. Dá para restaurar quando quiser.</p>
-    {#if confirmar}
-      <form method="POST" action="?/remover" use:enhance class="acts">
-        <button class="btn perigo" type="submit">Sim, mandar para a lixeira</button>
-        <button class="btn" type="button" onclick={() => (confirmar = false)}>Cancelar</button>
-      </form>
-    {:else}
-      <!-- Sem JavaScript, o formulário envia direto (não há como perguntar antes). -->
-      <form
-        method="POST"
-        action="?/remover"
-        onsubmit={(e) => {
-          e.preventDefault();
-          confirmar = true;
-        }}
-      >
-        <button class="btn" type="submit">Mandar para a lixeira</button>
-      </form>
-    {/if}
+    <ConfirmarRemocao />
     {#if form?.acao === 'remover' && form.erro}<p class="err" role="alert">{form.erro}</p>{/if}
   </div>
 </section>
 
 <style>
-  .grade {
-    display: grid;
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    gap: 48px 64px;
-    align-items: start;
-    padding-block: clamp(32px, 5vw, 64px) clamp(64px, 10vw, 144px);
-  }
-  @media (max-width: 900px) {
-    .grade {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
   .remover h2 {
     font-size: var(--s-lead);
-  }
-  .acts {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
   }
   .fatos {
     display: grid;

@@ -8,33 +8,22 @@ import {
   type Dia,
   type Mes,
 } from '$lib/dominio/datas';
+import type { Cor } from '$lib/dominio/categorias';
 
 const DIAS_SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
-const MESES = [
-  'janeiro',
-  'fevereiro',
-  'março',
-  'abril',
-  'maio',
-  'junho',
-  'julho',
-  'agosto',
-  'setembro',
-  'outubro',
-  'novembro',
-  'dezembro',
-];
+/** "2026-10" → "outubro" (o nome vem do domínio, sem repetir a lista aqui). */
+const nomeDoMes = (mes: Mes) => nomeMes(mes).split(' de ')[0]!;
 
 /** "2026-10-15" → "quinta, 15 de outubro" (sem fuso: Date.UTC só com inteiros). */
 export function diaPorExtenso(dia: Dia): string {
   const [a, m, d] = [Number(dia.slice(0, 4)), Number(dia.slice(5, 7)), Number(dia.slice(8, 10))];
   const semana = DIAS_SEMANA[new Date(Date.UTC(a, m - 1, d)).getUTCDay()];
-  return `${semana}, ${d} de ${MESES[m - 1]}`;
+  return `${semana}, ${d} de ${nomeDoMes(dia.slice(0, 7))}`;
 }
 
 /** "2026-10-15" → "15 out" */
 export function diaCurto(dia: Dia): string {
-  return `${Number(dia.slice(8, 10))} ${MESES[Number(dia.slice(5, 7)) - 1]!.slice(0, 3)}`;
+  return `${Number(dia.slice(8, 10))} ${nomeDoMes(dia.slice(0, 7)).slice(0, 3)}`;
 }
 
 /** "2026-10" → "Outubro de 2026" */
@@ -44,7 +33,7 @@ export function tituloMes(mes: Mes): string {
 
 /** "2026-10" → "outubro" */
 export function soNomeMes(mes: Mes): string {
-  return MESES[Number(mes.slice(5, 7)) - 1]!;
+  return nomeDoMes(mes);
 }
 
 /** Mês vindo da URL (?mes=AAAA-MM); qualquer coisa estranha vira o mês atual. */
@@ -62,7 +51,7 @@ export function corCss(cor: string | null | undefined): string {
   return `var(--${cor && /^c(10|[0-9])$/.test(cor) ? cor : 'c9'})`;
 }
 
-export const NOMES_CORES: Record<string, string> = {
+export const NOMES_CORES: Record<Cor, string> = {
   c0: 'Azul',
   c1: 'Verde-água',
   c2: 'Âmbar',

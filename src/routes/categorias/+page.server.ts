@@ -4,7 +4,6 @@ import {
   arquivarCategoria,
   criarCategoria,
   editarCategoria,
-  garantirCategoriasPadrao,
   listarCategorias,
   moverCategoria,
   usoPorCategoria,
@@ -12,9 +11,8 @@ import {
 import { categoriaForm } from '$lib/validacao/nucleo';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = () => {
+export const load: PageServerLoad = ({ url }) => {
   const banco = obterBanco();
-  garantirCategoriasPadrao(banco);
   const uso = usoPorCategoria(banco);
   const todas = listarCategorias(banco, { incluirArquivadas: true }).map((c) => ({
     id: c.id,
@@ -26,6 +24,8 @@ export const load: PageServerLoad = () => {
   return {
     ativas: todas.filter((c) => !c.arquivada),
     arquivadas: todas.filter((c) => c.arquivada),
+    /** Sem JavaScript, "Editar" abre a linha pela URL. */
+    editar: url.searchParams.get('editar'),
   };
 };
 

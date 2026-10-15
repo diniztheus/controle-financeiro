@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * Valor em reais com os centavos menores, como na v3: "R$ 1.234,56".
-   * `moeda` mostra o "R$" pequeno na frente; `sinal` força "+" em positivos.
+   * `moeda` mostra o "R$" pequeno na frente.
    */
   import { separarValor, type Centavos } from '$lib/dominio/dinheiro';
 

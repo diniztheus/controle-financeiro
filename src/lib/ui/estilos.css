@@ -488,7 +488,8 @@ main:focus {
   font-size: 0.9375rem;
 }
 .btn.sm {
-  min-height: 36px;
+  /* Menor no texto, mas o alvo de toque continua com 44px. */
+  min-height: 44px;
   padding: 0 12px;
   font-size: 0.875rem;
 }
@@ -545,6 +546,24 @@ main:focus {
   font-weight: 600;
   font-size: 0.9375rem;
   text-underline-offset: 4px;
+}
+
+/* Grade de duas colunas das telas de cadastro (lista + formulário) */
+.grade {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 48px 64px;
+  align-items: start;
+  padding-block: clamp(32px, 5vw, 64px) clamp(64px, 10vw, 144px);
+}
+.grade.form-primeiro {
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+}
+@media (max-width: 900px) {
+  .grade,
+  .grade.form-primeiro {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* Painel lateral de formulário */

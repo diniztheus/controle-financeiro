@@ -51,8 +51,8 @@
   }
   .op {
     position: relative;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     display: grid;
     place-items: center;
     background: var(--chip-bg, var(--paper));

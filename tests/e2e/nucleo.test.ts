@@ -109,7 +109,7 @@ test('categoria nova aparece no lançamento; arquivada some', async ({ page }) =
 
   await page.goto('/categorias');
   const linha = page.getByTestId('lista-categorias').locator('li', { hasText: 'Pets e2e' });
-  await linha.getByRole('button', { name: 'Editar' }).click();
+  await linha.getByRole('link', { name: 'Editar' }).click();
   await linha.getByRole('button', { name: 'Arquivar' }).click();
   await expect(page.getByRole('heading', { name: 'Arquivadas' })).toBeVisible();
 
@@ -119,7 +119,7 @@ test('categoria nova aparece no lançamento; arquivada some', async ({ page }) =
 
 test('limite do mês no painel mostra quanto resta', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /Definir limite|Alterar limite/ }).click();
+  await page.getByRole('link', { name: /Definir limite|Alterar limite/ }).click();
   await page.getByLabel('Limite por mês (R$)').fill('5.000,00');
   await page.getByRole('button', { name: 'Salvar limite' }).click();
   await expect(page.getByTestId('limite')).toContainText('Limite de R$ 5.000,00');
@@ -135,4 +135,57 @@ test('navegar entre meses pela URL e pelos botões', async ({ page }) => {
   // Mês inválido na URL cai no mês atual, sem erro.
   await page.goto('/?mes=2020-13');
   await expect(page.getByTestId('painel-mes')).toBeVisible();
+});
+
+test('lançamentos seguidos mantêm data e categoria e devolvem o foco ao valor', async ({
+  page,
+}) => {
+  await page.goto('/gastos');
+  const form = page.locator('#novo');
+  await form.getByLabel('Valor (R$)').fill('3');
+  await form.getByText('Transporte', { exact: true }).click();
+  await form.getByRole('button', { name: 'Lançar gasto' }).click();
+  await expect(page.getByTestId('gasto-lancado')).toBeVisible();
+  await expect(form.getByLabel('Valor (R$)')).toBeFocused();
+  await expect(form.getByLabel('Data')).not.toHaveValue('');
+  await expect(form.getByLabel('Transporte')).toBeChecked();
+  // Segundo lançamento direto, sem mexer em mais nada.
+  await page.keyboard.type('4,50');
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('gasto-lancado')).toContainText('R$ 4,50');
+});
+
+test('sem JavaScript: lançar redireciona (F5 não duplica) e o limite abre pela URL', async ({
+  browser,
+}) => {
+  const ctx = await browser.newContext({ javaScriptEnabled: false });
+  const page = await ctx.newPage();
+  await page.goto('/gastos');
+  const form = page.locator('#novo');
+  await form.getByLabel('Valor (R$)').fill('7,77');
+  await form.getByLabel('Descrição').fill('Sem JS e2e');
+  await form.getByRole('button', { name: 'Lançar gasto' }).click();
+  await expect(page).toHaveURL(/\/gastos\?mes=\d{4}-\d{2}$/);
+  await expect(page.getByTestId('lancamentos')).toContainText('Sem JS e2e');
+
+  await page.goto('/');
+  await page.getByRole('link', { name: /Definir limite|Alterar limite/ }).click();
+  await expect(page.getByLabel('Limite por mês (R$)')).toBeVisible();
+  await ctx.close();
+});
+
+test('mês inválido na URL é limpo; o patrimônio grande não é cortado', async ({ page }) => {
+  await page.goto('/gastos?mes=2026-13');
+  await expect(page).toHaveURL(/\/gastos$/);
+  await page.goto('/contas');
+  await page.getByLabel('Nome', { exact: true }).fill('Grande e2e');
+  await page.getByLabel('Saldo de hoje (R$)').fill('9.876.543,21');
+  await page.getByRole('button', { name: 'Cadastrar conta' }).click();
+  await expect(page.getByRole('status')).toContainText('cadastrada');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  const cabe = await page
+    .getByTestId('patrimonio')
+    .evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth);
+  expect(cabe).toBe(true);
 });
