@@ -23,7 +23,13 @@
       replaceState(resolve(`/gastos?mes=${data.mes}`), page.state);
     }
   });
-  const lancado = $derived(form && 'lancado' in form ? form.lancado : null);
+  const lancado = $derived(
+    form && 'lancado' in form
+      ? form.lancado
+      : data.lancadoSemJs
+        ? { id: '', valorCentavos: data.lancadoSemJs, mes: data.mes }
+        : null,
+  );
 </script>
 
 <svelte:head>
@@ -58,7 +64,7 @@
       categorias={data.categorias}
       contas={data.contas}
       inicial={{
-        data: data.hoje,
+        data: data.dataInicial,
         categoriaId: data.ultimaCategoria,
       }}
       erros={falhou ? form?.erros : undefined}

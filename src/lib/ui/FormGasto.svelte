@@ -83,7 +83,7 @@
         if (campoDescricao) campoDescricao.value = '';
         campoValor?.focus();
       } else if (result.type === 'failure') {
-        focarPrimeiroErro(formElement);
+        await focarPrimeiroErro(formElement);
       }
     };
   }}

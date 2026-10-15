@@ -1,13 +1,5 @@
 /** Formatação para a tela (datas por extenso, cores de categoria, meses na URL). */
-import {
-  capitalizar,
-  ehMes,
-  mesAtual,
-  nomeMes,
-  somarMeses,
-  type Dia,
-  type Mes,
-} from '$lib/dominio/datas';
+import { capitalizar, nomeMes, somarMeses, type Dia, type Mes } from '$lib/dominio/datas';
 import type { Cor } from '$lib/dominio/categorias';
 
 const DIAS_SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
@@ -34,12 +26,6 @@ export function tituloMes(mes: Mes): string {
 /** "2026-10" → "outubro" */
 export function soNomeMes(mes: Mes): string {
   return nomeDoMes(mes);
-}
-
-/** Mês vindo da URL (?mes=AAAA-MM); qualquer coisa estranha vira o mês atual. */
-export function mesDaUrl(url: URL, agora = new Date()): Mes {
-  const m = url.searchParams.get('mes');
-  return ehMes(m) ? m : mesAtual(agora);
 }
 
 export function mesesVizinhos(mes: Mes): { anterior: Mes; proximo: Mes } {

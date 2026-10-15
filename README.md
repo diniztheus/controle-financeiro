@@ -3,9 +3,9 @@
 Seu controle financeiro rodando no seu computador, com banco de dados local (SQLite).
 Nada vai para a internet: o site só escuta em `127.0.0.1`, ou seja, só a sua máquina enxerga.
 
-Estado atual: **Onda 0 (Fundação)**. O projeto sobe, cria o banco sozinho e mostra uma página
-de estado. As telas de contas, gastos, cartões e bitcoin chegam nas próximas ondas
-(veja `docs/PLANO-SITE-LOCAL.md` e `docs/CHANGELOG.md`).
+Estado atual: **Onda 1 do plano (Núcleo)**. Painel do mês, gastos à vista, contas com
+histórico de saldo, categorias, lixeira e o importador dos dados do app atual. Cartões e bitcoin
+chegam nas próximas ondas (veja `docs/PLANO-SITE-LOCAL.md` e `docs/CHANGELOG.md`).
 
 ## Requisitos
 
@@ -53,6 +53,7 @@ trouxer mudança no banco, a mudança é aplicada sozinha ao iniciar, com um bac
 | `pnpm dev`         | Modo desenvolvimento (recarrega ao salvar), também em 127.0.0.1:5173.   |
 | `pnpm build`       | Só compila (gera a pasta `build/`).                                     |
 | `pnpm backup`      | Faz um backup do banco agora.                                           |
+| `pnpm importar`    | Traz os dados do app atual (veja "Trazer os dados do app atual").       |
 | `pnpm test`        | Testes de regras e de banco (Vitest).                                   |
 | `pnpm test:e2e`    | Testes no navegador (Playwright).                                       |
 | `pnpm check`       | Checagem de tipos (svelte-check).                                       |
@@ -67,6 +68,25 @@ O build sai com um aviso `Generated an empty chunk: "chunks/env.js"`; é do `ada
 pode ser ignorado. O site compilado também pode ser iniciado com `node build` de qualquer pasta
 (as migrations são achadas a partir da pasta do projeto); nesse caso defina `HOST=127.0.0.1` e
 `PORT=5173` você mesmo, que é o que o `pnpm start` faz.
+
+## Trazer os dados do app atual
+
+1. No app atual (o Artifact), role até o rodapé e clique em **Exportar dados**. Baixe o arquivo
+   (ou use **Copiar** e salve o texto num arquivo `.json`).
+2. Com o arquivo em mãos, na pasta do projeto:
+
+   ```sh
+   pnpm importar ~/Downloads/controle-financeiro-AAAA-MM-DD.json --simular   # só mostra o relatório
+   pnpm importar ~/Downloads/controle-financeiro-AAAA-MM-DD.json             # grava
+   ```
+
+O importador faz um backup antes, grava tudo numa transação (ou entra tudo, ou nada) e só roda
+num banco sem contas, gastos, cartões e bitcoin, para nunca duplicar. No fim ele mostra o que
+entrou e confere saldo, gastos por mês, faturas e sats com as regras do app atual; se algo não
+bater, nada é gravado e aparece a lista de diferenças (`--aceitar-diferencas` grava mesmo
+assim). Situações comuns (cartão apagado no app, datas com hora, limite já definido no site)
+entram com um aviso no relatório. **O arquivo exportado tem os seus dados: não o coloque na
+pasta do projeto nem no git.**
 
 ## Onde ficam os dados
 
@@ -85,11 +105,12 @@ Lá dentro:
 - `backups/` guarda as cópias.
 
 Para mudar o lugar, copie `.env.example` para `.env` e defina `DADOS_DIR`, por exemplo
-`DADOS_DIR=~/Documentos/financas`. A página inicial do site mostra o caminho em uso.
+`DADOS_DIR=~/Documentos/financas`. A página `/sistema` mostra o caminho em uso.
 
 ## Backup
 
-- **Sob demanda**: `pnpm backup` ou o botão "Fazer backup agora" na página inicial. Pode ser
+- **Sob demanda**: `pnpm backup` ou o botão "Fazer backup agora" em `/sistema` (link "Estado
+  do sistema e backup" no rodapé). Pode ser
   feito com o site aberto.
 - **Automático**: antes de aplicar qualquer migration nova num banco que já existe.
 
@@ -102,8 +123,10 @@ chega na Onda 5.) Vale guardar de vez em quando uma cópia da pasta `backups/` f
 ## Testes
 
 ```sh
-pnpm test        # regras de dinheiro e datas, esquema do banco, migrations e backup
-pnpm test:e2e    # abre o site num navegador de verdade e confere a página de estado
+pnpm test        # regras (dinheiro, datas, parcelas, fatura, resumo do mês), serviços com banco
+                 # em memória, importador, esquema, migrations e backup
+pnpm test:e2e    # abre o site num navegador de verdade: lançar gasto e ver no painel, contas,
+                 # categorias, lixeira, limite, sem JavaScript e no celular
 ```
 
 Os testes **nunca** usam a sua pasta de dados real: os de banco usam memória ou pastas
@@ -123,12 +146,13 @@ Se você já tem um Chromium/Chrome e prefere usá-lo, aponte `PW_CHROMIUM_PATH`
 src/lib/dominio/      regras puras (dinheiro, datas…), sem banco nem tela
 src/lib/server/db/    conexão, esquema Drizzle, migrations, backup
 src/lib/server/repos/ consultas por entidade
-src/lib/server/servicos/ casos de uso
+src/lib/server/servicos/ casos de uso (contas, categorias, gastos, limite, painel)
+src/lib/server/importacao/ importador do app atual
 src/lib/validacao/    esquemas Zod compartilhados
 src/lib/ui/           estilos (tokens da v3) e componentes
 src/routes/           páginas
 drizzle/              migrations SQL versionadas (nunca edite uma que já existe)
-scripts/              iniciar, backup
+scripts/              iniciar, backup, importar
 tests/unit, tests/e2e testes
 docs/                 plano e changelog
 ```

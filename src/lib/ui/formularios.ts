@@ -1,5 +1,6 @@
 /** Ajudas de formulário no navegador (use:enhance, foco, acessibilidade). */
 import type { SubmitFunction } from '@sveltejs/kit';
+import { tick } from 'svelte';
 
 /** Envia sem limpar os campos (para formulários de edição). */
 export const manterCampos: SubmitFunction =
@@ -8,13 +9,13 @@ export const manterCampos: SubmitFunction =
     update({ reset: false });
 
 /** Leva o foco ao primeiro campo marcado com erro, depois que a página se atualizar. */
-export function focarPrimeiroErro(form: HTMLFormElement): void {
-  queueMicrotask(() => {
-    const el = form.querySelector<HTMLElement>(
+export async function focarPrimeiroErro(form: HTMLFormElement): Promise<void> {
+  await tick(); // espera o Svelte marcar os campos com aria-invalid
+  form
+    .querySelector<HTMLElement>(
       '[aria-invalid="true"] input, input[aria-invalid="true"], select[aria-invalid="true"]',
-    );
-    el?.focus();
-  });
+    )
+    ?.focus();
 }
 
 /** Atributos de acessibilidade para um campo, ligando-o à mensagem de erro (id `${base}-erro`). */

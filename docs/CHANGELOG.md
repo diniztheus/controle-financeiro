@@ -2,6 +2,51 @@
 
 Uma nota curta por onda. Versões seguem as tags do git (`v0.0`, `v0.1`…).
 
+## v0.1 — Onda 1: Núcleo (15/10/2026)
+
+O site substitui o app atual para contas e gastos à vista.
+
+- **Painel do mês** (`/`): patrimônio líquido (por enquanto só contas), total gasto, limite do
+  mês com quanto resta (alerta a partir de 85%), comparação com o mês anterior até o mesmo dia,
+  gráfico do gasto acumulado, gastos por categoria e lançamentos; navegação ‹ mês › pela URL.
+- **Gastos** (`/gastos`): lançar gasto à vista com valor que aceita vírgula, data padrão hoje e a
+  última categoria usada já marcada; conta e descrição opcionais, como no app atual. Editar,
+  mandar para a lixeira e desfazer. Gastos nunca mexem no saldo das contas.
+- **Contas** (`/contas`): cadastrar, atualizar o saldo direto na lista, ordenar, editar e ver o
+  histórico de saldos (cada atualização fica guardada).
+- **Categorias** (`/categorias`): as 11 do app atual já vêm prontas; criar, renomear, trocar a
+  cor, ordenar, arquivar e desarquivar. Arquivar não mexe nos gastos antigos.
+- **Lixeira** (`/lixeira`): restaurar gastos e contas. Nada é apagado de vez.
+- **Importador** (`pnpm importar arquivo.json`): traz os dados do app atual (botão "Exportar
+  dados" no rodapé do app) numa transação única, com backup antes, só num banco sem dados, e um
+  relatório que confere saldo, gastos por mês, faturas, sats e valores do bitcoin com as regras
+  do app. Se algum total não bater, nada é gravado (`--aceitar-diferencas` grava assim mesmo);
+  `--simular` mostra o relatório sem gravar. Compras no cartão, faturas pagas e bitcoin também
+  entram; as telas deles chegam nas próximas ondas. Casos do mundo real viram avisos, não
+  falhas: categorias padrão do site que o app não tinha ficam arquivadas, compras de cartão
+  apagado entram num cartão na lixeira, datas com hora, preço repetido, limite já definido.
+- A página de estado do sistema e o backup sob demanda foram para `/sistema` (link no rodapé).
+- **Funciona sem JavaScript**: todos os formulários são formulários de verdade; com JavaScript,
+  enviam sem recarregar.
+- **Testes**: domínio, serviços com banco em memória, importador e e2e no navegador (lançar gasto
+  e ver no painel, lixeira, histórico de saldo, categorias, limite, sem JavaScript, celular).
+
+Decisões e diferenças em relação ao plano:
+
+- **Migration `0002`**: gasto à vista pode ficar sem conta e sem descrição (o app atual permite
+  "Não informar" e descrição vazia); o CHECK de `compras` foi relaxado só para `meio = 'conta'`.
+- `dominio/fatura` (ciclo de fatura) entrou já nesta onda porque o importador precisa ligar as
+  compras de cartão às faturas certas; a tela de cartões continua na Onda 2.
+- O painel soma as parcelas de cartão importadas por mês de competência, como o app atual faz,
+  para os totais do mês baterem com o que você já via.
+- `contas.ativa` não é usada nesta onda (remover = lixeira); só o cartão "removido no app"
+  criado pelo importador sai com `ativo = 0`.
+- Até 24 parcelas, como o formulário do app atual oferecia (o código do app limitava a 48, mas
+  nunca deixava lançar mais de 24); o importador recusa com mensagem clara se aparecer mais.
+- Ids ULID monotônicos (mantêm a ordem de criação mesmo no mesmo milissegundo).
+- Revisões feitas por um segundo revisor a cada entrega; os pontos apontados foram corrigidos
+  antes de seguir (commits "Correções da auditoria…").
+
 ## v0.0 — Onda 0: Fundação (15/10/2026)
 
 Projeto de pé, banco criado sozinho, nenhuma tela além da página de estado.

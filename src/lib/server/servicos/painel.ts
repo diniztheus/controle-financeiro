@@ -19,9 +19,9 @@ import { listarContas, totalDasContas, type Conta } from './contas.ts';
 import { listarCategorias } from './categorias.ts';
 import { lancamentosDoMes } from './gastos.ts';
 import { agruparPorDia, type DiaDeLancamentos } from '../../dominio/lancamentos.ts';
+import { limiteDoMes } from './limite.ts';
 
 export { agruparPorDia, type DiaDeLancamentos };
-import { limiteDoMes } from './limite.ts';
 
 export interface CategoriaNoMes {
   categoriaId: string;

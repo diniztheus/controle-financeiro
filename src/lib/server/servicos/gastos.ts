@@ -13,11 +13,11 @@ import { diaNoMes, type Dia, type Mes } from '../../dominio/datas.ts';
 import type { Centavos } from '../../dominio/dinheiro.ts';
 import type { Lancamento } from '../../dominio/lancamentos.ts';
 import { gerarParcelas } from '../../dominio/parcelas.ts';
-
-export type { Lancamento };
 import type { Banco, BancoDrizzle } from '../db/conexao.ts';
 import { cartoes, categorias, compras, contas, parcelas } from '../db/esquema.ts';
 import { agoraIso, ErroDeNegocio, naoEncontrado } from './erros.ts';
+
+export type { Lancamento };
 
 export type Compra = typeof compras.$inferSelect;
 

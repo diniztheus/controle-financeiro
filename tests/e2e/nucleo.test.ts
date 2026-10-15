@@ -165,7 +165,8 @@ test('sem JavaScript: lançar redireciona (F5 não duplica) e o limite abre pela
   await form.getByLabel('Valor (R$)').fill('7,77');
   await form.getByLabel('Descrição').fill('Sem JS e2e');
   await form.getByRole('button', { name: 'Lançar gasto' }).click();
-  await expect(page).toHaveURL(/\/gastos\?mes=\d{4}-\d{2}$/);
+  await expect(page).toHaveURL(/\/gastos\?mes=\d{4}-\d{2}&data=\d{4}-\d{2}-\d{2}&lancado=777$/);
+  await expect(page.getByTestId('gasto-lancado')).toContainText('R$ 7,77');
   await expect(page.getByTestId('lancamentos')).toContainText('Sem JS e2e');
 
   await page.goto('/');

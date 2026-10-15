@@ -1,4 +1,4 @@
-import { hoje, mesDe } from '$lib/dominio/datas';
+import { ehDia, hoje, mesDe } from '$lib/dominio/datas';
 import { somar } from '$lib/dominio/dinheiro';
 import { redirect } from '@sveltejs/kit';
 import { campo, executar, falhou, validar } from '$lib/server/acoes';
@@ -12,7 +12,7 @@ import {
   restaurarGasto,
   ultimaCategoriaUsada,
 } from '$lib/server/servicos/gastos';
-import { agruparPorDia } from '$lib/server/servicos/painel';
+import { agruparPorDia } from '$lib/dominio/lancamentos';
 import { mesDaRota, viaEnhance } from '$lib/server/rotas';
 import { gastoForm } from '$lib/validacao/nucleo';
 import type { Actions, PageServerLoad } from './$types';
@@ -30,6 +30,10 @@ export const load: PageServerLoad = ({ url }) => {
   return {
     mes,
     hoje: hoje(agora),
+    /** Sem JavaScript, a data do último lançamento volta pela URL. */
+    dataInicial: ehDia(url.searchParams.get('data')) ? url.searchParams.get('data')! : hoje(agora),
+    /** Sem JavaScript, o valor do gasto recém-lançado volta pela URL (para a confirmação). */
+    lancadoSemJs: Number(url.searchParams.get('lancado')) || null,
     dias: agruparPorDia(lancamentos),
     totalCentavos: somar(lancamentos.map((l) => l.valorCentavos)),
     quantidade: lancamentos.length,
@@ -64,7 +68,16 @@ export const actions: Actions = {
       { valores: v.valores },
     );
     // Sem JavaScript: POST → redirect → GET, para o F5 não lançar o gasto de novo.
-    if (!falhou(r) && !viaEnhance(request)) redirect(303, `/gastos?mes=${r.lancado.mes}`);
+    if (!falhou(r) && !viaEnhance(request)) {
+      // Leva data e categoria para o próximo lançamento, como acontece com JavaScript.
+      // (a categoria já volta marcada: é a última usada).
+      const q = new URLSearchParams({
+        mes: r.lancado.mes,
+        data: d.data,
+        lancado: String(r.lancado.valorCentavos),
+      });
+      redirect(303, `/gastos?${q}`);
+    }
     return r;
   },
   restaurar: async ({ request }) => {
