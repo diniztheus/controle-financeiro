@@ -1,17 +1,19 @@
 /*
- * Identidade "livro-caixa" (v3 do app): um campo laranja, Geist, o razão alinhado na vírgula.
- * Cantos retos, sem linhas nem sombras: superfícies separadas por degraus de tom.
- * Tokens copiados da v3 (index.html do Artifact) sem alteração.
+ * Identidade "livro-caixa": acento verde-petróleo sóbrio, Geist, o razão alinhado na vírgula.
+ * Cantos levemente arredondados, superfícies separadas por degraus de tom e filetes finos.
+ * (Os tokens --orange* guardam o acento; o nome ficou para não mexer em todas as telas.)
  */
 :root {
-  --paper: #f3f3f1;
+  --paper: #f5f6f4;
   --surface: #ffffff;
-  --step: #e6e6e3;
+  --step: #e7eae6;
   --ink: #0b1015;
   --muted: #565c63;
-  --orange: #ff7a1f;
-  --orange-ink: #0b1015;
-  --orange-soft: #ffe2cc;
+  --orange: #1f6b57;
+  --orange-ink: #ffffff;
+  --orange-soft: #dcebe5;
+  --line: #dfe2de;
+  --r: 8px;
   --night: #0b1015;
   --night-step: #1a2129;
   --night-ink: #f2f3f4;
@@ -25,7 +27,7 @@
   --c3: #6b4fd1;
   --c4: #c23c78;
   --c5: #3a8a32;
-  --c6: #d1541f;
+  --c6: #c2562a;
   --c7: #187fb0;
   --c8: #8a6d00;
   --c9: #5f6f80;
@@ -34,8 +36,8 @@
   --s-small: 0.8125rem;
   --s-body: 1rem;
   --s-lead: 1.375rem;
-  --s-head: clamp(1.75rem, 1.2rem + 2.2vw, 3rem);
-  --s-giant: clamp(3.25rem, 1rem + 10vw, 10rem);
+  --s-head: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem);
+  --s-giant: clamp(2.75rem, 1rem + 6vw, 5.5rem);
   --gut: clamp(16px, 3vw, 40px);
   --maxw: 1360px;
   --z-tip: 2;
@@ -53,9 +55,10 @@
     --step: #222930;
     --ink: #eef0f2;
     --muted: #a0a7af;
-    --orange: #ff8a3d;
-    --orange-ink: #0b1015;
-    --orange-soft: #3a2414;
+    --orange: #4fb594;
+    --orange-ink: #07130f;
+    --orange-soft: #173029;
+    --line: #2a323a;
     --night: #05080b;
     --night-step: #141a20;
     --night-ink: #f2f3f4;
@@ -83,9 +86,10 @@
   --step: #222930;
   --ink: #eef0f2;
   --muted: #a0a7af;
-  --orange: #ff8a3d;
-  --orange-ink: #0b1015;
-  --orange-soft: #3a2414;
+  --orange: #4fb594;
+  --orange-ink: #07130f;
+  --orange-soft: #173029;
+  --line: #2a323a;
   --night: #05080b;
   --night-step: #141a20;
   --night-ink: #f2f3f4;
@@ -216,7 +220,7 @@ main:focus {
   min-height: 44px;
   padding: 0 18px;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--r);
   background: var(--step);
   color: var(--ink);
   font-weight: 600;
@@ -242,7 +246,7 @@ main:focus {
   color: var(--orange-ink);
 }
 .btn.go:hover {
-  background: color-mix(in srgb, var(--orange) 85%, #000 15%);
+  background: color-mix(in srgb, var(--orange) 88%, #000 12%);
 }
 .btn.ink {
   background: var(--ink);
@@ -315,6 +319,7 @@ main:focus {
   align-items: center;
   padding: 12px;
   background: var(--paper);
+  border-radius: var(--r);
   min-width: 0;
 }
 .sec:not(.alt) .row {
@@ -352,6 +357,7 @@ main:focus {
 .sq {
   width: 12px;
   height: 12px;
+  border-radius: 3px;
   background: var(--cc, var(--muted));
   align-self: center;
 }
@@ -368,6 +374,7 @@ main:focus {
 .empty {
   background: var(--paper);
   padding: 28px 22px;
+  border-radius: var(--r);
   color: var(--muted);
   display: grid;
   gap: 10px;
@@ -426,6 +433,15 @@ main:focus {
   gap: 6px;
   min-width: 0;
 }
+fieldset.field {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+fieldset.field legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
 .field label,
 .lbl {
   font-size: 0.875rem;
@@ -437,7 +453,7 @@ main:focus {
 .inp {
   width: 100%;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--r);
   background: var(--paper);
   padding: 11px 12px;
   min-width: 0;
@@ -528,10 +544,10 @@ main:focus {
   flex-wrap: wrap;
 }
 .page-head h1 {
-  font-size: clamp(2.5rem, 1.4rem + 4.4vw, 5.5rem);
-  font-weight: 700;
-  letter-spacing: -0.045em;
-  line-height: 0.92;
+  font-size: clamp(2rem, 1.3rem + 2.6vw, 3.25rem);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
 }
 .page-head p {
   color: var(--muted);
@@ -569,6 +585,8 @@ main:focus {
 /* Painel lateral de formulário */
 .painel-form {
   background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--r) * 1.5);
   padding: clamp(20px, 2.4vw, 32px);
   display: grid;
   gap: 18px;

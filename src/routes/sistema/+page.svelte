@@ -309,11 +309,12 @@
 </section>
 
 <style>
-  /* Campo laranja */
+  /* Cabeça da página */
   .hero {
-    background: var(--orange);
-    color: var(--orange-ink);
-    padding-block: clamp(32px, 6vw, 72px) clamp(36px, 6vw, 80px);
+    background: var(--surface);
+    color: var(--ink);
+    border-bottom: 1px solid var(--line);
+    padding-block: clamp(28px, 5vw, 56px) clamp(28px, 5vw, 56px);
     display: grid;
     gap: clamp(20px, 3vw, 36px);
   }
@@ -335,7 +336,7 @@
   .giant {
     font-size: var(--s-giant);
     font-weight: 700;
-    letter-spacing: -0.045em;
+    letter-spacing: -0.03em;
     line-height: 0.88;
     white-space: nowrap;
     overflow: hidden;
@@ -366,11 +367,11 @@
     margin-top: 18px;
   }
   .hero .btn {
-    background: var(--orange-ink);
-    color: var(--orange);
+    background: var(--orange);
+    color: var(--orange-ink);
   }
   .hero .btn:hover {
-    background: color-mix(in srgb, var(--orange-ink) 85%, var(--orange) 15%);
+    background: color-mix(in srgb, var(--orange) 88%, #000 12%);
   }
   .hero-msg {
     margin-top: 12px;

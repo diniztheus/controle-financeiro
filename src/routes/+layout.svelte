@@ -64,8 +64,9 @@
     position: sticky;
     top: env(safe-area-inset-top, 0px);
     z-index: var(--z-bar);
-    background: var(--orange);
-    color: var(--orange-ink);
+    background: var(--surface);
+    color: var(--ink);
+    border-bottom: 1px solid var(--line);
     display: grid;
     grid-template-columns: auto auto minmax(0, 1fr) auto;
     align-items: center;
@@ -95,11 +96,11 @@
     opacity: 0.5;
   }
   .dot.ok {
-    background: #0f6b3c;
+    background: var(--pos);
     opacity: 1;
   }
   .dot.warn {
-    background: #7a2600;
+    background: var(--neg);
     opacity: 1;
   }
   .nav {
@@ -125,8 +126,11 @@
     text-decoration-thickness: 2px;
     transition: text-decoration-color var(--t);
   }
-  .nav a:hover,
+  .nav a:hover {
+    text-decoration-color: currentColor;
+  }
   .nav a[aria-current='page'] {
+    color: var(--orange);
     text-decoration-color: currentColor;
   }
   .nav a[aria-current='page'] {
@@ -138,11 +142,11 @@
     cursor: default;
   }
   .novo {
-    background: var(--orange-ink);
-    color: var(--orange);
+    background: var(--orange);
+    color: var(--orange-ink);
   }
   .novo:hover {
-    background: color-mix(in srgb, var(--orange-ink) 85%, var(--orange) 15%);
+    background: color-mix(in srgb, var(--orange) 88%, #000 12%);
   }
   @media (max-width: 1100px) {
     .breve {
@@ -175,10 +179,10 @@
     gap: 14px;
   }
   .foot .name {
-    font-size: clamp(2.5rem, 1rem + 7vw, 7.5rem);
-    font-weight: 700;
-    letter-spacing: -0.045em;
-    line-height: 0.9;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
   }
   .foot p:not(.name) {
     color: var(--muted);
@@ -199,10 +203,11 @@
     position: fixed;
     right: 16px;
     bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-    width: 60px;
-    height: 60px;
-    background: var(--ink);
-    color: var(--paper);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--orange);
+    color: var(--orange-ink);
     display: none;
     place-items: center;
     font-size: 2rem;

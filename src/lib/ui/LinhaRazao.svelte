@@ -43,7 +43,7 @@
     align-items: baseline;
     column-gap: 2px;
     padding: 8px 12px;
-    background: color-mix(in srgb, var(--orange) 86%, #fff 14%);
+    background: var(--orange-soft);
     color: inherit;
   }
   .lb {
@@ -72,7 +72,7 @@
     padding-left: 0.12em;
   }
   .total {
-    background: var(--orange-ink);
-    color: var(--orange);
+    background: var(--orange);
+    color: var(--orange-ink);
   }
 </style>

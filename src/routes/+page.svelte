@@ -260,9 +260,10 @@
 
 <style>
   .hero {
-    background: var(--orange);
-    color: var(--orange-ink);
-    padding-block: clamp(32px, 6vw, 72px) clamp(36px, 6vw, 80px);
+    background: var(--surface);
+    color: var(--ink);
+    border-bottom: 1px solid var(--line);
+    padding-block: clamp(28px, 5vw, 56px) clamp(28px, 5vw, 56px);
     display: grid;
     gap: clamp(20px, 3vw, 36px);
   }
@@ -285,7 +286,7 @@
     /* Encolhe com a quantidade de dígitos: um valor nunca é cortado. */
     font-size: min(var(--s-giant), calc((100vw - 2 * var(--gut)) / (var(--n, 12) * 0.56)));
     font-weight: 700;
-    letter-spacing: -0.045em;
+    letter-spacing: -0.03em;
     line-height: 0.88;
     white-space: nowrap;
     padding-bottom: 0.06em;
@@ -323,15 +324,15 @@
     margin-top: 18px;
   }
   .hero .btn {
-    background: var(--orange-ink);
-    color: var(--orange);
+    background: var(--orange);
+    color: var(--orange-ink);
   }
   .hero .btn:hover {
-    background: color-mix(in srgb, var(--orange-ink) 85%, var(--orange) 15%);
+    background: color-mix(in srgb, var(--orange) 88%, #000 12%);
   }
   .hero .btn.alt {
-    background: color-mix(in srgb, var(--orange) 78%, #000 22%);
-    color: var(--orange-ink);
+    background: var(--step);
+    color: var(--ink);
   }
   .ledger {
     display: grid;
@@ -355,7 +356,7 @@
     align-content: start;
   }
   .big {
-    font-size: clamp(2.5rem, 1.6rem + 3.4vw, 4.5rem);
+    font-size: clamp(2rem, 1.4rem + 2.4vw, 3rem);
     font-weight: 700;
     letter-spacing: -0.04em;
     line-height: 0.95;
