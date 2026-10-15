@@ -1,0 +1,17 @@
+node_modules
+/.svelte-kit
+/build
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+/.taste-skill
+.env
+.env.*
+!.env.example
+*.db
+*.db-wal
+*.db-shm
+.DS_Store
+Thumbs.db
+vite.config.ts.timestamp-*

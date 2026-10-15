@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+build
+.svelte-kit
+node_modules
+drizzle/meta
+test-results
+playwright-report
+static
+docs/PLANO-SITE-LOCAL.md
