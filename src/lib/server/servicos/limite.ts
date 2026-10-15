@@ -1,0 +1,37 @@
+/**
+ * Limite de gastos do mês. Nesta onda existe o limite padrão (vale para todo mês), como no app
+ * atual; limites por mês específico chegam na Onda 4 e já têm lugar na mesma tabela.
+ */
+import { eq } from 'drizzle-orm';
+import type { Mes } from '../../dominio/datas.ts';
+import type { Centavos } from '../../dominio/dinheiro.ts';
+import type { Banco } from '../db/conexao.ts';
+import { limitesMensais } from '../db/esquema.ts';
+import { ErroDeNegocio } from './erros.ts';
+
+export const PADRAO = 'padrao';
+
+/** Limite que vale para o mês: o do próprio mês, se houver, senão o padrão. `null` = sem limite. */
+export function limiteDoMes(banco: Banco, mes: Mes): Centavos | null {
+  for (const chave of [mes, PADRAO]) {
+    const r = banco.db.select().from(limitesMensais).where(eq(limitesMensais.mes, chave)).get();
+    if (r) return r.valorCentavos > 0 ? r.valorCentavos : null;
+  }
+  return null;
+}
+
+/** Define o limite padrão. Zero remove. */
+export function definirLimitePadrao(banco: Banco, valorCentavos: Centavos): void {
+  if (!Number.isSafeInteger(valorCentavos) || valorCentavos < 0) {
+    throw new ErroDeNegocio('O limite não pode ser negativo.', 'valor');
+  }
+  if (valorCentavos === 0) {
+    banco.db.delete(limitesMensais).where(eq(limitesMensais.mes, PADRAO)).run();
+    return;
+  }
+  banco.db
+    .insert(limitesMensais)
+    .values({ mes: PADRAO, valorCentavos })
+    .onConflictDoUpdate({ target: limitesMensais.mes, set: { valorCentavos } })
+    .run();
+}

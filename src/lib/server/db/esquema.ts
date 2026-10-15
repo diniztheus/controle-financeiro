@@ -23,6 +23,7 @@ import {
   type AnySQLiteColumn,
 } from 'drizzle-orm/sqlite-core';
 import { ulid } from 'ulid';
+import { TIPOS_CONTA } from '../../dominio/contas.ts';
 
 // ---------------------------------------------------------------- auxiliares
 
@@ -63,8 +64,7 @@ const inteiro = (c: AnySQLiteColumn) => sql`typeof(${c}) = 'integer'`;
 
 const boolSql = (c: AnySQLiteColumn) => sql`(typeof(${c}) = 'integer' AND ${c} IN (0, 1))`;
 
-export const TIPOS_CONTA = ['corrente', 'poupanca', 'investimento', 'dinheiro', 'outro'] as const;
-export type TipoConta = (typeof TIPOS_CONTA)[number];
+export { TIPOS_CONTA, type TipoConta } from '../../dominio/contas.ts';
 
 export const MEIOS = ['conta', 'cartao'] as const;
 export type Meio = (typeof MEIOS)[number];

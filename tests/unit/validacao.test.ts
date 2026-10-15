@@ -40,3 +40,58 @@ describe('esquemas compartilhados', () => {
     expect(nome.safeParse('123456').success).toBe(false);
   });
 });
+
+describe('formulários do núcleo', () => {
+  it('conta: saldo negativo aceito, tipo inválido recusado', async () => {
+    const { contaForm } = await import('../../src/lib/validacao/nucleo');
+    expect(contaForm.parse({ nome: ' Nubank ', tipo: 'corrente', saldo: '-1.234,56' })).toEqual({
+      nome: 'Nubank',
+      tipo: 'corrente',
+      saldo: -123456,
+    });
+    expect(contaForm.safeParse({ nome: 'x', tipo: 'pix', saldo: '1' }).success).toBe(false);
+    expect(contaForm.safeParse({ nome: '  ', tipo: 'corrente', saldo: '1' }).success).toBe(false);
+  });
+
+  it('gasto: descrição e conta opcionais; valor positivo; data real', async () => {
+    const { gastoForm, errosPorCampo } = await import('../../src/lib/validacao/nucleo');
+    expect(
+      gastoForm.parse({
+        valor: '42,90',
+        descricao: '  ',
+        categoriaId: 'c',
+        data: '2026-10-15',
+        contaId: '',
+      }),
+    ).toEqual({
+      valor: 4290,
+      descricao: null,
+      categoriaId: 'c',
+      data: '2026-10-15',
+      contaId: null,
+    });
+    expect(gastoForm.parse({ valor: '1', categoriaId: 'c', data: '2026-10-15' })).toMatchObject({
+      descricao: null,
+      contaId: null,
+    });
+    const r = gastoForm.safeParse({ valor: '0', categoriaId: '', data: '2026-02-30' });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(Object.keys(errosPorCampo(r.error)).sort()).toEqual(['categoriaId', 'data', 'valor']);
+    }
+  });
+
+  it('categoria: cor da paleta ou vazia', async () => {
+    const { categoriaForm } = await import('../../src/lib/validacao/nucleo');
+    expect(categoriaForm.parse({ nome: 'Pets', cor: 'c3' })).toEqual({ nome: 'Pets', cor: 'c3' });
+    expect(categoriaForm.parse({ nome: 'Pets', cor: '' })).toEqual({ nome: 'Pets', cor: null });
+    expect(categoriaForm.safeParse({ nome: 'Pets', cor: 'red' }).success).toBe(false);
+  });
+
+  it('limite: vazio vira zero; negativo recusado', async () => {
+    const { limiteForm } = await import('../../src/lib/validacao/nucleo');
+    expect(limiteForm.parse({ valor: '' })).toEqual({ valor: 0 });
+    expect(limiteForm.parse({ valor: '3.000' })).toEqual({ valor: 300000 });
+    expect(limiteForm.safeParse({ valor: '-1' }).success).toBe(false);
+  });
+});

@@ -6,6 +6,9 @@ import { z } from 'zod';
 import { ehDia, ehMes } from '../dominio/datas.ts';
 import { MAX_PARCELAS, parseValor } from '../dominio/dinheiro.ts';
 
+// Mensagens padrão do Zod em português (campo ausente, tipo errado…).
+z.config(z.locales.pt());
+
 /** Campo de valor digitado em reais ("1.234,56") → centavos inteiros. */
 export const valorEmReais = z.string().transform((texto, ctx) => {
   const v = parseValor(texto);
