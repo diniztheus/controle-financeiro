@@ -142,6 +142,22 @@
           cauda={tam.cauda}
         />
         <LinhaRazao
+          rotulo="Integridade"
+          detalhe={data.integridade
+            ? `verificada em ${quando(data.integridade.verificadoEm)}`
+            : 'ainda não verificada'}
+          inteiro={data.integridade ? (data.integridade.ok ? 'ok' : 'problemas') : '—'}
+          testid="linha-integridade"
+        />
+        <LinhaRazao
+          rotulo="Backup automático"
+          detalhe={data.backupAuto?.ultimoAutomatico
+            ? `último em ${quando(data.backupAuto.ultimoAutomatico)}`
+            : 'nenhum automático ainda'}
+          inteiro={data.backupAuto?.ativo ? 'ligado' : 'desligado'}
+          testid="linha-backup-auto"
+        />
+        <LinhaRazao
           rotulo={st.conectado ? 'Banco conectado' : 'Banco sem resposta'}
           detalhe={`SQLite ${st.pragmas.sqliteVersao} · ${st.pragmas.journalMode.toUpperCase()}`}
           inteiro={st.ok ? 'ok' : '—'}

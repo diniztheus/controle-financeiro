@@ -1,11 +1,12 @@
 /**
- * Exportação dos lançamentos de um período (meses inteiros) em CSV ou JSON.
- * GET /relatorios/exportar?de=AAAA-MM&ate=AAAA-MM&formato=csv|json → arquivo para baixar.
+ * Exportação dos lançamentos (ou das receitas) de um período (meses inteiros) em CSV ou JSON.
+ * GET /relatorios/exportar?de=AAAA-MM&ate=AAAA-MM&formato=csv|json&tipo=gastos|receitas → arquivo.
+ * Sem `tipo`, exporta os gastos (como antes).
  */
 import { ehMes } from '$lib/dominio/datas';
 import { obterBanco } from '$lib/server/db';
 import { ErroDeNegocio } from '$lib/server/servicos/erros';
-import { exportar } from '$lib/server/servicos/relatorios';
+import { exportar, exportarReceitas } from '$lib/server/servicos/relatorios';
 import type { RequestHandler } from './$types';
 
 /** Resposta de erro em texto simples, legível no navegador. */
@@ -27,9 +28,16 @@ export const GET: RequestHandler = ({ url }) => {
   if (formato !== 'csv' && formato !== 'json') {
     return falha('Formato inválido. Use formato=csv ou formato=json.');
   }
+  const tipo = url.searchParams.get('tipo') ?? 'gastos';
+  if (tipo !== 'gastos' && tipo !== 'receitas') {
+    return falha('Tipo inválido. Use tipo=gastos ou tipo=receitas.');
+  }
 
   try {
-    const arquivo = exportar(obterBanco(), { de, ate, formato });
+    const arquivo =
+      tipo === 'receitas'
+        ? exportarReceitas(obterBanco(), { de, ate, formato })
+        : exportar(obterBanco(), { de, ate, formato });
     return new Response(arquivo.conteudo, {
       headers: {
         'Content-Type': arquivo.tipo,

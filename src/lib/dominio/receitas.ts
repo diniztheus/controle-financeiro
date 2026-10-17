@@ -5,8 +5,8 @@
  * arredondados "meio para cima" (na magnitude) uma única vez no fim de cada conta.
  * Receita é só registro: não altera o saldo das contas. Este módulo não conhece banco nem tela.
  */
-import { ehMes, type Dia, type Mes } from './datas.ts';
-import { somar } from './dinheiro.ts';
+import { ehDia, ehMes, type Dia, type Mes } from './datas.ts';
+import { ehCentavos, somar } from './dinheiro.ts';
 
 export const CATEGORIAS_RECEITA = [
   'Salário',
@@ -134,4 +134,85 @@ export function fluxoMensal(
     mes,
     ...resumoFluxo(entradasPorMes[mes] ?? 0, saidasPorMes[mes] ?? 0),
   }));
+}
+
+/** Situação na busca: recebida = confirmada; prevista = gerada por recorrente e ainda não recebida. */
+export type SituacaoReceita = 'recebida' | 'prevista' | 'todas';
+
+export interface FiltroReceitas {
+  /** Trecho procurado em descrição, categoria e conta. Ignora maiúsculas e acentos. */
+  texto?: string;
+  /** Primeiro dia incluído, "AAAA-MM-DD". */
+  de?: Dia;
+  /** Último dia incluído, "AAAA-MM-DD". */
+  ate?: Dia;
+  /** Nome exato da categoria de receita. */
+  categoria?: string;
+  /** Nome exato da conta que recebeu. */
+  contaNome?: string;
+  /** Padrão: todas. */
+  situacao?: SituacaoReceita;
+  /** Menor valor, em centavos (incluído). */
+  minCentavos?: number;
+  /** Maior valor, em centavos (incluído). */
+  maxCentavos?: number;
+}
+
+const SITUACOES: readonly SituacaoReceita[] = ['recebida', 'prevista', 'todas'];
+
+/** Normaliza para comparação: sem acentos (NFD) e em minúsculas. */
+function normalizarTextoReceita(s: string): string {
+  return s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+}
+
+function validarFiltroReceitas(f: FiltroReceitas): void {
+  for (const [nome, dia] of [
+    ['de', f.de],
+    ['ate', f.ate],
+  ] as const) {
+    if (dia !== undefined && !ehDia(dia)) throw new RangeError(`Dia inválido em ${nome}: "${dia}"`);
+  }
+  for (const [nome, valor] of [
+    ['minCentavos', f.minCentavos],
+    ['maxCentavos', f.maxCentavos],
+  ] as const) {
+    if (valor !== undefined && !ehCentavos(valor)) {
+      throw new RangeError(`${nome} precisa ser centavos inteiros: ${valor}`);
+    }
+  }
+  if (f.situacao !== undefined && !SITUACOES.includes(f.situacao)) {
+    throw new RangeError(`Situação inválida: "${f.situacao}"`);
+  }
+}
+
+/** A receita ainda é prevista (não recebida). Ausente conta como recebida. */
+export function ehPrevista(r: ReceitaDoMes): boolean {
+  return r.confirmada === false;
+}
+
+/**
+ * Receitas que atendem a todos os critérios informados (E lógico). Critério ausente, vazio ou em
+ * branco não filtra. Devolve um array novo; a entrada não é alterada.
+ */
+export function filtrarReceitas(r: readonly ReceitaDoMes[], f: FiltroReceitas): ReceitaDoMes[] {
+  validarFiltroReceitas(f);
+  const texto = normalizarTextoReceita((f.texto ?? '').trim());
+  const situacao = f.situacao ?? 'todas';
+
+  return r.filter((x) => {
+    if (texto) {
+      const campos = [x.descricao, x.categoria, x.contaNome];
+      const achou = campos.some((c) => c != null && normalizarTextoReceita(c).includes(texto));
+      if (!achou) return false;
+    }
+    if (f.de !== undefined && x.data < f.de) return false;
+    if (f.ate !== undefined && x.data > f.ate) return false;
+    if (f.categoria && x.categoria !== f.categoria) return false;
+    if (f.contaNome && x.contaNome !== f.contaNome) return false;
+    if (situacao === 'recebida' && ehPrevista(x)) return false;
+    if (situacao === 'prevista' && !ehPrevista(x)) return false;
+    if (f.minCentavos !== undefined && x.valorCentavos < f.minCentavos) return false;
+    if (f.maxCentavos !== undefined && x.valorCentavos > f.maxCentavos) return false;
+    return true;
+  });
 }

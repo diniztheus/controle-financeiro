@@ -14,6 +14,8 @@ import {
   lancamentosParaCsv,
   lancamentosParaJson,
   maioresGastos,
+  receitasParaCsv,
+  receitasParaJson,
   type FiltroLancamentos,
   type PontoPatrimonio,
   type RegistroSaldo,
@@ -38,10 +40,12 @@ import { ErroDeNegocio } from './erros.ts';
 import { listarMovimentos } from './bitcoin.ts';
 import { receitasDoMes } from './receitas.ts';
 import {
+  filtrarReceitas,
   fluxoMensal,
   porCategoriaReceita,
   resumoFluxo,
   type FatiaReceita,
+  type FiltroReceitas,
   type FluxoMes,
   type ReceitaDoMes,
   type ResumoFluxo,
@@ -239,6 +243,71 @@ export function exportar(
       nome: `${base}.json`,
       tipo: 'application/json; charset=utf-8',
       conteudo: lancamentosParaJson(lancamentos),
+    };
+  }
+  throw new ErroDeNegocio('Formato inválido. Use csv ou json.', 'formato');
+}
+
+/** Resultado da busca de receitas: recebidas e previstas somadas à parte (previstas não entram). */
+export interface BuscaReceitas {
+  receitas: ReceitaDoMes[];
+  totalRecebidoCentavos: number;
+  totalPrevistoCentavos: number;
+  truncado: boolean;
+}
+
+/** Receitas (fora da lixeira) de cada mês do período, do mês mais antigo ao mais novo. */
+function receitasNoPeriodo(banco: Banco, de: Mes, ate: Mes): ReceitaDoMes[] {
+  return intervaloDeMeses(de, ate).flatMap((mes) => receitasDoMes(banco, mes));
+}
+
+/**
+ * Busca de receitas com filtros. Sem período, vale os últimos 12 meses até o mês atual. Se vierem
+ * datas (`de`/`ate`), elas definem os meses consultados e também filtram os dias. Mais recentes
+ * primeiro.
+ */
+export function buscarReceitas(
+  banco: Banco,
+  f: FiltroReceitas & { deMes?: Mes; ateMes?: Mes },
+  agora: Date = new Date(),
+): BuscaReceitas {
+  const { deMes, ateMes, ...filtro } = f;
+  const ate = ateMes ?? (f.ate ? mesDe(f.ate) : mesAtual(agora));
+  const de = deMes ?? (f.de ? mesDe(f.de) : somarMeses(ate, -11));
+  const encontradas = filtrarReceitas(receitasNoPeriodo(banco, de, ate), filtro).sort((a, b) =>
+    b.data.localeCompare(a.data),
+  );
+  const recebidas = encontradas.filter((r) => r.confirmada !== false);
+  const previstas = encontradas.filter((r) => r.confirmada === false);
+  return {
+    receitas: encontradas.slice(0, MAX_LINHAS_BUSCA),
+    totalRecebidoCentavos: somar(recebidas.map((r) => r.valorCentavos)),
+    totalPrevistoCentavos: somar(previstas.map((r) => r.valorCentavos)),
+    truncado: encontradas.length > MAX_LINHAS_BUSCA,
+  };
+}
+
+/** Exporta as receitas do período (mais antiga primeiro). CSV traz BOM para o Excel. */
+export function exportarReceitas(
+  banco: Banco,
+  d: { de: Mes; ate: Mes; formato: 'csv' | 'json' },
+): { nome: string; tipo: string; conteudo: string } {
+  const receitas = receitasNoPeriodo(banco, d.de, d.ate).sort(
+    (a, b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id),
+  );
+  const base = `receitas-${d.de}-a-${d.ate}`;
+  if (d.formato === 'csv') {
+    return {
+      nome: `${base}.csv`,
+      tipo: 'text/csv; charset=utf-8',
+      conteudo: BOM_UTF8 + receitasParaCsv(receitas),
+    };
+  }
+  if (d.formato === 'json') {
+    return {
+      nome: `${base}.json`,
+      tipo: 'application/json; charset=utf-8',
+      conteudo: receitasParaJson(receitas),
     };
   }
   throw new ErroDeNegocio('Formato inválido. Use csv ou json.', 'formato');

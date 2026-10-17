@@ -22,7 +22,11 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "backup": "node scripts/backup.ts",
+    "restaurar": "node scripts/restaurar.ts",
     "importar": "node scripts/importar.ts",
+    "iniciar-com-o-computador": "node scripts/iniciar-com-o-computador.ts",
+    "parar-de-iniciar": "node scripts/parar-de-iniciar.ts",
+    "icones": "node scripts/gerar-icones.ts",
     "db:generate": "drizzle-kit generate",
     "verificar": "pnpm check && pnpm lint && pnpm test && pnpm test:e2e"
   },

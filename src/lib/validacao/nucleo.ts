@@ -264,6 +264,37 @@ export const limiteForm = z.object({
     .refine((v) => v >= 0, 'O limite não pode ser negativo'),
 });
 
+/**
+ * Formulários do PIN. Cada campo é opcional (vazio vira `undefined`) e, quando preenchido, precisa
+ * ter de 4 a 12 dígitos. Quem chama confere quais campos a ação exige:
+ * - `pin`: o PIN digitado para entrar ou definir;
+ * - `atual`: o PIN atual, para trocar ou remover;
+ * - `novo`: o PIN novo, para trocar.
+ * `lembrar` é o checkbox "Manter conectado por 30 dias".
+ */
+const pinOpcional = (rotulo: string) =>
+  z
+    .string()
+    .optional()
+    .transform((s) => (s ?? '').trim())
+    .pipe(
+      z
+        .string()
+        .regex(/^(\d{4,12})?$/, `${rotulo} precisa ter de 4 a 12 números`)
+        .transform((s) => (s === '' ? undefined : s)),
+    );
+
+export const pinForm = z.object({
+  pin: pinOpcional('O PIN'),
+  atual: pinOpcional('O PIN atual'),
+  novo: pinOpcional('O PIN novo'),
+  lembrar: z
+    .string()
+    .optional()
+    .transform((v) => v === 'on' || v === 'true' || v === '1'),
+});
+export type PinForm = z.output<typeof pinForm>;
+
 /** Lê um FormData em objeto simples (só os campos de texto). */
 export function lerForm(fd: FormData): Record<string, string> {
   const o: Record<string, string> = {};
@@ -416,3 +447,49 @@ export const filtroForm = z
     maxCentavos: f.max,
   }));
 export type FiltroForm = z.output<typeof filtroForm>;
+
+/** Situação de GET na busca de receitas: vazio = todas. */
+const situacaoGet = z
+  .enum(['recebida', 'prevista', 'todas'], { message: 'Situação inválida' })
+  .or(z.literal(''))
+  .optional()
+  .transform((s) => s || undefined);
+
+/**
+ * Filtros da busca de receitas (GET: q, de, ate, categoria, origem, situacao, min, max; todos
+ * opcionais). Saída: filtro do domínio (FiltroReceitas), com as chaves ausentes em `undefined`.
+ */
+export const filtroReceitasForm = z
+  .object({
+    q: textoGet('O texto', 80),
+    de: diaGet('A data inicial'),
+    ate: diaGet('A data final'),
+    categoria: textoGet('A categoria', 60),
+    origem: textoGet('A conta', 60),
+    situacao: situacaoGet,
+    min: valorGet('O valor mínimo'),
+    max: valorGet('O valor máximo'),
+  })
+  .superRefine((f, ctx) => {
+    if (f.de && f.ate && f.de > f.ate) {
+      ctx.addIssue({ code: 'custom', path: ['ate'], message: 'A data final é antes da inicial' });
+    }
+    if (f.min !== undefined && f.max !== undefined && f.min > f.max) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['max'],
+        message: 'O valor máximo é menor que o mínimo',
+      });
+    }
+  })
+  .transform((f) => ({
+    texto: f.q,
+    de: f.de,
+    ate: f.ate,
+    categoria: f.categoria,
+    contaNome: f.origem,
+    situacao: f.situacao,
+    minCentavos: f.min,
+    maxCentavos: f.max,
+  }));
+export type FiltroReceitasForm = z.output<typeof filtroReceitasForm>;

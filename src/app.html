@@ -7,6 +7,18 @@
     <meta name="theme-color" content="#f5f6f4" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0e1216" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="%sveltekit.assets%/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Finanças" />
+    <script>
+      // Aplica o tema salvo antes da primeira pintura (mesma regra de src/lib/ui/tema.ts).
+      try {
+        var tema = localStorage.getItem('tema');
+        if (tema === 'claro') document.documentElement.setAttribute('data-theme', 'light');
+        else if (tema === 'escuro') document.documentElement.setAttribute('data-theme', 'dark');
+      } catch (e) {}
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">

@@ -8,6 +8,7 @@ import { satsParaCentavos } from './bitcoin.ts';
 import { ehDia, ehMes, type Dia, type Mes, ultimoDiaDoMes } from './datas.ts';
 import { ehCentavos, centavosParaCampo, somar, type Centavos } from './dinheiro.ts';
 import type { Lancamento } from './lancamentos.ts';
+import type { ReceitaDoMes } from './receitas.ts';
 
 export interface FiltroLancamentos {
   /** Trecho procurado em descrição, categoria, conta e cartão. Ignora maiúsculas e acentos. */
@@ -325,6 +326,57 @@ export function lancamentosParaJson(l: readonly Lancamento[]): string {
         numParcelas: x.numParcelas,
         meio: x.meio,
         origem: x.contaNome ?? x.cartaoNome ?? null,
+      };
+    }),
+    null,
+    2,
+  );
+}
+
+const CABECALHO_CSV_RECEITAS = [
+  'Data',
+  'Descrição',
+  'Categoria',
+  'Valor',
+  'Conta',
+  'Situação',
+  'Recorrente',
+] as const;
+
+/** CSV de receitas: mesmas regras do CSV de lançamentos (`;`, vírgula decimal, `\r\n`, sem BOM). */
+export function receitasParaCsv(r: readonly ReceitaDoMes[]): string {
+  const linhas = r.map((x) =>
+    [
+      x.data,
+      x.descricao ?? '',
+      x.categoria,
+      centavosParaCampo(x.valorCentavos),
+      x.contaNome ?? '',
+      x.confirmada === false ? 'Prevista' : 'Recebida',
+      x.recorrente ? 'Sim' : 'Não',
+    ]
+      .map((c, i) => (i === 3 ? c : celulaCsv(c)))
+      .join(';'),
+  );
+  return [CABECALHO_CSV_RECEITAS.join(';'), ...linhas].map((linha) => `${linha}\r\n`).join('');
+}
+
+/** JSON de receitas: valor em centavos e também como texto "42.90", como o de lançamentos. */
+export function receitasParaJson(r: readonly ReceitaDoMes[]): string {
+  return JSON.stringify(
+    r.map((x) => {
+      if (!ehCentavos(x.valorCentavos)) {
+        throw new RangeError(`Valor não está em centavos inteiros: ${x.valorCentavos}`);
+      }
+      return {
+        data: x.data,
+        descricao: x.descricao,
+        categoria: x.categoria,
+        valorCentavos: x.valorCentavos,
+        valor: valorComPonto(x.valorCentavos),
+        conta: x.contaNome,
+        situacao: x.confirmada === false ? 'prevista' : 'recebida',
+        recorrente: x.recorrente === true,
       };
     }),
     null,

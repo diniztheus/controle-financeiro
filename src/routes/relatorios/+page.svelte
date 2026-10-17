@@ -67,6 +67,11 @@
     <a class="btn" href={resolve('/busca')}>Buscar lançamentos</a>
     <a class="btn" href={linkExportar('csv')}>Exportar CSV</a>
     <a class="btn" href={linkExportar('json')}>Exportar JSON</a>
+    <a
+      class="btn"
+      href={resolve(`/relatorios/exportar?de=${data.de}&ate=${data.ate}&formato=csv&tipo=receitas`)}
+      >Exportar receitas (CSV)</a
+    >
   </nav>
 </header>
 

@@ -7,11 +7,12 @@
 
   let { data }: PageProps = $props();
   const v = $derived(data.valores);
+  const receitas = $derived(data.tipo === 'receitas');
   /** Links de exportação para o período da busca (meses inteiros, como a tela de relatórios). */
   const linkExportar = (formato: 'csv' | 'json') =>
     data.periodo
       ? resolve(
-          `/relatorios/exportar?de=${data.periodo.de}&ate=${data.periodo.ate}&formato=${formato}`,
+          `/relatorios/exportar?de=${data.periodo.de}&ate=${data.periodo.ate}&formato=${formato}${receitas ? '&tipo=receitas' : ''}`,
         )
       : null;
   const exportarCsv = $derived(linkExportar('csv'));
@@ -26,9 +27,27 @@
   <div>
     <h1>Buscar lançamentos</h1>
     <p>
-      Procure gastos por texto, categoria, conta ou valor. Sem datas, a busca cobre os últimos 12
-      meses.
+      {#if receitas}
+        Procure receitas por texto, categoria, conta, situação ou valor. Sem datas, a busca cobre os
+        últimos 12 meses.
+      {:else}
+        Procure gastos por texto, categoria, conta ou valor. Sem datas, a busca cobre os últimos 12
+        meses.
+      {/if}
     </p>
+    <nav class="tipo" aria-label="Procurar em">
+      <span class="small muted">Procurar em:</span>
+      <a
+        class="btn{receitas ? '' : ' ink'}"
+        href={resolve('/busca')}
+        aria-current={receitas ? undefined : 'page'}>Gastos</a
+      >
+      <a
+        class="btn{receitas ? ' ink' : ''}"
+        href={resolve('/busca?tipo=receitas')}
+        aria-current={receitas ? 'page' : undefined}>Receitas</a
+      >
+    </nav>
     <p class="voltar-l">
       <a class="voltar" href={resolve('/relatorios')}>Voltar aos relatórios</a>
     </p>
@@ -43,6 +62,75 @@
 
     {#if data.erro}
       <p class="err" role="alert">{data.erro}</p>
+    {:else if receitas && data.resultadoReceitas && data.periodo}
+      <div class="resumo">
+        <p class="resumo-total">
+          <span class="muted small">Total recebido</span>
+          <span class="big num" data-testid="total-recebido"
+            >{formatarBRL(data.resultadoReceitas.totalRecebidoCentavos)}</span
+          >
+        </p>
+        <p class="resumo-total">
+          <span class="muted small">Previsto, ainda não recebido</span>
+          <span class="num" data-testid="total-previsto"
+            >{formatarBRL(data.resultadoReceitas.totalPrevistoCentavos)}</span
+          >
+        </p>
+        <p data-testid="contagem">
+          {plural(data.resultadoReceitas.receitas.length, 'receita', 'receitas')}
+          de {tituloMes(data.periodo.de).toLowerCase()} a {tituloMes(
+            data.periodo.ate,
+          ).toLowerCase()}
+        </p>
+      </div>
+      <p class="note">As previstas não entram no total recebido.</p>
+
+      {#if data.resultadoReceitas.truncado}
+        <p class="note" role="status">
+          Mostrando só as 500 mais recentes. Refine os filtros ou diminua o período para ver o
+          resto.
+        </p>
+      {/if}
+
+      {#if data.resultadoReceitas.receitas.length}
+        <ul class="rows" data-testid="resultados">
+          {#each data.resultadoReceitas.receitas as r (r.id)}
+            <li>
+              <a class="row lanc" href={resolve('/receitas/[id]', { id: r.id })}>
+                <span class="row-main">
+                  <span class="row-title"
+                    >{r.descricao ?? r.categoria}{#if r.confirmada === false}
+                      <span class="tag">Prevista</span>{/if}</span
+                  >
+                  <span class="row-meta"
+                    >{diaCurto(r.data)} · {r.categoria} · {r.contaNome ?? 'Sem conta'}{r.recorrente
+                      ? ' · Recorrente'
+                      : ''}</span
+                  >
+                </span>
+                <span class="row-val num">{formatarBRL(r.valorCentavos)}</span>
+              </a>
+            </li>
+          {/each}
+        </ul>
+
+        {#if exportarCsv && exportarJson}
+          <div class="exportar">
+            <p class="note">
+              A exportação traz todas as receitas dos meses do período, sem os outros filtros.
+            </p>
+            <div class="acts">
+              <a class="btn" href={exportarCsv} data-sveltekit-reload>Exportar CSV</a>
+              <a class="btn" href={exportarJson} data-sveltekit-reload>Exportar JSON</a>
+            </div>
+          </div>
+        {/if}
+      {:else}
+        <div class="empty">
+          <strong>Nenhuma receita encontrada</strong>
+          <span>Confira os filtros ou amplie o período.</span>
+        </div>
+      {/if}
     {:else if data.resultado && data.periodo}
       <div class="resumo">
         <p class="resumo-total">
@@ -118,6 +206,7 @@
     <div class="painel-form">
       <h2>Filtros</h2>
       <form class="fc" method="GET" action={resolve('/busca')} data-testid="filtros">
+        {#if receitas}<input type="hidden" name="tipo" value="receitas" />{/if}
         <div class="field">
           <label for="b-q">Texto</label>
           <input
@@ -125,7 +214,9 @@
             name="q"
             value={v.q}
             maxlength="80"
-            placeholder="Descrição, categoria, conta ou cartão"
+            placeholder={receitas
+              ? 'Descrição, categoria ou conta'
+              : 'Descrição, categoria, conta ou cartão'}
             {...ariaErro(data.erros?.q, 'b-q')}
           />
           {#if data.erros?.q}<span class="err" id="b-q-erro">{data.erros.q}</span>{/if}
@@ -156,28 +247,57 @@
           </div>
         </div>
 
-        <div class="campos">
-          <div class="field">
-            <label for="b-categoria">Categoria</label>
-            <select id="b-categoria" name="categoria">
-              <option value="">Todas</option>
-              {#each data.categorias as c (c.id)}
-                <option value={c.id} selected={v.categoria === c.id}>{c.nome}</option>
-              {/each}
-            </select>
+        {#if receitas}
+          <div class="campos">
+            <div class="field">
+              <label for="b-categoria">Categoria</label>
+              <select id="b-categoria" name="categoria">
+                <option value="">Todas</option>
+                {#each data.categoriasReceita as c (c)}
+                  <option value={c} selected={v.categoria === c}>{c}</option>
+                {/each}
+              </select>
+            </div>
+            <div class="field">
+              <label for="b-situacao">Situação</label>
+              <select
+                id="b-situacao"
+                name="situacao"
+                {...ariaErro(data.erros?.situacao, 'b-situacao')}
+              >
+                <option value="" selected={v.situacao === ''}>Todas</option>
+                <option value="recebida" selected={v.situacao === 'recebida'}>Recebidas</option>
+                <option value="prevista" selected={v.situacao === 'prevista'}>Previstas</option>
+              </select>
+              {#if data.erros?.situacao}<span class="err" id="b-situacao-erro"
+                  >{data.erros.situacao}</span
+                >{/if}
+            </div>
           </div>
-          <div class="field">
-            <label for="b-meio">Pago com</label>
-            <select id="b-meio" name="meio">
-              <option value="" selected={v.meio === ''}>Qualquer</option>
-              <option value="conta" selected={v.meio === 'conta'}>Conta</option>
-              <option value="cartao" selected={v.meio === 'cartao'}>Cartão</option>
-            </select>
+        {:else}
+          <div class="campos">
+            <div class="field">
+              <label for="b-categoria">Categoria</label>
+              <select id="b-categoria" name="categoria">
+                <option value="">Todas</option>
+                {#each data.categorias as c (c.id)}
+                  <option value={c.id} selected={v.categoria === c.id}>{c.nome}</option>
+                {/each}
+              </select>
+            </div>
+            <div class="field">
+              <label for="b-meio">Pago com</label>
+              <select id="b-meio" name="meio">
+                <option value="" selected={v.meio === ''}>Qualquer</option>
+                <option value="conta" selected={v.meio === 'conta'}>Conta</option>
+                <option value="cartao" selected={v.meio === 'cartao'}>Cartão</option>
+              </select>
+            </div>
           </div>
-        </div>
+        {/if}
 
         <div class="field">
-          <label for="b-origem">Conta ou cartão</label>
+          <label for="b-origem">{receitas ? 'Conta' : 'Conta ou cartão'}</label>
           <input
             id="b-origem"
             name="origem"
@@ -226,7 +346,9 @@
         <div class="acts">
           <button class="btn ink" type="submit">Buscar</button>
           {#if data.temFiltro}
-            <a class="btn" href={resolve('/busca')}>Limpar filtros</a>
+            <a class="btn" href={resolve(receitas ? '/busca?tipo=receitas' : '/busca')}
+              >Limpar filtros</a
+            >
           {/if}
         </div>
       </form>
@@ -281,5 +403,12 @@
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+  }
+  .tipo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
   }
 </style>
