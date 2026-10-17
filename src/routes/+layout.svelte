@@ -7,6 +7,9 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { ativo, NAVEGACAO } from '$lib/ui/navegacao';
+  import AvisoIntegridade from '$lib/ui/AvisoIntegridade.svelte';
+  import Atalhos from '$lib/ui/Atalhos.svelte';
+  import SairDoPin from '$lib/ui/SairDoPin.svelte';
   import type { LayoutProps } from './$types';
 
   let { data, children }: LayoutProps = $props();
@@ -39,6 +42,8 @@
   <a class="btn novo" href="{resolve('/gastos')}#novo">Novo gasto</a>
 </header>
 
+<AvisoIntegridade />
+
 <main id="conteudo" tabindex="-1">
   {@render children()}
 </main>
@@ -51,9 +56,14 @@
   </p>
   <p class="foot-links">
     <a href={resolve('/lixeira')}>Lixeira</a>
+    <a href={resolve('/backups')}>Backups</a>
+    <a href={resolve('/configuracoes')}>Configurações</a>
     <a href={resolve('/sistema')}>Estado do sistema e backup</a>
   </p>
+  <SairDoPin />
 </footer>
+
+<Atalhos />
 
 {#if !naTelaDeGastos}
   <a class="fab" href="{resolve('/gastos')}#novo" aria-label="Novo gasto">+</a>
