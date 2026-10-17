@@ -121,6 +121,11 @@ Princípio: **`dominio/` não conhece banco nem tela**. Todas as contas de dinhe
 
 ## 5. Ondas de entrega
 
+**Estado (17/10/2026):** Ondas 0 a 5 concluídas, mais receitas, receitas recorrentes (com
+confirmação de recebimento) e o refinamento final (desempenho com 10 anos de dados, acessibilidade,
+páginas de erro e documentação). As ondas 2 a 5 têm nota em `docs/CHANGELOG.md`; o guia do dia a
+dia está em `docs/OPERACAO.md`.
+
 Cada onda termina com o site funcionando, testes passando e um commit marcado (`v0.1`, `v0.2`…). Você pode usar o app a partir do fim da Onda 1.
 
 ### Onda 0: Fundação
@@ -198,8 +203,8 @@ Objetivo: deixar o app robusto para anos de uso.
 7. Documentação final: como rodar, atualizar, fazer backup e restaurar.
 
 ### Backlog (fora do escopo inicial, para decidir depois)
-- Receitas/entradas e fluxo de caixa.
-- Gastos recorrentes (assinaturas) lançados automaticamente.
+- ~~Receitas/entradas e fluxo de caixa~~ e ~~receitas recorrentes (com confirmação de recebimento)~~: feitos depois da Onda 4.
+- Despesas recorrentes (assinaturas) lançadas automaticamente.
 - Opção de gastos debitarem o saldo da conta (hoje a regra é saldo manual; ficaria como chave de configuração).
 - Importar extrato OFX/CSV do banco (contradiz o "100% manual", por isso fica em espera).
 - Anexar foto de comprovante.

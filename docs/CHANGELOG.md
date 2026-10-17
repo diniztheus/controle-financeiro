@@ -2,6 +2,38 @@
 
 Uma nota curta por onda. Versões seguem as tags do git (`v0.0`, `v0.1`…).
 
+## Onda 5: Acabamento e operação (17/10/2026)
+
+- **Backups** (`/backups`): automático uma vez por dia, com rotação (guarda os últimos 30 por
+  padrão, de 1 a 365; só apaga os automáticos). Backup agora, excluir e **restaurar** pela tela:
+  o arquivo é conferido antes, o banco atual vira "Antes de restaurar" e a troca exige digitar
+  `restaurar`. No terminal: `pnpm restaurar` (com o site parado).
+- **Integridade**: verificação ao iniciar, com faixa de aviso em todas as telas quando achar
+  problema; botão "Verificar" em `/backups`.
+- **PIN opcional** (Configurações): guardado com scrypt, sessão em cookie assinado (12 horas, ou
+  30 dias com "Manter conectado"), bloqueio após tentativas erradas. Trocar ou remover o PIN
+  encerra as outras sessões.
+- **Acesso pela rede** desligado por padrão: `ACESSO_REDE=1` no `.env`, e só com PIN definido.
+- **Instalável como app** (PWA): manifesto, ícones e service worker sem cache (os dados nunca
+  ficam em cache).
+- **Atalhos de teclado**: `N` novo gasto, `R` nova receita, `B` buscar, `P` painel, `?` ajuda.
+- **Iniciar com o computador**: `pnpm iniciar-com-o-computador` para macOS, Windows e Linux, com
+  atalho opcional na área de trabalho (`--atalho`); `pnpm parar-de-iniciar` desfaz.
+- **Tema** automático, claro ou escuro (guardado neste navegador).
+- **Busca e exportação** passam a cobrir receitas, com recebidas e previstas separadas.
+- Sem migration nova nesta parte (o banco continua na `0005`).
+- **Desempenho** conferido com 10 anos de dados fictícios (4.800 gastos, 1.400 compras no cartão,
+  11.700 parcelas): nenhuma tela passa de 40 ms e o banco fica em torno de 5 MB. Comandos
+  `pnpm dados-teste --saida <pasta>` e `pnpm desempenho --saida <pasta>` (sempre numa pasta de
+  teste, nunca no banco real).
+- **Acessibilidade** auditada com axe em todas as telas (tema claro, escuro e celular) e em teste
+  automático: contraste do botão de perigo no tema escuro, áreas com rolagem focáveis por
+  teclado, botão flutuante do celular dentro de uma área de navegação.
+- **Páginas de erro** amigáveis (404 e erro interno, sem vazar detalhes) e um teste que percorre
+  o site seguindo os links, sem erro de página, de console nem texto estranho.
+- Espaçamento das seções mais compacto; `pnpm restaurar` cancela com mensagem se a entrada for
+  fechada. Guia de operação em `docs/OPERACAO.md`.
+
 ## Onda 2: Cartão de crédito + confirmação de recebimento (15/10/2026)
 
 - **Cartões** (`/cartoes`): cadastro com limite, dia de fechamento e de vencimento; limite
