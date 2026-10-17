@@ -81,7 +81,7 @@
     </div>
     <div>
       <dt>Versão do esquema</dt>
-      <dd class="num">{v.versaoEsquema ?? 'nenhuma'}</dd>
+      <dd class="num">{v.versaoEsquema?.replaceAll('_', ' ') ?? 'nenhuma'}</dd>
     </div>
     <div>
       <dt>Contas</dt>

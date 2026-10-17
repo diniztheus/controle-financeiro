@@ -117,7 +117,9 @@
   {:else}
     <BarrasFluxo pares={paresFluxo} resumo="Entradas e saídas de cada mês." />
     <h3 class="sub">Mês a mês</h3>
-    <div class="rolagem">
+    <!-- Área rolável: precisa ser focável por teclado (regra scrollable-region-focusable do axe). -->
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div class="rolagem" role="region" tabindex="0" aria-label="Mês a mês, com rolagem">
       <table>
         <caption class="sr">Entradas, saídas, saldo e taxa de poupança de cada mês</caption>
         <thead>
@@ -182,7 +184,9 @@
       <span>Lance gastos na tela Gastos e eles aparecem aqui, separados por categoria.</span>
     </div>
   {:else}
-    <div class="rolagem">
+    <!-- Área rolável: precisa ser focável por teclado (regra scrollable-region-focusable do axe). -->
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div class="rolagem" role="region" tabindex="0" aria-label="Categorias por mês, com rolagem">
       <table>
         <caption class="sr">Gasto de cada categoria em cada mês, com total e média mensal</caption>
         <thead>
@@ -236,7 +240,9 @@
       Vermelho quando o gasto subiu em relação ao mês anterior; verde quando caiu.
     </p>
     <BarrasMeses barras={barrasComparativo} resumo="Gasto total de cada mês." />
-    <div class="rolagem">
+    <!-- Área rolável: precisa ser focável por teclado (regra scrollable-region-focusable do axe). -->
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div class="rolagem" role="region" tabindex="0" aria-label="Comparativo mensal, com rolagem">
       <table>
         <caption class="sr">Gasto de cada mês e variação em relação ao mês anterior</caption>
         <thead>

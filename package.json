@@ -27,6 +27,8 @@
     "iniciar-com-o-computador": "node scripts/iniciar-com-o-computador.ts",
     "parar-de-iniciar": "node scripts/parar-de-iniciar.ts",
     "icones": "node scripts/gerar-icones.ts",
+    "dados-teste": "node scripts/gerar-dados-teste.ts",
+    "desempenho": "node scripts/medir-desempenho.ts",
     "db:generate": "drizzle-kit generate",
     "verificar": "pnpm check && pnpm lint && pnpm test && pnpm test:e2e"
   },
@@ -55,6 +57,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.1",
     "@sveltejs/adapter-node": "^5.5.7",

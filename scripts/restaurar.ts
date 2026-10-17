@@ -58,7 +58,11 @@ async function restaurar(arquivo: string): Promise<number> {
   const rl = createInterface({ input: stdin, output: stdout });
   let resposta: string;
   try {
-    resposta = await rl.question('Digite "restaurar" para continuar: ');
+    // Entrada fechada (ex.: `</dev/null`): `question` nunca responderia; trata como cancelamento.
+    resposta = await new Promise<string>((resolver) => {
+      rl.once('close', () => resolver(''));
+      void rl.question('Digite "restaurar" para continuar: ').then(resolver);
+    });
   } finally {
     rl.close();
   }

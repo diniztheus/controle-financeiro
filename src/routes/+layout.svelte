@@ -66,7 +66,9 @@
 <Atalhos />
 
 {#if !naTelaDeGastos}
-  <a class="fab" href="{resolve('/gastos')}#novo" aria-label="Novo gasto">+</a>
+  <nav aria-label="Ação rápida">
+    <a class="fab" href="{resolve('/gastos')}#novo" aria-label="Novo gasto">+</a>
+  </nav>
 {/if}
 
 <style>

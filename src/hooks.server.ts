@@ -1,4 +1,4 @@
-import type { Handle, ServerInit } from '@sveltejs/kit';
+import type { Handle, HandleServerError, ServerInit } from '@sveltejs/kit';
 import { obterBanco } from '$lib/server/db';
 import { garantirCategoriasPadrao } from '$lib/server/servicos/categorias';
 import { backupAutomaticoSeNecessario } from '$lib/server/servicos/backups';
@@ -38,6 +38,19 @@ export const init: ServerInit = () => {
       console.error('[backup]', e);
     }
   }, INTERVALO_BACKUP_MS).unref();
+};
+
+/**
+ * Erro inesperado numa página: registra o detalhe só no console do servidor, com um id curto,
+ * e devolve à tela uma mensagem genérica (o id permite localizar o registro).
+ */
+export const handleError: HandleServerError = ({ error, status, event }) => {
+  const id = crypto.randomUUID().slice(0, 8);
+  // Página inexistente não é falha do site: não polui o log do servidor.
+  if (status !== 404) {
+    console.error(`[erro ${id}] ${status} ${event.request.method} ${event.url.pathname}`, error);
+  }
+  return { message: 'Erro interno', id };
 };
 
 /**
