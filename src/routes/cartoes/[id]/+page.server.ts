@@ -6,6 +6,7 @@ import {
   arquivarCartao,
   desarquivarCartao,
   editarCartao,
+  listarCartoes,
   listarFaturasDoCartao,
   obterCartao,
   removerCartao,
@@ -20,6 +21,8 @@ export const load: PageServerLoad = ({ params }) => {
   return {
     cartao,
     aPagar: aPagarDoCartao(banco, cartao.id),
+    faturaAtual: listarCartoes(banco, { incluirArquivados: true }).find((x) => x.id === cartao.id)!
+      .faturaAtual,
     faturas: listarFaturasDoCartao(banco, cartao.id),
   };
 };

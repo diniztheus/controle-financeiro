@@ -156,6 +156,43 @@ describe('cadastro de cartões', () => {
   });
 });
 
+describe('fatura atual e próxima na lista de cartões', () => {
+  it('compra em 6x: a fatura atual mostra só a parcela do mês, não a dívida inteira', () => {
+    const c = cartao({ limiteCentavos: 500_000 });
+    compra(c, '2026-10-05', 60_000, 6);
+    const [item] = listarCartoes(banco, { hoje: '2026-10-08' });
+    expect(item!.aPagarCentavos).toBe(60_000);
+    expect(item!.faturaAtual).toEqual({
+      mes: '2026-10',
+      vencimento: '2026-10-20',
+      totalCentavos: 10_000,
+      paga: false,
+    });
+    expect(item!.faturaSeguinte).toMatchObject({ mes: '2026-11', totalCentavos: 10_000 });
+  });
+
+  it('depois do fechamento, a fatura fechada e não paga continua sendo a atual', () => {
+    const c = cartao();
+    compra(c, '2026-10-05', 60_000, 6);
+    expect(listarCartoes(banco, { hoje: '2026-10-15' })[0]!.faturaAtual.mes).toBe('2026-10');
+    pagarFatura(banco, c.id, '2026-10', { pagaEm: '2026-10-15' }, HOJE);
+    const [item] = listarCartoes(banco, { hoje: '2026-10-15' });
+    expect(item!.faturaAtual).toMatchObject({ mes: '2026-11', totalCentavos: 10_000 });
+    expect(item!.aPagarCentavos).toBe(50_000);
+  });
+
+  it('sem compras, a fatura atual é a do ciclo de hoje, zerada', () => {
+    cartao();
+    const [item] = listarCartoes(banco, { hoje: '2026-10-15' });
+    expect(item!.faturaAtual).toEqual({
+      mes: '2026-11',
+      vencimento: '2026-11-20',
+      totalCentavos: 0,
+      paga: false,
+    });
+  });
+});
+
 describe('compras parceladas e faturas', () => {
   it('10x gera 10 parcelas em 10 faturas seguidas, a partir da fatura da 1ª parcela', () => {
     const c = cartao();

@@ -41,10 +41,15 @@
     <p class="voltar-l"><a class="voltar" href={resolve('/cartoes')}>‹ Voltar aos cartões</a></p>
   </div>
   <div class="destaque" style="--fundo: {c.ativo ? 'var(--hero)' : 'var(--night)'}">
-    <p class="destaque-rot">A pagar</p>
-    <p class="destaque-val"><Valor centavos={data.aPagar} testid="a-pagar" /></p>
+    <p class="destaque-rot">Fatura atual · {tituloMes(data.faturaAtual.mes)}</p>
+    <p class="destaque-val"><Valor centavos={data.faturaAtual.totalCentavos} /></p>
     <p class="destaque-nota">
-      {c.limiteCentavos > 0 ? `de um limite de ${formatarBRL(c.limiteCentavos)}` : 'sem limite'}
+      {data.faturaAtual.paga ? 'Paga' : 'Vence'} em {formatarDia(data.faturaAtual.vencimento)}
+    </p>
+    <p class="destaque-nota">
+      Limite utilizado:
+      <span class="num" data-testid="a-pagar">{formatarBRL(data.aPagar)}</span>
+      {c.limiteCentavos > 0 ? `de ${formatarBRL(c.limiteCentavos)}` : '(sem limite)'}
       {#if !c.ativo}· <span class="tag">Arquivado</span>{/if}
     </p>
   </div>

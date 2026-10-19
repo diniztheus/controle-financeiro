@@ -31,7 +31,12 @@ import {
   type SituacaoFatura,
 } from '../../dominio/cartoes.ts';
 import { ehCentavos, somar, type Centavos } from '../../dominio/dinheiro.ts';
-import { dataFechamento, dataVencimento, type CicloCartao } from '../../dominio/fatura.ts';
+import {
+  dataFechamento,
+  dataVencimento,
+  mesDaFatura,
+  type CicloCartao,
+} from '../../dominio/fatura.ts';
 import { chaveNome, normalizarNome } from '../../dominio/nomes.ts';
 import type { Banco, BancoDrizzle } from '../db/conexao.ts';
 import { cartoes, categorias, compras, faturas, parcelas } from '../db/esquema.ts';
@@ -53,6 +58,20 @@ export interface CartaoNaLista extends Cartao {
   disponivelCentavos: Centavos | null;
   /** Fatura não paga mais antiga que tem compras; `null` se não há nenhuma. */
   proximaFatura: { mes: Mes; vencimento: Dia; totalCentavos: Centavos } | null;
+  /**
+   * A fatura a pagar agora: a não paga mais antiga até a do ciclo de hoje (fechada ou vencida
+   * contam), senão a do ciclo de hoje. Só as parcelas daquele mês, não a dívida inteira.
+   */
+  faturaAtual: ResumoFatura;
+  /** A fatura do mês seguinte à atual (parcelas futuras já lançadas). */
+  faturaSeguinte: ResumoFatura;
+}
+
+export interface ResumoFatura {
+  mes: Mes;
+  vencimento: Dia;
+  totalCentavos: Centavos;
+  paga: boolean;
 }
 
 export interface FaturaDetalhada {
@@ -390,18 +409,37 @@ function faturasComTotal(db: Leitor, cartaoId: string): FaturaComTotal[] {
  */
 export function listarCartoes(
   banco: Banco,
-  opcoes: { incluirArquivados?: boolean } = {},
+  opcoes: { incluirArquivados?: boolean; hoje?: Dia } = {},
 ): CartaoNaLista[] {
+  const dia = opcoes.hoje ?? hojeDe();
   return naoRemovidos(banco.db)
     .filter((c) => opcoes.incluirArquivados || c.ativo)
     .map((c) => {
       const aPagarCentavos = aPagarDoCartao(banco, c.id);
-      const naoPagas = faturasComTotal(banco.db, c.id)
+      const todas = faturasComTotal(banco.db, c.id);
+      const naoPagas = todas
         .filter((f) => f.pagaEm === null)
         .sort((a, b) => (a.mes < b.mes ? -1 : a.mes > b.mes ? 1 : 0));
       const primeira = naoPagas[0];
+
+      const ciclo: CicloCartao = { diaFechamento: c.diaFechamento, diaVencimento: c.diaVencimento };
+      const mesDoCiclo = mesDaFatura(ciclo, dia);
+      const atrasada = naoPagas.find((f) => f.mes <= mesDoCiclo);
+      const mesAtual = atrasada?.mes ?? mesDoCiclo;
+      const porMes = new Map(todas.map((f) => [f.mes, f]));
+      const resumo = (mes: Mes): ResumoFatura => {
+        const f = porMes.get(mes);
+        return {
+          mes,
+          vencimento: f?.dataVencimento ?? dataVencimento(ciclo, mes),
+          totalCentavos: f?.totalCentavos ?? 0,
+          paga: f ? f.pagaEm !== null : false,
+        };
+      };
       return {
         ...c,
+        faturaAtual: resumo(mesAtual),
+        faturaSeguinte: resumo(somarMeses(mesAtual, 1)),
         aPagarCentavos,
         disponivelCentavos: limiteDisponivel(c.limiteCentavos, aPagarCentavos),
         proximaFatura: primeira

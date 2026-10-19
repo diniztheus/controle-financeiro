@@ -2,16 +2,20 @@
   import { enhance } from '$app/forms';
   import { resolve } from '$app/paths';
   import { formatarDia } from '$lib/dominio/datas';
+  import { formatarBRL } from '$lib/dominio/dinheiro';
   import { situacaoLimite } from '$lib/dominio/resumo';
   import FormCartao from '$lib/ui/FormCartao.svelte';
   import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
-  import Medidor from '$lib/ui/Medidor.svelte';
   import Valor from '$lib/ui/Valor.svelte';
   import { tituloMes } from '$lib/ui/formato';
   import CreditCard from '@lucide/svelte/icons/credit-card';
   import type { PageProps } from './$types';
 
   let { data, form }: PageProps = $props();
+  /** Soma só das faturas a pagar agora (não das parcelas futuras). */
+  const totalFaturasAtuais = $derived(
+    data.cartoes.reduce((s, c) => s + (c.faturaAtual.paga ? 0 : c.faturaAtual.totalCentavos), 0),
+  );
   const erroCriar = $derived(form?.acao === 'criar' && !('ok' in form) ? form : null);
   const okCriar = $derived(form?.acao === 'criar' && 'ok' in form ? form.ok : null);
   const erroLinha = $derived(
@@ -38,9 +42,12 @@
     </p>
   </div>
   <div class="destaque">
-    <p class="destaque-rot">A pagar nos cartões</p>
-    <p class="destaque-val"><Valor centavos={data.aPagarTotal} testid="a-pagar-cartoes" /></p>
-    <p class="destaque-nota">a pagar em todos os cartões</p>
+    <p class="destaque-rot">Faturas atuais</p>
+    <p class="destaque-val"><Valor centavos={totalFaturasAtuais} testid="faturas-atuais" /></p>
+    <p class="destaque-nota">
+      Dívida total, com parcelas futuras:
+      <span class="num" data-testid="a-pagar-cartoes">{formatarBRL(data.aPagarTotal)}</span>
+    </p>
   </div>
 </header>
 
@@ -62,39 +69,89 @@
                 <a class="cc-nome" href={resolve('/cartoes/[id]', { id: c.id })}>{c.nome}</a>
               </div>
               <div class="cc-fatura">
-                <span class="cc-rot">A pagar</span>
-                <span class="cc-val"><Valor centavos={c.aPagarCentavos} /></span>
+                <span class="cc-rot">Fatura atual · {tituloMes(c.faturaAtual.mes)}</span>
+                <span class="cc-val"
+                  ><Valor centavos={c.faturaAtual.totalCentavos} testid="fatura-atual" /></span
+                >
               </div>
               <span class="cc-dias num"
-                >Fecha dia {c.diaFechamento} · vence dia {c.diaVencimento}</span
+                >{c.faturaAtual.paga ? 'Paga' : 'Vence'} em {formatarDia(c.faturaAtual.vencimento)}
+                · Fecha dia {c.diaFechamento} · vence dia {c.diaVencimento}</span
               >
             </div>
 
             <div class="cartao-info">
-              {#if c.limiteCentavos > 0}
-                <Medidor s={situacaoLimite(c.aPagarCentavos, c.limiteCentavos)!} />
+              {#if c.limiteCentavos > 0 && c.disponivelCentavos !== null}
+                <div class="limite">
+                  <span class="muted small">Limite disponível</span>
+                  <strong class="num" class:neg={c.disponivelCentavos < 0}
+                    >{formatarBRL(c.disponivelCentavos)}</strong
+                  >
+                  <span class="muted small num">de {formatarBRL(c.limiteCentavos)}</span>
+                </div>
+                {@const uso = situacaoLimite(c.aPagarCentavos, c.limiteCentavos)!}
+                <div
+                  class="barra {uso.estado}"
+                  role="progressbar"
+                  aria-label="Limite usado"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.min(100, uso.percentual)}
+                  aria-valuetext="{uso.percentual}% do limite usado"
+                >
+                  <span style="width: {Math.min(100, uso.percentual)}%"></span>
+                </div>
               {:else}
                 <p class="muted small">Sem limite informado.</p>
               {/if}
 
-              {#if c.proximaFatura}
-                <p class="proxima">
-                  <span class="muted">Próxima fatura</span>
+              <ul class="linhas">
+                <li>
                   <a
                     href={resolve('/cartoes/[id]/faturas/[mes]', {
                       id: c.id,
-                      mes: c.proximaFatura.mes,
-                    })}>{tituloMes(c.proximaFatura.mes)}</a
+                      mes: c.faturaAtual.mes,
+                    })}
                   >
-                  <span class="num">
-                    · vence {formatarDia(c.proximaFatura.vencimento)} · <Valor
-                      centavos={c.proximaFatura.totalCentavos}
-                    /></span
+                    <span>
+                      Fatura atual
+                      <small>{tituloMes(c.faturaAtual.mes)}</small>
+                    </span>
+                    <span class="num">{formatarBRL(c.faturaAtual.totalCentavos)}</span>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href={resolve('/cartoes/[id]/faturas/[mes]', {
+                      id: c.id,
+                      mes: c.faturaSeguinte.mes,
+                    })}
                   >
-                </p>
-              {:else}
-                <p class="muted small">Nenhuma compra em aberto neste cartão.</p>
-              {/if}
+                    <span>
+                      Próxima fatura
+                      <small
+                        >{tituloMes(c.faturaSeguinte.mes)} · vence {formatarDia(
+                          c.faturaSeguinte.vencimento,
+                        )}</small
+                      >
+                    </span>
+                    <span class="num">{formatarBRL(c.faturaSeguinte.totalCentavos)}</span>
+                  </a>
+                </li>
+                <li class="total">
+                  <span>
+                    Limite utilizado
+                    <small
+                      >{c.limiteCentavos > 0
+                        ? `${situacaoLimite(c.aPagarCentavos, c.limiteCentavos)!.percentual}% do limite · `
+                        : ''}inclui parcelas futuras</small
+                    >
+                  </span>
+                  <span class="num" data-testid="a-pagar-cartao"
+                    >{formatarBRL(c.aPagarCentavos)}</span
+                  >
+                </li>
+              </ul>
 
               <div class="cartao-acts">
                 <a class="btn text sm" href={resolve('/cartoes/[id]', { id: c.id })}>Editar</a>
@@ -267,6 +324,67 @@
     font-size: 0.8125rem;
     opacity: 0.85;
   }
+  .limite {
+    display: grid;
+    gap: 2px;
+  }
+  .limite strong {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--pos);
+  }
+  .limite strong.neg {
+    color: var(--neg);
+  }
+  .linhas {
+    display: grid;
+  }
+  .barra {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--step);
+    overflow: hidden;
+  }
+  .barra span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--pos);
+  }
+  .barra.alerta span {
+    background: var(--warn);
+  }
+  .barra.estourado span {
+    background: var(--neg);
+  }
+  .linhas li + li {
+    border-top: 1px solid var(--line);
+  }
+  .linhas a,
+  .linhas .total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    color: inherit;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9375rem;
+  }
+  .linhas a:hover > span:first-child {
+    color: var(--orange);
+  }
+  .linhas small {
+    display: block;
+    font-weight: 400;
+    font-size: var(--s-small);
+    color: var(--muted);
+  }
+  .linhas .num {
+    white-space: nowrap;
+  }
   .cartao-info {
     background: var(--surface);
     border-radius: var(--r-card);
@@ -276,15 +394,6 @@
     gap: 12px;
     align-content: start;
     min-width: 0;
-  }
-  .proxima {
-    margin: 0;
-    font-size: 0.9375rem;
-  }
-  .proxima a {
-    color: var(--ink);
-    font-weight: 600;
-    text-underline-offset: 4px;
   }
   .cartao-acts {
     display: flex;

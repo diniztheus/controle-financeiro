@@ -17,6 +17,9 @@ Uma nota curta por onda. Versões seguem as tags do git (`v0.0`, `v0.1`…).
   Cartões de crédito aparecem como cartões de verdade, com a fatura em destaque.
 - **Esconder valores** (o olho no menu): borra os valores da tela; fica salvo no navegador.
 - Ícones do app (favicon, PWA) em azul.
+- **Cartões**: o destaque de cada cartão agora é a **fatura atual** (só as parcelas daquele mês),
+  com a próxima fatura, o limite disponível e o limite utilizado (todas as parcelas em aberto,
+  inclusive futuras) logo abaixo. Antes o destaque mostrava a dívida inteira.
 
 ## Onda 5: Acabamento e operação (17/10/2026)
 
