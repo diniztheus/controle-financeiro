@@ -12,6 +12,7 @@ const ROTAS_ESTATICAS = [
   '/contas',
   '/categorias',
   '/cartoes',
+  '/metas',
   '/bitcoin',
   '/relatorios',
   '/busca',

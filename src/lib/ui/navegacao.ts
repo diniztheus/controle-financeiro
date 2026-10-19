@@ -11,6 +11,7 @@ import Landmark from '@lucide/svelte/icons/landmark';
 import Search from '@lucide/svelte/icons/search';
 import Settings from '@lucide/svelte/icons/settings';
 import Tags from '@lucide/svelte/icons/tags';
+import Target from '@lucide/svelte/icons/target';
 import Trash2 from '@lucide/svelte/icons/trash-2';
 import type { Icone } from './icones';
 
@@ -21,6 +22,7 @@ export type Destino =
   | '/contas'
   | '/categorias'
   | '/cartoes'
+  | '/metas'
   | '/bitcoin'
   | '/relatorios'
   | '/busca'
@@ -42,6 +44,7 @@ export const NAVEGACAO: readonly ItemNav[] = [
   { rotulo: 'Receitas', href: '/receitas', icone: ArrowUpRight },
   { rotulo: 'Contas', href: '/contas', icone: Landmark },
   { rotulo: 'Cartões', href: '/cartoes', icone: CreditCard },
+  { rotulo: 'Metas', href: '/metas', icone: Target },
   { rotulo: 'Categorias', href: '/categorias', icone: Tags },
   { rotulo: 'Bitcoin', href: '/bitcoin', icone: Bitcoin },
   { rotulo: 'Relatórios', href: '/relatorios', icone: ChartPie },

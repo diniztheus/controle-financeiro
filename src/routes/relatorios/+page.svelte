@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { mesAtual, somarMeses } from '$lib/dominio/datas';
   import ArrowDownRight from '@lucide/svelte/icons/arrow-down-right';
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
   import CalendarDays from '@lucide/svelte/icons/calendar-days';
@@ -81,6 +82,7 @@
     </p>
   </div>
   <nav class="atalhos" aria-label="Outras ferramentas">
+    <a class="btn" href={resolve(`/resumo/${somarMeses(mesAtual(), -1)}`)}>Resumo do mês passado</a>
     <a class="btn" href={resolve('/busca')}>Buscar lançamentos</a>
     <a class="btn" href={linkExportar('csv')}>Exportar CSV</a>
     <a class="btn" href={linkExportar('json')}>Exportar JSON</a>

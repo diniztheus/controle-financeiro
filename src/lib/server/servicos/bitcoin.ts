@@ -24,7 +24,7 @@ import {
 } from '../../dominio/bitcoin.ts';
 import { ehDia, hoje } from '../../dominio/datas.ts';
 import type { Banco } from '../db/conexao.ts';
-import { btcMovimentos, btcPrecos, type OrigemPreco } from '../db/esquema.ts';
+import { btcMovimentos, btcPrecos, config, type OrigemPreco } from '../db/esquema.ts';
 import { agoraIso, ErroDeNegocio, naoEncontrado } from './erros.ts';
 
 export type MovimentoBtc = typeof btcMovimentos.$inferSelect;
@@ -327,4 +327,73 @@ export function valorBitcoinCentavos(banco: Banco): number {
     preco?.precoCentavos ?? null,
   );
   return posicao.valorAtualCentavos ?? 0;
+}
+
+// ---------------------------------------------------------------- atualização automática
+
+const CHAVE_AUTO_BTC = 'btc_preco_automatico';
+const CHAVE_ULTIMA_BUSCA = 'btc_ultima_busca';
+
+function valorDaConfig(db: Leitor, chave: string): unknown {
+  return db.select().from(config).where(eq(config.chave, chave)).get()?.valor;
+}
+
+function gravarNaConfig(tx: Pick<Banco['db'], 'insert'>, chave: string, valor: unknown): void {
+  tx.insert(config)
+    .values({ chave, valor })
+    .onConflictDoUpdate({ target: config.chave, set: { valor } })
+    .run();
+}
+
+/** Se o preço do bitcoin é buscado sozinho a cada hora. Vem ligado (padrão). */
+export function lerOpcaoPrecoAutomatico(banco: Banco): boolean {
+  const v = valorDaConfig(banco.db, CHAVE_AUTO_BTC);
+  return typeof v === 'boolean' ? v : true;
+}
+
+export function gravarOpcaoPrecoAutomatico(banco: Banco, ligado: boolean): boolean {
+  if (typeof ligado !== 'boolean') {
+    throw new ErroDeNegocio('Informe se a atualização automática fica ligada.', 'ativo');
+  }
+  banco.db.transaction((tx) => gravarNaConfig(tx, CHAVE_AUTO_BTC, ligado), IMEDIATA);
+  return ligado;
+}
+
+/** ISO (UTC) da última busca automática que deu certo, ou `null` se ainda não houve. */
+export function ultimaBuscaAutomatica(banco: Banco): string | null {
+  const v = valorDaConfig(banco.db, CHAVE_ULTIMA_BUSCA);
+  return typeof v === 'string' ? v : null;
+}
+
+export type ResultadoAtualizacaoAuto =
+  | { feito: false; motivo: 'desligado' | 'sem-movimentos' | 'manual-hoje' }
+  | { feito: true; ok: boolean; mensagem: string };
+
+/**
+ * Busca o preço sozinho, se a opção está ligada e há pelo menos um movimento de bitcoin fora da
+ * lixeira. Sem movimentos não faz chamada alguma à internet. Quando a busca dá certo, grava a hora
+ * em `btc_ultima_busca`. Nunca lança (a falha vem como `ok: false`).
+ */
+export async function atualizarPrecoSeLigado(
+  banco: Banco,
+  buscar: typeof fetch = fetch,
+  agora: Date = new Date(),
+): Promise<ResultadoAtualizacaoAuto> {
+  if (!lerOpcaoPrecoAutomatico(banco)) return { feito: false, motivo: 'desligado' };
+  if (listarMovimentos(banco).length === 0) return { feito: false, motivo: 'sem-movimentos' };
+  // Preço informado à mão hoje vale o dia todo: nem chama a internet (e não conta como busca).
+  const manualHoje = banco.db
+    .select({ data: btcPrecos.data })
+    .from(btcPrecos)
+    .where(and(eq(btcPrecos.data, hoje(agora)), eq(btcPrecos.origem, 'manual')))
+    .get();
+  if (manualHoje) return { feito: false, motivo: 'manual-hoje' };
+  const r = await buscarPrecoAutomatico(banco, buscar);
+  if (r.ok) {
+    banco.db.transaction(
+      (tx) => gravarNaConfig(tx, CHAVE_ULTIMA_BUSCA, agora.toISOString()),
+      IMEDIATA,
+    );
+  }
+  return { feito: true, ok: r.ok, mensagem: r.mensagem };
 }

@@ -7,6 +7,8 @@
   import { enhance } from '$app/forms';
   import { resolve } from '$app/paths';
   import { centavosParaCampo, formatarBRL } from '$lib/dominio/dinheiro';
+  import AvisoSaldos from '$lib/ui/AvisoSaldos.svelte';
+  import CartaoResumoMes from '$lib/ui/CartaoResumoMes.svelte';
   import GraficoMes from '$lib/ui/GraficoMes.svelte';
   import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
   import ListaLancamentos from '$lib/ui/ListaLancamentos.svelte';
@@ -62,9 +64,17 @@
     <div>
       <p class="muted">Olá! Este é o seu resumo de</p>
       <h1>{tituloMes(p.mes)}</h1>
+      {#if p.mes < mesAtual()}
+        <a class="btn text sm ver-resumo" href={resolve(`/resumo/${p.mes}`)}>Ver resumo do mês</a>
+      {/if}
     </div>
     <NavMes mes={p.mes} href={linkMes} />
   </header>
+
+  {#if data.resumoAnterior}
+    <CartaoResumoMes {...data.resumoAnterior} />
+  {/if}
+  <AvisoSaldos contas={data.saldosVelhos} />
 
   <div class="topo">
     <section class="card saldo" aria-labelledby="h-pat">

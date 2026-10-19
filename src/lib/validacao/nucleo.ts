@@ -511,3 +511,55 @@ export const filtroReceitasForm = z
     maxCentavos: f.max,
   }));
 export type FiltroReceitasForm = z.output<typeof filtroReceitasForm>;
+
+/** Meta (caixinha). Saída: `DadosMeta` (servicos/metas.ts). Prazo e cor são opcionais. */
+export const metaForm = z
+  .object({
+    nome: textoObrigatorio('O nome', 60),
+    alvo: valorPositivo,
+    prazo: z
+      .string()
+      .optional()
+      .transform((s) => (s ?? '').trim())
+      .refine((s) => s === '' || ehDia(s), 'Data inválida')
+      .transform((s) => (s === '' ? null : s)),
+    cor: z
+      .enum(CORES, { message: 'Cor inválida' })
+      .or(z.literal(''))
+      .optional()
+      .transform((c) => c || null),
+  })
+  .transform((m) => ({
+    nome: m.nome,
+    alvoCentavos: m.alvo,
+    prazo: m.prazo,
+    cor: m.cor,
+  }));
+export type MetaForm = z.output<typeof metaForm>;
+
+/** Guardar ou retirar de uma meta. Saída: `DadosMovimento` (servicos/metas.ts). */
+export const movimentoMetaForm = z
+  .object({
+    tipo: z.enum(['guardar', 'retirar'], { message: 'Escolha guardar ou retirar' }),
+    valor: valorPositivo,
+    data: dia,
+    nota: textoOpcional('A nota', 120),
+  })
+  .transform((m) => ({
+    tipo: m.tipo,
+    valorCentavos: m.valor,
+    data: m.data,
+    nota: m.nota,
+  }));
+export type MovimentoMetaForm = z.output<typeof movimentoMetaForm>;
+
+/** Dias sem atualizar o saldo para avisar (0 a 90; 0 desliga). Saída: `dias` como número. */
+export const lembreteForm = z.object({
+  dias: z
+    .string({ message: 'Informe quantos dias' })
+    .trim()
+    .regex(/^\d+$/, 'Use um número inteiro de 0 a 90')
+    .transform(Number)
+    .pipe(z.number().max(90, 'Use no máximo 90 dias')),
+});
+export type LembreteForm = z.output<typeof lembreteForm>;

@@ -429,7 +429,62 @@ export const config = sqliteTable(
   (t) => [check('config_valor_json', sql`json_valid(${t.valor})`)],
 );
 
-/** Tabelas do esquema, na ordem da seção 3 do plano. */
+// ---------------------------------------------------------------- metas (caixinhas)
+
+/**
+ * Meta para guardar dinheiro (ex.: "Viagem: R$ 3.000 até julho/2027"). O progresso vem dos
+ * movimentos (`metas_movimentos`). Não mexe em conta nem no patrimônio.
+ */
+export const metas = sqliteTable(
+  'metas',
+  {
+    id: id(),
+    nome: text('nome').notNull(),
+    alvoCentavos: integer('alvo_centavos').notNull(),
+    /** Dia do prazo; vazio = sem prazo. */
+    prazo: text('prazo'),
+    /** Token de cor da paleta (c0..c10); vazio = cor padrão. */
+    cor: text('cor'),
+    criadoEm: criadoEm(),
+    atualizadoEm: atualizadoEm(),
+    removidoEm: removidoEm(),
+  },
+  (t) => [
+    check('metas_nome_preenchido', sql`length(trim(${t.nome})) > 0`),
+    check('metas_alvo_positivo', sql`${inteiro(t.alvoCentavos)} AND ${t.alvoCentavos} > 0`),
+    check('metas_prazo', sql`${t.prazo} IS NULL OR ${ehDiaSql(t.prazo)}`),
+    check(
+      'metas_cor',
+      sql`${t.cor} IS NULL OR ${t.cor} IN ('c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'c10')`,
+    ),
+  ],
+);
+
+/** Guardar (valor positivo) e retirar (valor negativo) de uma meta. */
+export const metasMovimentos = sqliteTable(
+  'metas_movimentos',
+  {
+    id: id(),
+    metaId: text('meta_id')
+      .notNull()
+      .references(() => metas.id, { onDelete: 'cascade' }),
+    /** + guardar, − retirar. */
+    valorCentavos: integer('valor_centavos').notNull(),
+    data: text('data').notNull(),
+    nota: text('nota'),
+    criadoEm: criadoEm(),
+    atualizadoEm: atualizadoEm(),
+    removidoEm: removidoEm(),
+  },
+  (t) => [
+    check('metas_mov_valor', sql`${inteiro(t.valorCentavos)} AND ${t.valorCentavos} <> 0`),
+    check('metas_mov_data', ehDiaSql(t.data)),
+    check('metas_mov_nota', sql`${t.nota} IS NULL OR length(trim(${t.nota})) > 0`),
+    index('metas_mov_meta_idx').on(t.metaId),
+  ],
+);
+
+/** Tabelas do esquema, na ordem da seção 3 do plano (metas no fim). */
 export const TABELAS = [
   'contas',
   'saldos_historico',
@@ -444,4 +499,6 @@ export const TABELAS = [
   'btc_precos',
   'limites_mensais',
   'config',
+  'metas',
+  'metas_movimentos',
 ] as const;

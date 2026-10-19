@@ -43,6 +43,13 @@
       "when": 1792107415478,
       "tag": "0005_receitas_confirmacao",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792442779788,
+      "tag": "0006_metas",
+      "breakpoints": true
     }
   ]
 }

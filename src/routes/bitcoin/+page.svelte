@@ -109,6 +109,17 @@
     {:else}
       <p class="muted">Sem preço do BTC ainda. Informe um preço do dia na coluna ao lado.</p>
     {/if}
+    {#if data.precoAuto.ligado}
+      <p class="small muted" data-testid="preco-auto">
+        Atualizado sozinho a cada hora · {data.precoAuto.ultimaBusca
+          ? `última busca ${data.precoAuto.ultimaBusca}`
+          : 'ainda sem busca'}
+      </p>
+    {:else}
+      <p class="small muted" data-testid="preco-auto">
+        Atualização automática desligada (<a href={resolve('/configuracoes')}>Configurações</a>)
+      </p>
+    {/if}
   </div>
 </header>
 

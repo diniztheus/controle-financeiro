@@ -4,6 +4,8 @@ import { campo, executar } from '$lib/server/acoes';
 import { obterBanco } from '$lib/server/db';
 import { definirLimiteMes, definirLimitePadrao, listarLimites } from '$lib/server/servicos/limite';
 import { montarPainel } from '$lib/server/servicos/painel';
+import { contasDesatualizadas } from '$lib/server/servicos/lembretes';
+import { cartaoResumoDoPainel } from '$lib/server/servicos/resumoMes';
 import { mesDaRota } from '$lib/server/rotas';
 import { errosPorCampo, limiteForm, limiteMesForm, lerForm } from '$lib/validacao/nucleo';
 import type { Actions, PageServerLoad } from './$types';
@@ -16,6 +18,10 @@ export const load: PageServerLoad = ({ url }) => {
   const temAjusteDoMes = listarLimites(banco).porMes.some((l) => l.mes === mes);
   return {
     painel: montarPainel(banco, mes, hoje(agora)),
+    /** Contas com o saldo sem atualizar há mais dias que o configurado (lembrete). */
+    saldosVelhos: contasDesatualizadas(banco, hoje(agora)),
+    /** Nos primeiros dias do mês: o resumo do mês que acabou. */
+    resumoAnterior: cartaoResumoDoPainel(banco, hoje(agora)),
     limiteDoMes: temAjusteDoMes ? ('mes' as const) : ('padrao' as const),
     /** Sem JavaScript, "Definir limite" abre o formulário pela URL. */
     editarLimite: url.searchParams.has('limite'),

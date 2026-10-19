@@ -67,7 +67,7 @@ describe('arquivo do banco', () => {
     const st = lerStatus(b);
     expect(st.ok).toBe(true);
     expect(st.pragmas.journalMode).toBe('wal');
-    expect(st.tabelasPresentes).toBe(13);
+    expect(st.tabelasPresentes).toBe(15);
     expect(st.migrationsPendentes).toBe(0);
     expect(st.versaoEsquema).toBe(TAGS[TAGS.length - 1]);
   });

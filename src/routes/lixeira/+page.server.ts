@@ -3,6 +3,7 @@ import { obterBanco } from '$lib/server/db';
 import { cartoesNaLixeira, restaurarCartao } from '$lib/server/servicos/cartoes';
 import { contasNaLixeira, restaurarConta } from '$lib/server/servicos/contas';
 import { gastosNaLixeira, restaurarGasto } from '$lib/server/servicos/gastos';
+import { metasNaLixeira, restaurarMeta } from '$lib/server/servicos/metas';
 import { receitasNaLixeira, restaurarReceita } from '$lib/server/servicos/receitas';
 import { recorrentesNaLixeira, restaurarRecorrente } from '$lib/server/servicos/recorrentes';
 import type { Actions, PageServerLoad } from './$types';
@@ -15,6 +16,7 @@ export const load: PageServerLoad = () => {
     recorrentes: recorrentesNaLixeira(banco),
     contas: contasNaLixeira(banco),
     cartoes: cartoesNaLixeira(banco),
+    metas: metasNaLixeira(banco),
   };
 };
 
@@ -70,6 +72,17 @@ export const actions: Actions = {
       () => {
         const c = restaurarCartao(obterBanco(), id);
         return { acao: 'cartao', id, ok: `Cartão "${c.nome}" restaurado.` };
+      },
+      { id },
+    );
+  },
+  meta: async ({ request }) => {
+    const id = campo(await request.formData(), 'id');
+    return executar(
+      'meta',
+      () => {
+        const m = restaurarMeta(obterBanco(), id);
+        return { acao: 'meta', id, ok: `Meta "${m.nome}" restaurada.` };
       },
       { id },
     );

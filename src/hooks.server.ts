@@ -2,6 +2,7 @@ import type { Handle, HandleServerError, ServerInit } from '@sveltejs/kit';
 import { obterBanco } from '$lib/server/db';
 import { garantirCategoriasPadrao } from '$lib/server/servicos/categorias';
 import { backupAutomaticoSeNecessario } from '$lib/server/servicos/backups';
+import { atualizarPrecoSeLigado } from '$lib/server/servicos/bitcoin';
 import { verificarIntegridade } from '$lib/server/servicos/integridade';
 import { gerarReceitasRecorrentes } from '$lib/server/servicos/recorrentes';
 import {
@@ -15,11 +16,26 @@ import { pinAtivo } from '$lib/server/servicos/pin';
 import { cookieValido, NOME_COOKIE } from '$lib/server/sessaoPin';
 
 const INTERVALO_BACKUP_MS = 60 * 60 * 1000;
+const INTERVALO_BTC_MS = 60 * 60 * 1000;
+
+/**
+ * Preço do bitcoin sozinho (se a opção estiver ligada e houver movimentos). `BTC_PRECO_AUTOMATICO=0`
+ * desliga de vez, sem nenhuma chamada à internet (os testes usam isso). Não espera: falhas vão ao console.
+ */
+async function atualizarBitcoin(): Promise<void> {
+  if (process.env.BTC_PRECO_AUTOMATICO === '0') return;
+  try {
+    await atualizarPrecoSeLigado(obterBanco());
+  } catch (e) {
+    console.error('[bitcoin]', e);
+  }
+}
 
 /**
  * Ao subir o servidor: cria a pasta de dados, abre o banco e aplica migrations pendentes.
  * Depois verifica a integridade, faz o backup automático do dia se faltar e repete essa
- * checagem de hora em hora. O relógio não segura o processo (`unref`).
+ * checagem de hora em hora. O preço do bitcoin também é atualizado ao subir e de hora em hora.
+ * O relógio não segura o processo (`unref`).
  */
 export const init: ServerInit = () => {
   // Na primeira vez, as categorias do app atual já ficam prontas para lançar.
@@ -38,6 +54,10 @@ export const init: ServerInit = () => {
       console.error('[backup]', e);
     }
   }, INTERVALO_BACKUP_MS).unref();
+  void atualizarBitcoin();
+  setInterval(() => {
+    void atualizarBitcoin();
+  }, INTERVALO_BTC_MS).unref();
 };
 
 /**

@@ -82,7 +82,7 @@ describe('verificarArquivoBackup', () => {
     const r = verificarArquivoBackup(arq, PASTA_MIGRATIONS);
     expect(r.ok).toBe(true);
     expect(r.erros).toEqual([]);
-    expect(r.tabelas).toBe(13);
+    expect(r.tabelas).toBe(15);
     expect(r.linhas.contas).toBe(1);
     expect(r.linhas.compras).toBe(0);
     expect(r.versaoEsquema).toBe(TAGS[TAGS.length - 1]);

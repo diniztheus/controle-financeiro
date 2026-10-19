@@ -1,6 +1,7 @@
 <script lang="ts">
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import CreditCard from '@lucide/svelte/icons/credit-card';
+  import Target from '@lucide/svelte/icons/target';
   import { enhance } from '$app/forms';
   import { formatarDia } from '$lib/dominio/datas';
   import { formatarBRL } from '$lib/dominio/dinheiro';
@@ -15,7 +16,8 @@
       !data.receitas.length &&
       !data.recorrentes.length &&
       !data.contas.length &&
-      !data.cartoes.length,
+      !data.cartoes.length &&
+      !data.metas.length,
   );
 </script>
 
@@ -27,8 +29,8 @@
   <div>
     <h1>Lixeira</h1>
     <p>
-      Gastos, receitas, contas e cartões removidos ficam aqui, fora das somas, até você restaurar.
-      Nada é apagado de vez.
+      Gastos, receitas, contas, cartões e metas removidos ficam aqui, fora das somas, até você
+      restaurar. Nada é apagado de vez.
     </p>
   </div>
 </header>
@@ -44,7 +46,8 @@
     <div class="empty">
       <strong>A lixeira está vazia</strong>
       <span
-        >Quando você remover um gasto, uma receita, uma conta ou um cartão, ele aparece aqui.</span
+        >Quando você remover um gasto, uma receita, uma conta, um cartão ou uma meta, ele aparece
+        aqui.</span
       >
     </div>
   {:else}
@@ -182,6 +185,31 @@
         </ul>
       {:else}
         <p class="muted">Nenhum cartão na lixeira.</p>
+      {/if}
+    </div>
+    <div class="col">
+      <div class="col-head"><h2 class="h">Metas</h2></div>
+      {#if data.metas.length}
+        <ul class="rows" data-testid="lixeira-metas">
+          {#each data.metas as m (m.id)}
+            <li class="row">
+              <IconeRedondo icone={Target} cor={corCss(m.cor)} suave />
+              <span class="row-main">
+                <span class="row-title">{m.nome} · meta de {formatarBRL(m.alvoCentavos)}</span>
+                <span class="row-meta">removida em {dataDeIso(m.removidoEm ?? m.atualizadoEm)}</span
+                >
+              </span>
+              <form method="POST" action="?/meta" use:enhance>
+                <input type="hidden" name="id" value={m.id} />
+                <button class="btn sm restaurar" type="submit"
+                  ><RotateCcw size={16} aria-hidden="true" />Restaurar</button
+                >
+              </form>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="muted">Nenhuma meta na lixeira.</p>
       {/if}
     </div>
   {/if}

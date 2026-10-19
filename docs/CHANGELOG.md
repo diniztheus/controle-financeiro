@@ -2,6 +2,21 @@
 
 Uma nota curta por onda. Versões seguem as tags do git (`v0.0`, `v0.1`…).
 
+## Metas, resumo do mês e lembretes (19/10/2026)
+
+- **Metas** (`/metas`, no menu): caixinhas com valor alvo, prazo e cor. "Guardar" e "Retirar"
+  com histórico; a tela mostra quanto falta e quanto guardar por mês até o prazo. Não mexe em
+  conta nem no patrimônio. Metas removidas vão para a lixeira.
+- **Resumo do mês** (`/resumo/AAAA-MM`): entradas, gastos, sobra e taxa de poupança comparados
+  com a média dos 3 meses anteriores, as categorias que mais subiram e caíram, o maior gasto e as
+  receitas que ficaram previstas. Nos dias 1 a 10, o painel mostra um cartão com o resumo do mês
+  que acabou (com "Dispensar"); também há links no painel (meses passados) e em Relatórios.
+- **Lembrete de saldos**: o painel avisa quando uma conta está sem atualizar o saldo há mais de
+  7 dias (ajustável em Configurações; 0 desliga).
+- **Preço do bitcoin automático**: busca sozinho a cada hora quando há bitcoin cadastrado
+  (desligável em Configurações). Preço informado à mão no dia continua valendo. A tela de
+  bitcoin mostra a hora da última busca.
+
 ## Novo visual (19/10/2026)
 
 - Visual de app de finanças: fundo cinza-claro, conteúdo em cartões arredondados, acento azul,

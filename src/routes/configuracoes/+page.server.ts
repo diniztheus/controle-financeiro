@@ -1,11 +1,13 @@
 import { fail, type ActionFailure } from '@sveltejs/kit';
-import { validar, type RespostaErro } from '$lib/server/acoes';
+import { campo, executar, validar, type RespostaErro } from '$lib/server/acoes';
 import { obterBanco } from '$lib/server/db';
 import { acessoRedeLigado } from '$lib/server/seguranca';
+import { gravarOpcaoPrecoAutomatico, lerOpcaoPrecoAutomatico } from '$lib/server/servicos/bitcoin';
+import { lerLembreteSaldoDias, salvarLembreteSaldoDias } from '$lib/server/servicos/lembretes';
 import { definirPin, pinAtivo, removerPin } from '$lib/server/servicos/pin';
 import { ErroDeNegocio } from '$lib/server/servicos/erros';
 import { criarCookie, NOME_COOKIE } from '$lib/server/sessaoPin';
-import { pinForm } from '$lib/validacao/nucleo';
+import { lembreteForm, pinForm } from '$lib/validacao/nucleo';
 import type { Actions, PageServerLoad } from './$types';
 import type { Cookies } from '@sveltejs/kit';
 
@@ -31,10 +33,43 @@ function renovarSessao(cookies: Cookies): void {
 }
 
 export const load: PageServerLoad = () => {
-  return { pinAtivo: pinAtivo(obterBanco()), acessoRede: acessoRedeLigado() };
+  const banco = obterBanco();
+  return {
+    pinAtivo: pinAtivo(banco),
+    acessoRede: acessoRedeLigado(),
+    lembreteSaldoDias: lerLembreteSaldoDias(banco),
+    precoAutomatico: lerOpcaoPrecoAutomatico(banco),
+  };
 };
 
 export const actions: Actions = {
+  lembrete: async ({ request }) => {
+    const v = await validar(request, lembreteForm, 'lembrete');
+    if (!v.ok) return v.falha;
+    return executar(
+      'lembrete',
+      () => {
+        const dias = salvarLembreteSaldoDias(obterBanco(), v.dados.dias);
+        return {
+          acao: 'lembrete',
+          ok: dias === 0 ? 'Aviso de saldos desligado.' : 'Lembrete de saldos salvo.',
+        };
+      },
+      { valores: v.valores },
+    );
+  },
+  bitcoin: async ({ request }) => {
+    const ligado = campo(await request.formData(), 'ativo') === 'on';
+    return executar('bitcoin', () => {
+      gravarOpcaoPrecoAutomatico(obterBanco(), ligado);
+      return {
+        acao: 'bitcoin',
+        ok: ligado
+          ? 'Preço do bitcoin será atualizado sozinho, a cada hora.'
+          : 'Atualização automática do bitcoin desligada.',
+      };
+    });
+  },
   definir: async ({ request, cookies }) => {
     const banco = obterBanco();
     const v = await validar(request, pinForm, 'definir');

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Bitcoin from '@lucide/svelte/icons/bitcoin';
+  import Clock from '@lucide/svelte/icons/clock';
   import Keyboard from '@lucide/svelte/icons/keyboard';
   import Lock from '@lucide/svelte/icons/lock';
   import Palette from '@lucide/svelte/icons/palette';
@@ -26,6 +28,18 @@
   const alterar = $derived(dePin('alterar'));
   const remover = $derived(dePin('remover'));
   const okSeguranca = $derived(resposta?.ok ?? null);
+
+  // Cartões de lembrete e bitcoin: respostas das ações `lembrete` e `bitcoin`.
+  interface RespostaCartao {
+    acao?: string;
+    ok?: string;
+    erro?: string;
+    erros?: Record<string, string>;
+    valores?: Record<string, string>;
+  }
+  const cartao = $derived(form as RespostaCartao | null | undefined);
+  const deLembrete = $derived(cartao?.acao === 'lembrete' ? cartao : null);
+  const deBitcoin = $derived(cartao?.acao === 'bitcoin' ? cartao : null);
 
   const OPCOES_TEMA: { valor: Tema; rotulo: string }[] = [
     { valor: 'auto', rotulo: 'Automático (segue o computador)' },
@@ -238,6 +252,74 @@
   </div>
 </section>
 
+<section class="sec pad" aria-labelledby="sec-lembretes">
+  <div class="card">
+    <div class="item">
+      <IconeRedondo icone={Clock} cor="var(--warn)" suave />
+      <div class="item-texto">
+        <h2 id="sec-lembretes">Lembretes</h2>
+        <p>
+          Aparece um aviso no painel quando o saldo de uma conta fica muito tempo sem atualização.
+        </p>
+      </div>
+    </div>
+    <div class="extra">
+      <form class="fc" method="POST" action="?/lembrete" use:enhance autocomplete="off">
+        <div class="field">
+          <label for="l-dias">Avisar quando um saldo ficar sem atualizar por</label>
+          <div class="linha-dias">
+            <input
+              id="l-dias"
+              name="dias"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              max="90"
+              step="1"
+              required
+              value={deLembrete?.valores?.dias ?? String(data.lembreteSaldoDias)}
+              {...ariaErro(deLembrete?.erros?.dias, 'l-dias')}
+            />
+            <span>dias (0 desliga)</span>
+          </div>
+          {#if deLembrete?.erros?.dias}<span class="err" id="l-dias-erro"
+              >{deLembrete.erros.dias}</span
+            >{/if}
+        </div>
+        {#if deLembrete?.erro}<p class="err" role="alert">{deLembrete.erro}</p>{/if}
+        <div><button class="btn go" type="submit">Salvar</button></div>
+        {#if deLembrete?.ok}<p class="ok-msg" role="status">{deLembrete.ok}</p>{/if}
+      </form>
+    </div>
+  </div>
+</section>
+
+<section class="sec pad" aria-labelledby="sec-bitcoin">
+  <div class="card">
+    <div class="item">
+      <IconeRedondo icone={Bitcoin} cor="var(--c4)" suave />
+      <div class="item-texto">
+        <h2 id="sec-bitcoin">Bitcoin</h2>
+        <p>
+          O preço do bitcoin em reais pode ser buscado na internet sozinho. Só acontece quando há
+          compras ou vendas cadastradas.
+        </p>
+      </div>
+    </div>
+    <div class="extra">
+      <form class="fc" method="POST" action="?/bitcoin" use:enhance autocomplete="off">
+        <label class="caixa">
+          <input type="checkbox" name="ativo" checked={data.precoAutomatico} />
+          <span>Atualizar o preço do bitcoin sozinho, a cada hora (precisa de internet)</span>
+        </label>
+        {#if deBitcoin?.erro}<p class="err" role="alert">{deBitcoin.erro}</p>{/if}
+        <div><button class="btn go" type="submit">Salvar</button></div>
+        {#if deBitcoin?.ok}<p class="ok-msg" role="status">{deBitcoin.ok}</p>{/if}
+      </form>
+    </div>
+  </div>
+</section>
+
 <section class="sec pad" aria-labelledby="sec-atalhos">
   <div class="card">
     <div class="item">
@@ -415,6 +497,35 @@
   }
   .estado {
     font-weight: 600;
+  }
+
+  /* Dias do lembrete: campo e unidade na mesma linha, alvos de toque de 44px */
+  .linha-dias {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .linha-dias input {
+    width: 7ch;
+    min-height: 44px;
+    background: var(--surface);
+    border-color: var(--line);
+  }
+
+  /* Caixa de seleção com texto ao lado */
+  .caixa {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    cursor: pointer;
+  }
+  .caixa input {
+    width: 22px;
+    height: 22px;
+    flex: none;
+    accent-color: var(--orange);
   }
 
   /* Tema como pílulas: a escolha ativa vira o botão branco */

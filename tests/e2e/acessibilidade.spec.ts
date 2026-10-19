@@ -16,6 +16,7 @@ const ROTAS = [
   '/contas',
   '/categorias',
   '/cartoes',
+  '/metas',
   '/bitcoin',
   '/relatorios',
   '/busca',

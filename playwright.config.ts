@@ -45,7 +45,7 @@ export default defineConfig({
       url: `http://127.0.0.1:${PORTA}`,
       reuseExistingServer: false,
       timeout: 180_000,
-      env: { PORT: String(PORTA), DADOS_DIR: DADOS_E2E },
+      env: { PORT: String(PORTA), DADOS_DIR: DADOS_E2E, BTC_PRECO_AUTOMATICO: '0' },
     },
     {
       // Usa o build que o servidor acima acabou de gerar (os servidores sobem em sequência).
@@ -53,7 +53,7 @@ export default defineConfig({
       url: `http://127.0.0.1:${PORTA_ISOLADO}`,
       reuseExistingServer: false,
       timeout: 60_000,
-      env: { PORT: String(PORTA_ISOLADO), DADOS_DIR: DADOS_ISOLADO },
+      env: { PORT: String(PORTA_ISOLADO), DADOS_DIR: DADOS_ISOLADO, BTC_PRECO_AUTOMATICO: '0' },
     },
   ],
 });
