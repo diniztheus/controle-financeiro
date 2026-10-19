@@ -16,6 +16,14 @@ import {
   restaurarReceita,
   ultimaCategoriaReceitaUsada,
 } from '$lib/server/servicos/receitas';
+import {
+  lancarReceitaRecorrente,
+  listarRecorrentes,
+  pausarRecorrente,
+  removerRecorrente,
+  retomarRecorrente,
+} from '$lib/server/servicos/recorrentes';
+import { descreverRecorrencia } from '$lib/dominio/recorrencias';
 import { mesDaRota, viaEnhance } from '$lib/server/rotas';
 import { confirmarRecebimentoForm, receitaForm } from '$lib/validacao/nucleo';
 import { CATEGORIAS_RECEITA } from '$lib/dominio/receitas';
@@ -30,6 +38,11 @@ function receitaAindaNaLixeira(banco: ReturnType<typeof obterBanco>, id: string 
 const AVISOS: Record<string, string> = {
   confirmada: 'Recebimento confirmado.',
   desfeita: 'Confirmação desfeita. A receita voltou a ser prevista.',
+  pausada: 'Receita recorrente pausada. Nada mais será lançado até você retomar.',
+  retomada: 'Receita recorrente retomada. Os próximos meses voltam a ser lançados.',
+  'recorrente-editada': 'Receita recorrente salva. As mudanças valem só para os próximos meses.',
+  'recorrente-removida':
+    'Receita recorrente mandada para a lixeira. As receitas já lançadas continuam no histórico.',
 };
 
 /** Mês para voltar depois de uma ação: o da tela de origem, se válido; senão o da receita. */
@@ -51,6 +64,7 @@ export const load: PageServerLoad = ({ url }) => {
     /** Sem JavaScript, o valor da receita recém-lançada volta pela URL (para a confirmação). */
     lancadoSemJs: Number(url.searchParams.get('lancado')) || null,
     lancadoPrevista: url.searchParams.has('prevista'),
+    lancadoRecorrente: url.searchParams.has('recorrente'),
     dias: agruparReceitasPorDia(receitas).map((d) => ({
       ...d,
       totalCentavos: somar(
@@ -66,6 +80,17 @@ export const load: PageServerLoad = ({ url }) => {
     categorias: CATEGORIAS_RECEITA,
     contas: listarContas(banco).map((c) => ({ id: c.id, nome: c.nome })),
     ultimaCategoria: ultimaCategoriaReceitaUsada(banco),
+    /** Receitas que se repetem todo mês (criadas com "Repetir todo mês"). */
+    recorrentes: listarRecorrentes(banco).map((r) => ({
+      id: r.id,
+      descricao: r.descricao,
+      categoria: r.categoria,
+      valorCentavos: r.valorCentavos,
+      ativa: r.ativa,
+      proxima: r.proxima,
+      geradas: r.geradas,
+      descricaoRecorrencia: descreverRecorrencia(r),
+    })),
     /** Receita que acabou de ir para a lixeira (para oferecer "desfazer"). */
     removido: receitaAindaNaLixeira(banco, url.searchParams.get('removido')),
   };
@@ -79,6 +104,19 @@ export const actions: Actions = {
     const r = executar(
       'lancar',
       () => {
+        if (d.repetir) {
+          const { receita } = lancarReceitaRecorrente(obterBanco(), d);
+          return {
+            acao: 'lancar',
+            lancado: {
+              id: receita?.id ?? '',
+              valorCentavos: d.valorCentavos,
+              mes: mesDe(d.data),
+              prevista: receita === null || receita.confirmadaEm === null,
+              recorrente: true,
+            },
+          };
+        }
         const x = lancarReceita(obterBanco(), {
           valorCentavos: d.valorCentavos,
           data: d.data,
@@ -95,6 +133,7 @@ export const actions: Actions = {
             valorCentavos: d.valorCentavos,
             mes: mesDe(d.data),
             prevista: !d.recebida,
+            recorrente: false,
           },
         };
       },
@@ -109,6 +148,7 @@ export const actions: Actions = {
         lancado: String(r.lancado.valorCentavos),
       });
       if (r.lancado.prevista) q.set('prevista', '1');
+      if (r.lancado.recorrente) q.set('recorrente', '1');
       redirect(303, `/receitas?${q}`);
     }
     return r;
@@ -141,6 +181,24 @@ export const actions: Actions = {
     const r = executar('desfazerConfirmacao', () => desfazerConfirmacao(obterBanco(), id), { id });
     if (falhou(r)) return r;
     redirect(303, `/receitas?mes=${mesParaVoltar(campo(fd, 'mes'), r.data)}&aviso=desfeita`);
+  },
+  pausarRecorrente: async ({ request }) => {
+    const id = campo(await request.formData(), 'id');
+    const r = executar('pausarRecorrente', () => pausarRecorrente(obterBanco(), id), { id });
+    if (falhou(r)) return r;
+    redirect(303, '/receitas?aviso=pausada#recorrentes');
+  },
+  retomarRecorrente: async ({ request }) => {
+    const id = campo(await request.formData(), 'id');
+    const r = executar('retomarRecorrente', () => retomarRecorrente(obterBanco(), id), { id });
+    if (falhou(r)) return r;
+    redirect(303, '/receitas?aviso=retomada#recorrentes');
+  },
+  removerRecorrente: async ({ request }) => {
+    const id = campo(await request.formData(), 'id');
+    const r = executar('removerRecorrente', () => removerRecorrente(obterBanco(), id), { id });
+    if (falhou(r)) return r;
+    redirect(303, '/receitas?aviso=recorrente-removida#recorrentes');
   },
   restaurar: async ({ request }) => {
     const id = campo(await request.formData(), 'id');

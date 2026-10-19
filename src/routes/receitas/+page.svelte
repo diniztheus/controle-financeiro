@@ -2,7 +2,13 @@
   import { enhance } from '$app/forms';
   import { replaceState } from '$app/navigation';
   import { page } from '$app/state';
-  import { mesDe, primeiroDiaDoMes, ultimoDiaDoMes, type Mes } from '$lib/dominio/datas';
+  import {
+    formatarDia,
+    mesDe,
+    primeiroDiaDoMes,
+    ultimoDiaDoMes,
+    type Mes,
+  } from '$lib/dominio/datas';
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import ArrowDownLeft from '@lucide/svelte/icons/arrow-down-left';
@@ -19,6 +25,18 @@
   const nomeMes = $derived(soNomeMes(data.mes));
   const linkMes = (m: Mes) => resolve(`/receitas?mes=${m}`);
   const falhou = $derived(form?.acao === 'lancar' && !('lancado' in form));
+  /** Erro de pausar, retomar ou remover uma recorrente (o "fim já passou" vem por campo). */
+  const erroRecorrente = $derived(
+    form &&
+      (form.acao === 'pausarRecorrente' ||
+        form.acao === 'retomarRecorrente' ||
+        form.acao === 'removerRecorrente') &&
+      !('ok' in form)
+      ? ('erro' in form && form.erro) ||
+          ('erros' in form && form.erros ? Object.values(form.erros)[0] : null) ||
+          null
+      : null,
+  );
   /** Falha de uma linha de "A receber" (ou de "desfazer"), com o id dela, para mostrar ali. */
   const falhaDaLinha = (id: string) =>
     form && 'id' in form && form.id === id && form.acao !== 'lancar' ? form : null;
@@ -50,6 +68,7 @@
             valorCentavos: data.lancadoSemJs,
             mes: data.mes,
             prevista: data.lancadoPrevista,
+            recorrente: data.lancadoRecorrente,
           }
         : null,
   );
@@ -136,7 +155,9 @@
     />
     {#if lancado}
       <p class="ok-msg" role="status" data-testid="receita-lancada">
-        Receita de {formatarBRL(lancado.valorCentavos)}
+        {lancado.recorrente ? 'Receita recorrente' : 'Receita'} de {formatarBRL(
+          lancado.valorCentavos,
+        )}
         {lancado.prevista ? 'lançada como prevista' : 'lançada'}{#if lancado.mes !== data.mes}
           em {soNomeMes(lancado.mes)}.
           <a href={linkMes(lancado.mes)}>Ver {tituloMes(lancado.mes).toLowerCase()}</a>{:else}.{/if}
@@ -318,10 +339,75 @@
         <span>Use o formulário ao lado. O valor aceita vírgula: 4.200,00.</span>
       </div>
     {/if}
-    <p class="note">
-      Salário ou bolsa todo mês? Cadastre em
-      <a href={resolve('/receitas/recorrentes')}>Receitas recorrentes</a>, e o site lança sozinho.
-    </p>
+    <section class="recorrentes" id="recorrentes" aria-labelledby="h-recorrentes">
+      <div class="col-head">
+        <h2 id="h-recorrentes" class="h-sec">Recorrentes</h2>
+        <p class="muted">
+          {plural(data.recorrentes.filter((r) => r.ativa).length, 'ativa', 'ativas')}
+        </p>
+      </div>
+      {#if erroRecorrente}<p class="err" role="alert">{erroRecorrente}</p>{/if}
+      {#if data.recorrentes.length}
+        <ul class="rows" data-testid="lista-recorrentes">
+          {#each data.recorrentes as r (r.id)}
+            <li class="rec" class:pausada={!r.ativa}>
+              <div class="row">
+                <IconeRedondo
+                  nome={r.descricao ?? r.categoria}
+                  cor={r.ativa ? 'var(--pos)' : 'var(--muted)'}
+                  suave={!r.ativa}
+                />
+                <span class="row-main">
+                  <span class="row-title"
+                    >{r.descricao ?? r.categoria}
+                    <span class="etiq" class:etiq-ativa={r.ativa} class:etiq-prevista={!r.ativa}
+                      >{r.ativa ? 'Ativa' : 'Pausada'}</span
+                    ></span
+                  >
+                  <span class="row-meta">
+                    {r.categoria} · {r.descricaoRecorrencia}
+                  </span>
+                  <span class="row-meta">
+                    {#if !r.ativa}
+                      Não lança novas receitas até ser retomada
+                    {:else if r.proxima}
+                      Próxima: {formatarDia(r.proxima)}
+                    {:else}
+                      Encerrada
+                    {/if}
+                    · {plural(r.geradas, 'lançada', 'lançadas')}
+                  </span>
+                </span>
+                <span class="row-val num pos">+{formatarBRL(r.valorCentavos)}</span>
+              </div>
+              <div class="rec-acts">
+                <form
+                  method="POST"
+                  action={r.ativa ? '?/pausarRecorrente' : '?/retomarRecorrente'}
+                  use:enhance
+                >
+                  <input type="hidden" name="id" value={r.id} />
+                  <button class="btn text sm" type="submit">{r.ativa ? 'Pausar' : 'Retomar'}</button
+                  >
+                </form>
+                <a class="btn text sm" href={resolve('/receitas/recorrentes/[id]', { id: r.id })}
+                  >Editar</a
+                >
+                <form method="POST" action="?/removerRecorrente" use:enhance>
+                  <input type="hidden" name="id" value={r.id} />
+                  <button class="btn text sm" type="submit">Remover</button>
+                </form>
+              </div>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="note">
+          Salário, bolsa ou aluguel todo mês? Ao lançar, marque <strong>Repetir todo mês</strong>: o
+          site lança sozinho no mesmo dia, como prevista, até você confirmar o recebimento.
+        </p>
+      {/if}
+    </section>
     <p class="note">
       Removeu algo sem querer? Está na <a href={resolve('/lixeira')}>lixeira</a>.
     </p>
@@ -329,6 +415,28 @@
 </section>
 
 <style>
+  .recorrentes {
+    display: grid;
+    gap: 12px;
+    margin-top: 12px;
+    scroll-margin-top: 80px;
+  }
+  .rec .row {
+    padding-bottom: 4px;
+  }
+  .rec.pausada .row-title {
+    color: var(--muted);
+  }
+  .rec-acts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 0 10px 8px 64px;
+  }
+  .etiq-ativa {
+    background: var(--pos-soft);
+    color: var(--pos);
+  }
   .aviso {
     background: var(--orange-soft);
     padding-block: 12px;

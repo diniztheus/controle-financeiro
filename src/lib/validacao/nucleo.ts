@@ -153,6 +153,15 @@ export const pagarFaturaForm = z.object({
 });
 export type PagarFaturaForm = z.output<typeof pagarFaturaForm>;
 
+/** Data opcional ("AAAA-MM-DD"); vazio vira null. */
+const diaOpcional = (rotulo: string) =>
+  z
+    .string()
+    .optional()
+    .transform((s) => (s ?? '').trim())
+    .refine((s) => s === '' || ehDia(s), `${rotulo}: data inválida`)
+    .transform((s) => s || null);
+
 /** Receita: a saída já vem no formato de `DadosReceita` (servicos/receitas.ts). */
 export const receitaForm = z
   .object({
@@ -164,6 +173,19 @@ export const receitaForm = z
     observacao: textoOpcional('A observação', 500),
     /** Só ao lançar: "nao" cria como prevista. Ausente (ou "sim") = já recebida. */
     recebida: z.enum(['sim', 'nao']).optional(),
+    /** Só ao lançar: "sim" repete todo mês, no mesmo dia, a partir da data. */
+    repetir: z.enum(['sim']).optional(),
+    /** Com `repetir`: último dia em que a receita se repete (vazio = sem fim). */
+    ate: diaOpcional('A data final'),
+  })
+  .superRefine((f, ctx) => {
+    if (f.repetir && f.ate !== null && f.ate < f.data) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['ate'],
+        message: 'A data final é antes da data da receita',
+      });
+    }
   })
   .transform((d) => ({
     valorCentavos: d.valor,
@@ -173,17 +195,10 @@ export const receitaForm = z
     contaId: d.conta,
     observacao: d.observacao,
     recebida: d.recebida !== 'nao',
+    repetir: d.repetir === 'sim',
+    fim: d.repetir === 'sim' ? d.ate : null,
   }));
 export type ReceitaForm = z.output<typeof receitaForm>;
-
-/** Data opcional ("AAAA-MM-DD"); vazio vira null. */
-const diaOpcional = (rotulo: string) =>
-  z
-    .string()
-    .optional()
-    .transform((s) => (s ?? '').trim())
-    .refine((s) => s === '' || ehDia(s), `${rotulo}: data inválida`)
-    .transform((s) => s || null);
 
 /**
  * Receita recorrente (modelo). Saída: `DadosRecorrente` (servicos/recorrentes.ts), com

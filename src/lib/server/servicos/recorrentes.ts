@@ -29,6 +29,7 @@ import {
 import type { Banco, BancoDrizzle } from '../db/conexao.ts';
 import { contas, receitas, receitasRecorrentes } from '../db/esquema.ts';
 import { agoraIso, ErroDeNegocio, naoEncontrado } from './erros.ts';
+import { confirmarRecebimento, type DadosReceita, type Receita } from './receitas.ts';
 
 export type Recorrente = typeof receitasRecorrentes.$inferSelect;
 
@@ -375,4 +376,39 @@ function gerarDoModelo(tx: Tx, m: Recorrente, hojeRef: Dia, quando: string): num
       .all().length;
   }
   return criadas;
+}
+
+/**
+ * Lança uma receita que se repete todo mês (o "Repetir todo mês" do formulário de receitas):
+ * cria o modelo começando na data da receita, no mesmo dia do mês, e já gera os meses que
+ * chegaram. A desta data nasce confirmada se `recebida` não for false; as outras ficam previstas
+ * até você confirmar. Se a data ainda não chegou, nada é gerado agora.
+ */
+export function lancarReceitaRecorrente(
+  banco: Banco,
+  d: DadosReceita & { fim?: Dia | null },
+  agora = new Date(),
+): { recorrente: Recorrente; receita: Receita | null } {
+  const recorrente = criarRecorrente(
+    banco,
+    {
+      valorCentavos: d.valorCentavos,
+      categoria: d.categoria,
+      diaDoMes: Number(d.data.slice(8, 10)),
+      inicio: d.data,
+      fim: d.fim ?? null,
+      descricao: d.descricao,
+      contaId: d.contaId,
+      observacao: d.observacao,
+    },
+    agora,
+  );
+  const gerada = banco.db
+    .select()
+    .from(receitas)
+    .where(and(eq(receitas.recorrenteId, recorrente.id), eq(receitas.data, d.data)))
+    .get();
+  if (!gerada) return { recorrente, receita: null };
+  const receita = d.recebida === false ? gerada : confirmarRecebimento(banco, gerada.id, {}, agora);
+  return { recorrente, receita };
 }

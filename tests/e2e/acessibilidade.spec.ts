@@ -13,7 +13,6 @@ const ROTAS = [
   '/',
   '/gastos',
   '/receitas',
-  '/receitas/recorrentes',
   '/contas',
   '/categorias',
   '/cartoes',

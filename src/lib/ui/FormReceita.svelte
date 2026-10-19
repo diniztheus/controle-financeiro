@@ -65,6 +65,8 @@
     contaId: valores?.conta ?? inicial.contaId ?? '',
     observacao: valores?.observacao ?? inicial.observacao ?? '',
     recebida: valores?.recebida === 'nao' ? 'nao' : 'sim',
+    repetir: valores?.repetir === 'sim',
+    ate: valores?.ate ?? '',
   });
 
   /** Atributos de acessibilidade de um campo com (ou sem) erro. */
@@ -88,6 +90,11 @@
         if (campoValor) campoValor.value = '';
         if (campoDescricao) campoDescricao.value = '';
         if (campoObservacao) campoObservacao.value = '';
+        // "Repetir" volta desmarcado: o próximo lançamento é avulso, a não ser que você marque.
+        const repetir = formElement.querySelector<HTMLInputElement>('input[name="repetir"]');
+        if (repetir) repetir.checked = false;
+        const ate = formElement.querySelector<HTMLInputElement>('input[name="ate"]');
+        if (ate) ate.value = '';
         campoValor?.focus();
       } else if (result.type === 'failure') {
         await focarPrimeiroErro(formElement);
@@ -156,8 +163,30 @@
   </div>
 
   {#if perguntarRecebida}
+    <div class="repetir">
+      <label class="interruptor">
+        <input type="checkbox" name="repetir" value="sim" checked={v.repetir} />
+        <span class="trilho" aria-hidden="true"></span>
+        <span>
+          Repetir todo mês
+          <small>O site lança sozinho todo mês, no mesmo dia da data</small>
+        </span>
+      </label>
+      <div class="repetir-extra">
+        <div class="field">
+          <label for="{id}-ate">Até <span class="opc">opcional</span></label>
+          <input id="{id}-ate" name="ate" type="date" value={v.ate} {...aria('ate')} />
+          {#if erros?.ate}<span class="err" id="{id}-ate-erro">{erros.ate}</span>{/if}
+        </div>
+        <p class="hint">
+          Os próximos meses entram como previstos e só contam quando você confirmar que recebeu.
+          Pausar, editar ou parar fica na lista de recorrentes, nesta tela.
+        </p>
+      </div>
+    </div>
+
     <fieldset class="campo">
-      <legend class="lbl">Já caiu na conta?</legend>
+      <legend class="lbl">Esta já caiu na conta?</legend>
       <div class="pilulas escolhas">
         <label>
           <input type="radio" name="recebida" value="sim" checked={v.recebida === 'sim'} />
@@ -330,5 +359,84 @@
   }
   .acts .btn {
     flex: 1 1 auto;
+  }
+  .repetir {
+    display: grid;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--r);
+    background: var(--paper);
+  }
+  .interruptor {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .interruptor small {
+    display: block;
+    font-weight: 400;
+    font-size: var(--s-small);
+    color: var(--muted);
+  }
+  /* Caixa invisível de 1px sobre o trilho: o clique no texto vai para o rótulo, e ela continua
+     clicável por cima do desenho. */
+  .interruptor input {
+    position: absolute;
+    top: 50%;
+    left: 22px;
+    z-index: 1;
+    margin: 0;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    min-height: 0;
+    padding: 0;
+  }
+  .trilho {
+    flex: none;
+    width: 44px;
+    height: 26px;
+    border-radius: 999px;
+    background: var(--step);
+    box-shadow: inset 0 0 0 1px var(--line);
+    position: relative;
+    transition: background-color var(--t);
+  }
+  .trilho::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+    transition: transform var(--t);
+  }
+  .interruptor input:checked + .trilho {
+    background: var(--pos);
+  }
+  .interruptor input:checked + .trilho::after {
+    transform: translateX(18px);
+  }
+  .interruptor input:focus-visible + .trilho {
+    outline: 2px solid var(--orange);
+    outline-offset: 2px;
+  }
+  /* "Até" só aparece com "Repetir" marcado (sem JavaScript também). */
+  .repetir-extra {
+    display: none;
+    gap: 10px;
+  }
+  .repetir:has(input[name='repetir']:checked) .repetir-extra {
+    display: grid;
+  }
+  .repetir .field input {
+    background: var(--surface);
   }
 </style>

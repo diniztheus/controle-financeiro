@@ -26,6 +26,10 @@ Uma nota curta por onda. Versões seguem as tags do git (`v0.0`, `v0.1`…).
 - **Receita prevista ao lançar**: o formulário pergunta "Já caiu na conta?" (Já recebi / Ainda vou
   receber). A prevista fica fora dos totais até você confirmar, mesmo depois da data, como as das
   recorrentes. Qualquer receita recebida pode voltar a "ainda não recebida" pela tela dela.
+- **Recorrentes sem tela separada**: ao lançar a receita, marque **Repetir todo mês** (com "Até"
+  opcional). O modelo começa na data dela, no mesmo dia do mês; os próximos meses entram como
+  previstos. A lista "Recorrentes" (pausar, editar, remover) fica na própria tela de receitas;
+  o endereço antigo `/receitas/recorrentes` leva para lá.
 
 ## Onda 5: Acabamento e operação (17/10/2026)
 

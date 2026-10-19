@@ -58,7 +58,7 @@ Para usar outra porta, defina `PORT` no arquivo `.env` (copie de `.env.example`)
   pelos meses com ‹ e ›.
 - **Gastos** (`/gastos`): lançar gasto à vista ou no cartão (1 a 24 parcelas, com prévia da
   fatura de cada parcela). Editar, mandar para a lixeira.
-- **Receitas** (`/receitas`) e **Receitas recorrentes** (`/receitas/recorrentes`): salário,
+- **Receitas** (`/receitas`), inclusive as que se repetem todo mês ("Repetir todo mês"): salário,
   bolsa e afins. A recorrente lança a receita de cada mês sozinha, como **prevista**; ela só
   entra nos totais quando você confirma com **Recebi** (pode ajustar valor e data) ou descarta
   com **Não recebi**. A confirmação pode ser desfeita.

@@ -51,11 +51,11 @@ export const actions: Actions = {
       { valores: v.valores },
     );
     if (falhou(r)) return r;
-    redirect(303, '/receitas/recorrentes?aviso=editada');
+    redirect(303, '/receitas?aviso=recorrente-editada#recorrentes');
   },
   remover: ({ params }) => {
     const r = executar('remover', () => removerRecorrente(obterBanco(), params.id));
     if (falhou(r)) return r;
-    redirect(303, '/receitas/recorrentes?aviso=removida');
+    redirect(303, '/receitas?aviso=recorrente-removida#recorrentes');
   },
 };

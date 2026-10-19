@@ -1,5 +1,6 @@
 /**
- * Receitas recorrentes no navegador. O banco é compartilhado: os modelos de teste começam e
+ * Receitas recorrentes no navegador ("Repetir todo mês" no formulário de receitas e a lista
+ * "Recorrentes" na mesma tela). O banco é compartilhado: os modelos de teste começam e
  * terminam em 2019, em meses que nenhum outro teste usa (março e abril de 2019 são do
  * receitas.spec.ts). Sempre com "até" preenchido: sem ele o modelo geraria até o mês atual.
  * Nada vai para a lixeira.
@@ -12,21 +13,23 @@ async function criarModelo(
     valor: string;
     descricao: string;
     categoria: string;
-    dia: string;
-    inicio: string;
+    /** Data da primeira receita: o dia dela é o dia do mês em que se repete. */
+    data: string;
     fim: string;
   },
 ) {
-  await page.goto('/receitas/recorrentes');
+  await page.goto(`/receitas?mes=${d.data.slice(0, 7)}`);
   const form = page.locator('#nova');
   await form.getByLabel('Valor (R$)').fill(d.valor);
   await form.getByLabel('Descrição').fill(d.descricao);
+  await form.getByLabel('Data', { exact: true }).fill(d.data);
   await form.getByText(d.categoria, { exact: true }).click();
-  await form.getByLabel('Dia do mês').fill(d.dia);
-  await form.getByLabel('A partir de').fill(d.inicio);
+  await form.getByLabel('Repetir todo mês').check();
   await form.getByLabel('Até').fill(d.fim);
-  await form.getByRole('button', { name: 'Criar receita recorrente' }).click();
-  await expect(page.getByTestId('recorrente-aviso')).toContainText('Receita recorrente criada.');
+  // Como as que o site gera sozinho: todas previstas, até confirmar.
+  await form.getByText('Ainda vou receber', { exact: true }).click();
+  await form.getByRole('button', { name: 'Lançar receita' }).click();
+  await expect(page.getByTestId('receita-lancada')).toContainText('Receita recorrente');
 }
 
 function modelo(page: Page, nome: string) {
@@ -36,13 +39,12 @@ function modelo(page: Page, nome: string) {
 test('criar receita recorrente: lança as receitas dos meses já chegados, sem duplicar', async ({
   page,
 }) => {
-  // Início 10/08: o dia 5 de agosto fica de fora. Set, out e nov saem, e o fim (30/11) para.
+  // Começa em 05/09: set, out e nov saem, e o fim (30/11) para.
   await criarModelo(page, {
     valor: '3.000,00',
     descricao: 'Bolsa e2e',
     categoria: 'Bolsa',
-    dia: '5',
-    inicio: '2019-08-10',
+    data: '2019-09-05',
     fim: '2019-11-30',
   });
 
@@ -68,16 +70,17 @@ test('criar receita recorrente: lança as receitas dos meses já chegados, sem d
 });
 
 test('erro de datas mostra a mensagem e mantém o que foi digitado', async ({ page }) => {
-  await page.goto('/receitas/recorrentes');
+  await page.goto('/receitas');
   const form = page.locator('#nova');
   await form.getByLabel('Valor (R$)').fill('500');
   await form.getByLabel('Descrição').fill('Fica no campo');
-  await form.getByLabel('Dia do mês').fill('10');
-  await form.getByLabel('A partir de').fill('2019-10-01');
+  await form.getByLabel('Data', { exact: true }).fill('2019-10-01');
+  await form.getByLabel('Repetir todo mês').check();
   await form.getByLabel('Até').fill('2019-09-01');
-  await form.getByRole('button', { name: 'Criar receita recorrente' }).click();
-  await expect(form.getByText('A data final é antes da inicial')).toBeVisible();
+  await form.getByRole('button', { name: 'Lançar receita' }).click();
+  await expect(form.getByText('A data final é antes da data da receita')).toBeVisible();
   await expect(form.getByLabel('Descrição')).toHaveValue('Fica no campo');
+  await expect(form.getByLabel('Repetir todo mês')).toBeChecked();
 });
 
 test('pausar um modelo; retomar um modelo cujo fim já passou é recusado', async ({ page }) => {
@@ -85,15 +88,14 @@ test('pausar um modelo; retomar um modelo cujo fim já passou é recusado', asyn
     valor: '1.000,00',
     descricao: 'Aluguel e2e',
     categoria: 'Outros',
-    dia: '20',
-    inicio: '2019-08-01',
+    data: '2019-08-20',
     fim: '2019-12-31',
   });
   const item = modelo(page, 'Aluguel e2e');
   await expect(item).toContainText('5 lançadas');
 
   await item.getByRole('button', { name: 'Pausar' }).click();
-  await expect(page.getByTestId('recorrente-aviso')).toContainText('pausada');
+  await expect(page.getByTestId('receita-aviso')).toContainText('pausada');
   await expect(modelo(page, 'Aluguel e2e')).toContainText('Pausada');
 
   // O fim (31/12/2019) já passou: retomar só depois de editar a data final.
@@ -103,14 +105,14 @@ test('pausar um modelo; retomar um modelo cujo fim já passou é recusado', asyn
 });
 
 test('editar o modelo não muda as receitas já lançadas', async ({ page }) => {
-  await page.goto('/receitas/recorrentes');
+  await page.goto('/receitas');
   await modelo(page, 'Bolsa e2e').getByRole('link', { name: 'Editar' }).click();
   await expect(page.getByRole('heading', { name: 'Editar receita recorrente' })).toBeVisible();
   await expect(page.getByText('Mudanças valem só para os próximos meses')).toBeVisible();
 
   await page.getByLabel('Valor (R$)').fill('3.200,00');
   await page.getByRole('button', { name: 'Salvar alterações' }).click();
-  await expect(page.getByTestId('recorrente-aviso')).toContainText('Modelo salvo.');
+  await expect(page.getByTestId('receita-aviso')).toContainText('Receita recorrente salva.');
   await expect(modelo(page, 'Bolsa e2e')).toContainText('3.200,00');
 
   // A receita de setembro, já lançada, continua com o valor antigo.
@@ -119,13 +121,10 @@ test('editar o modelo não muda as receitas já lançadas', async ({ page }) => 
   await expect(page.getByTestId('lista-receitas')).not.toContainText('R$ 3.200,00');
 });
 
-test('a tela de receitas leva às recorrentes', async ({ page }) => {
-  await page.goto('/receitas');
-  await page.getByRole('link', { name: 'Receitas recorrentes' }).click();
-  await expect(page).toHaveURL(/\/receitas\/recorrentes$/);
-  await expect(page.getByRole('heading', { name: 'Receitas recorrentes', level: 1 })).toBeVisible();
-  await page.getByRole('link', { name: 'Voltar às receitas' }).click();
-  await expect(page).toHaveURL(/\/receitas/);
+test('o endereço antigo das recorrentes leva à lista na tela de receitas', async ({ page }) => {
+  await page.goto('/receitas/recorrentes');
+  await expect(page).toHaveURL(/\/receitas#recorrentes$/);
+  await expect(page.getByRole('heading', { name: 'Recorrentes', level: 2 })).toBeVisible();
 });
 
 test('modelo inexistente dá 404', async ({ page }) => {

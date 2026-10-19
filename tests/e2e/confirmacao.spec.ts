@@ -13,16 +13,17 @@ test.describe.configure({ mode: 'serial' });
 test('recorrente gera previstas; confirmar, não recebi e desfazer mudam os totais', async ({
   page,
 }) => {
-  await page.goto('/receitas/recorrentes');
+  await page.goto('/receitas?mes=2019-02');
   const form = page.locator('#nova');
   await form.getByLabel('Valor (R$)').fill('2.500,00');
   await form.getByLabel('Descrição').fill(DESCRICAO);
+  await form.getByLabel('Data', { exact: true }).fill('2019-02-05');
   await form.getByText('Freelance', { exact: true }).click();
-  await form.getByLabel('Dia do mês').fill('5');
-  await form.getByLabel('A partir de').fill('2019-02-01');
+  await form.getByLabel('Repetir todo mês').check();
   await form.getByLabel('Até').fill('2019-04-30');
-  await form.getByRole('button', { name: 'Criar receita recorrente' }).click();
-  await expect(page.getByTestId('recorrente-aviso')).toContainText('Receita recorrente criada.');
+  await form.getByText('Ainda vou receber', { exact: true }).click();
+  await form.getByRole('button', { name: 'Lançar receita' }).click();
+  await expect(page.getByTestId('receita-lancada')).toContainText('Receita recorrente');
 
   // Fevereiro: a receita gerada é prevista (selo "Prevista", valor em cinza) e não soma.
   await page.goto('/receitas?mes=2019-02');

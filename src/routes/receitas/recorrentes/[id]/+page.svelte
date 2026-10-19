@@ -20,7 +20,7 @@
     <h1>Editar receita recorrente</h1>
     <p>{r.descricao ?? r.categoria} · {formatarBRL(r.valorCentavos)} · {descreverRecorrencia(r)}</p>
     <p class="voltar-l">
-      <a class="voltar" href={resolve('/receitas/recorrentes')}>‹ Voltar às recorrentes</a>
+      <a class="voltar" href="{resolve('/receitas')}#recorrentes">‹ Voltar às receitas</a>
     </p>
   </div>
 </header>

@@ -13,6 +13,7 @@ import {
   criarRecorrente,
   editarRecorrente,
   gerarReceitasRecorrentes,
+  lancarReceitaRecorrente,
   listarRecorrentes,
   obterRecorrente,
   pausarRecorrente,
@@ -27,7 +28,7 @@ import {
   receitasDoMes,
   removerReceita,
 } from '../../src/lib/server/servicos/receitas';
-import { receitaRecorrenteForm } from '../../src/lib/validacao/nucleo';
+import { receitaForm, receitaRecorrenteForm } from '../../src/lib/validacao/nucleo';
 import { bancoEmMemoria } from './ajuda-banco';
 
 let banco: Banco;
@@ -423,5 +424,52 @@ describe('revisão: restaurar e modelos ruins', () => {
     expect(
       banco.db.select().from(receitas).where(eq(receitas.recorrenteId, ok.id)).all().length,
     ).toBeGreaterThan(0);
+  });
+});
+
+describe('"Repetir todo mês" ao lançar uma receita', () => {
+  const base = { categoria: 'Salário', valorCentavos: 500_000, descricao: 'Salário' };
+
+  it('cria o modelo no dia da data e confirma só a receita lançada; as outras ficam previstas', () => {
+    const { recorrente, receita } = lancarReceitaRecorrente(
+      banco,
+      { ...base, data: '2026-08-05', fim: null },
+      AGORA,
+    );
+    expect(recorrente).toMatchObject({ diaDoMes: 5, inicio: '2026-08-05', fim: null });
+    expect(receita).toMatchObject({ data: '2026-08-05' });
+    expect(receita!.confirmadaEm).not.toBeNull();
+    // Setembro e outubro (dia 5 já passou) nascem previstas, mesmo com a data vencida.
+    expect(receitasDoMes(banco, '2026-09')[0]).toMatchObject({ confirmada: false });
+    expect(receitasDoMes(banco, '2026-10')[0]).toMatchObject({ confirmada: false });
+  });
+
+  it('"ainda vou receber" deixa até a primeira prevista', () => {
+    const { receita } = lancarReceitaRecorrente(
+      banco,
+      { ...base, data: '2026-10-05', fim: null, recebida: false },
+      AGORA,
+    );
+    expect(receita!.confirmadaEm).toBeNull();
+  });
+
+  it('data futura: cria o modelo e não lança nada ainda', () => {
+    const { recorrente, receita } = lancarReceitaRecorrente(
+      banco,
+      { ...base, data: '2026-10-25', fim: '2026-12-31' },
+      AGORA,
+    );
+    expect(receita).toBeNull();
+    expect(listarRecorrentes(banco, AGORA)[0]).toMatchObject({ id: recorrente.id, geradas: 0 });
+  });
+
+  it('o formulário recusa "até" antes da data e ignora "até" sem repetir', () => {
+    const campos = { valor: '100', data: '2026-10-05', categoria: 'Salário' };
+    const r = receitaForm.safeParse({ ...campos, repetir: 'sim', ate: '2026-09-01' });
+    expect(r.success).toBe(false);
+    const sem = receitaForm.parse({ ...campos, ate: '2026-09-01' });
+    expect(sem).toMatchObject({ repetir: false, fim: null });
+    const com = receitaForm.parse({ ...campos, repetir: 'sim', ate: '2026-12-31' });
+    expect(com).toMatchObject({ repetir: true, fim: '2026-12-31' });
   });
 });

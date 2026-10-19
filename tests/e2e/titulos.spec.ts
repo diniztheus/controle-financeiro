@@ -9,7 +9,6 @@ const ROTAS_ESTATICAS = [
   '/',
   '/gastos',
   '/receitas',
-  '/receitas/recorrentes',
   '/contas',
   '/categorias',
   '/cartoes',
