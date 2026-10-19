@@ -3,6 +3,7 @@
   import { resolve } from '$app/paths';
   import { formatarBRL } from '$lib/dominio/dinheiro';
   import type { DiaDeLancamentos } from '$lib/dominio/lancamentos';
+  import IconeRedondo from './IconeRedondo.svelte';
   import { corCss, diaPorExtenso } from './formato';
 
   interface Props {
@@ -27,13 +28,13 @@
     <section class="day" aria-label={diaPorExtenso(d.data)}>
       <h3 class="day-head">
         <span>{diaPorExtenso(d.data)}</span>
-        <span class="num">{formatarBRL(d.totalCentavos)}</span>
+        <span class="num">−{formatarBRL(d.totalCentavos)}</span>
       </h3>
-      <ul class="itens">
+      <ul class="rows">
         {#each d.itens as l (l.compraId + ':' + l.parcela)}
           <li>
-            <a class="row lanc" href={resolve('/gastos/[id]', { id: l.compraId })}>
-              <span class="sq" style="--cc: {corCss(l.categoriaCor)}"></span>
+            <a class="row" href={resolve('/gastos/[id]', { id: l.compraId })}>
+              <IconeRedondo nome={l.categoriaNome} cor={corCss(l.categoriaCor)} />
               <span class="row-main">
                 <span class="row-title"
                   >{l.descricao ?? l.categoriaNome}{#if l.numParcelas > 1}<span class="tag num"
@@ -42,7 +43,7 @@
                 >
                 <span class="row-meta">{detalhe(l)}</span>
               </span>
-              <span class="row-val num">{formatarBRL(l.valorCentavos)}</span>
+              <span class="row-val num neg">−{formatarBRL(l.valorCentavos)}</span>
             </a>
           </li>
         {/each}
@@ -54,11 +55,11 @@
 <style>
   .days {
     display: grid;
-    gap: 6px;
+    gap: 14px;
   }
   .day {
     display: grid;
-    gap: 2px;
+    gap: 6px;
   }
   .day-head {
     display: flex;
@@ -68,26 +69,9 @@
     color: var(--muted);
     font-weight: 600;
     letter-spacing: 0;
-    padding: 14px 12px 6px;
+    padding-inline: 4px;
   }
   .day-head span:first-child::first-letter {
     text-transform: uppercase;
-  }
-  .itens {
-    display: grid;
-    gap: 2px;
-  }
-  .lanc {
-    color: inherit;
-    text-decoration: none;
-    transition:
-      background-color var(--t),
-      transform var(--t);
-  }
-  .lanc:hover {
-    background: var(--step) !important;
-  }
-  .lanc:active {
-    transform: scale(0.995);
   }
 </style>

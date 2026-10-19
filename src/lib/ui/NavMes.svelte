@@ -1,5 +1,7 @@
 <script lang="ts">
-  /** ‹ mês anterior · Mês de 2026 · próximo mês › — links comuns (funcionam sem JavaScript). */
+  /** ‹ Outubro de 2026 › numa pílula — links comuns (funcionam sem JavaScript). */
+  import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import { mesAtual, type Mes } from '$lib/dominio/datas';
   import { mesesVizinhos, tituloMes } from './formato';
 
@@ -15,9 +17,15 @@
 
 <nav class="month" aria-label="Mês">
   <!-- eslint-disable svelte/no-navigation-without-resolve -- href já vem resolvido pela página -->
-  <a class="ib" href={href(viz.anterior)} aria-label="Mês anterior" data-sveltekit-noscroll>‹</a>
-  <strong data-testid="mes-atual">{tituloMes(mes)}</strong>
-  <a class="ib" href={href(viz.proximo)} aria-label="Próximo mês" data-sveltekit-noscroll>›</a>
+  <div class="pilula">
+    <a class="ib" href={href(viz.anterior)} aria-label="Mês anterior" data-sveltekit-noscroll
+      ><ChevronLeft size={20} /></a
+    >
+    <strong data-testid="mes-atual">{tituloMes(mes)}</strong>
+    <a class="ib" href={href(viz.proximo)} aria-label="Próximo mês" data-sveltekit-noscroll
+      ><ChevronRight size={20} /></a
+    >
+  </div>
   {#if mes !== atual}
     <a class="hoje" href={href(atual)} data-sveltekit-noscroll>Voltar para hoje</a>
   {/if}
@@ -28,43 +36,50 @@
   .month {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
     flex-wrap: wrap;
   }
-  .month strong {
+  .pilula {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface);
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+    padding: 2px;
+  }
+  .pilula strong {
     min-width: 9.5em;
     text-align: center;
-    font-weight: 600;
-    background: var(--step);
-    align-self: stretch;
-    display: grid;
-    place-items: center;
-    padding-inline: 8px;
+    font-weight: 650;
+    font-size: 0.9375rem;
+    padding-inline: 4px;
   }
   .ib {
     width: 44px;
     height: 44px;
+    border-radius: 50%;
     display: grid;
     place-items: center;
-    font-size: 1.375rem;
-    background: var(--step);
     color: var(--ink);
-    text-decoration: none;
     transition:
       background-color var(--t),
       transform var(--t);
   }
   .ib:hover {
-    background: color-mix(in srgb, var(--step) 70%, var(--ink) 30%);
+    background: var(--step);
   }
   .ib:active {
-    transform: scale(0.94);
+    transform: scale(0.92);
   }
   .hoje {
-    color: var(--ink);
+    color: var(--orange);
     font-weight: 600;
-    font-size: 0.9375rem;
-    padding: 10px 8px;
+    font-size: 0.875rem;
+    padding: 10px 6px;
+    text-decoration: none;
+  }
+  .hoje:hover {
+    text-decoration: underline;
     text-underline-offset: 4px;
   }
 </style>

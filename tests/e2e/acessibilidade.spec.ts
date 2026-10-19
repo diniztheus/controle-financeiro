@@ -138,7 +138,7 @@ test.describe('teclado e movimento', () => {
 
   test('fechar a ajuda de atalhos devolve o foco ao elemento anterior', async ({ page }) => {
     await page.goto('/');
-    const anterior = page.locator('.foot-links a').first();
+    const anterior = page.locator('.ferramentas a').first();
     await anterior.focus();
     await page.keyboard.press('?');
     await expect(page.getByRole('dialog')).toBeVisible();

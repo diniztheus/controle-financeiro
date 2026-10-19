@@ -56,9 +56,15 @@ test('sem rolagem horizontal no celular', async ({ page }) => {
     const largura = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(largura, rota).toBeLessThanOrEqual(390);
   }
-  // No celular as seções viram uma linha que rola de lado, e o "+" lança um gasto.
+  // No celular as seções viram abas embaixo; o "+" abre a escolha entre gasto e receita
+  // e o "Mais" mostra o resto das seções.
   await page.goto('/');
-  await expect(page.getByRole('navigation', { name: 'Seções' })).toBeVisible();
+  const abas = page.getByRole('navigation', { name: 'Seções' });
+  await expect(abas).toBeVisible();
+  await abas.getByRole('button', { name: 'Novo lançamento' }).click();
   await expect(page.getByRole('link', { name: 'Novo gasto' }).last()).toBeVisible();
-  await expect(page.getByTestId('indicador-banco')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Nova receita' }).last()).toBeVisible();
+  await page.keyboard.press('Escape');
+  await abas.getByRole('button', { name: 'Mais' }).click();
+  await expect(page.locator('#folha-mais').getByRole('link', { name: 'Cartões' })).toBeVisible();
 });

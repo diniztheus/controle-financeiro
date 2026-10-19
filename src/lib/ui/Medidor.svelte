@@ -44,14 +44,16 @@
     font-size: 0.9375rem;
   }
   .meter {
-    height: 12px;
+    height: 10px;
+    border-radius: 999px;
     background: var(--step);
     overflow: hidden;
   }
   .meter > span {
     display: block;
     height: 100%;
-    background: var(--ink);
+    border-radius: 999px;
+    background: var(--orange);
     transform-origin: left;
   }
   .meter.alerta > span {

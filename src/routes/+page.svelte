@@ -1,16 +1,24 @@
 <script lang="ts">
+  import ArrowDownRight from '@lucide/svelte/icons/arrow-down-right';
+  import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import PiggyBank from '@lucide/svelte/icons/piggy-bank';
+  import Target from '@lucide/svelte/icons/target';
   import { enhance } from '$app/forms';
   import { resolve } from '$app/paths';
   import { centavosParaCampo, formatarBRL } from '$lib/dominio/dinheiro';
   import GraficoMes from '$lib/ui/GraficoMes.svelte';
-  import LinhaRazao from '$lib/ui/LinhaRazao.svelte';
+  import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
   import ListaLancamentos from '$lib/ui/ListaLancamentos.svelte';
   import Medidor from '$lib/ui/Medidor.svelte';
   import NavMes from '$lib/ui/NavMes.svelte';
+  import Rosca from '$lib/ui/Rosca.svelte';
   import Valor from '$lib/ui/Valor.svelte';
+  import { ICONE_CONTA } from '$lib/ui/icones';
   import { corCss, dataDeIso, plural, soNomeMes, tituloMes } from '$lib/ui/formato';
   import { ariaErro } from '$lib/ui/formularios';
   import { mesAtual, somarMeses, type Mes } from '$lib/dominio/datas';
+  import { ROTULO_TIPO } from '$lib/dominio/contas';
   import type { PageProps } from './$types';
 
   let { data, form }: PageProps = $props();
@@ -34,149 +42,154 @@
   const mesNoTitulo = $derived(
     p.mes.slice(0, 4) === mesAtual().slice(0, 4) ? nomeMes : tituloMes(p.mes).toLowerCase(),
   );
+  /** Rosca: as 6 maiores categorias e o resto junto, para o desenho não virar confete. */
+  const fatias = $derived.by(() => {
+    const maiores = p.categorias.slice(0, 6).map((c) => ({
+      valor: c.totalCentavos,
+      cor: corCss(c.cor),
+    }));
+    const resto = p.categorias.slice(6).reduce((s, c) => s + c.totalCentavos, 0);
+    return resto > 0 ? [...maiores, { valor: resto, cor: 'var(--c9)' }] : maiores;
+  });
 </script>
 
 <svelte:head>
   <title>Controle Financeiro · Painel</title>
 </svelte:head>
 
-<section class="hero pad" aria-labelledby="h-pat">
-  <div class="hero-top">
-    <h1 id="h-pat">Patrimônio líquido</h1>
-    <p class="hero-note">
-      {#if p.patrimonio.saldoAtualizadoEm}
-        Último saldo informado em {dataDeIso(p.patrimonio.saldoAtualizadoEm)}
-      {:else}
-        Nenhum saldo informado ainda
-      {/if}
-    </p>
-  </div>
-
-  <p
-    class="giant"
-    aria-live="polite"
-    style="--n: {formatarBRL(p.patrimonio.liquidoCentavos).length}"
-  >
-    <span class="rise"><Valor centavos={p.patrimonio.liquidoCentavos} testid="patrimonio" /></span>
-  </p>
-
-  <div class="hero-bottom">
+<div class="pad painel">
+  <header class="ola">
     <div>
-      <p class="hero-lead">
-        {#if p.patrimonio.quantidadeContas}
-          A soma dos saldos das suas contas{p.patrimonio.bitcoinCentavos > 0
-            ? ' e do seu bitcoin ao último preço informado'
-            : ''}{p.patrimonio.aPagarCartoesCentavos > 0
-            ? ', menos o que está a pagar nos cartões'
-            : ''}.
-        {:else}
+      <p class="muted">Olá! Este é o seu resumo de</p>
+      <h1>{tituloMes(p.mes)}</h1>
+    </div>
+    <NavMes mes={p.mes} href={linkMes} />
+  </header>
+
+  <div class="topo">
+    <section class="card saldo" aria-labelledby="h-pat">
+      <div class="saldo-cab">
+        <h2 id="h-pat">Patrimônio líquido</h2>
+        <a class="saldo-link" href={resolve('/contas')}
+          >{p.patrimonio.quantidadeContas ? 'Atualizar saldos' : 'Cadastrar contas'}
+          <ChevronRight size={16} /></a
+        >
+      </div>
+      <p class="giant" aria-live="polite">
+        <span class="rise"
+          ><Valor centavos={p.patrimonio.liquidoCentavos} testid="patrimonio" /></span
+        >
+      </p>
+      <p class="saldo-nota">
+        {#if !p.patrimonio.quantidadeContas}
           Comece cadastrando suas contas com o saldo de hoje. O patrimônio sai da soma delas.
+        {:else if p.patrimonio.saldoAtualizadoEm}
+          Último saldo informado em {dataDeIso(p.patrimonio.saldoAtualizadoEm)}
+        {:else}
+          Nenhum saldo informado ainda
         {/if}
       </p>
-      <div class="hero-acts">
-        <a class="btn" href={resolve('/contas')}
-          >{p.patrimonio.quantidadeContas ? 'Atualizar saldos' : 'Cadastrar contas'}</a
-        >
-        <a class="btn alt" href="{resolve('/gastos')}#novo">Novo gasto</a>
-      </div>
-    </div>
-    <div class="ledger" aria-label="Composição do patrimônio">
-      <LinhaRazao
-        rotulo="Contas"
-        detalhe={p.patrimonio.quantidadeContas
-          ? plural(p.patrimonio.quantidadeContas, 'conta', 'contas')
-          : 'nenhuma conta ainda'}
-        centavos={p.patrimonio.contasCentavos}
-      />
-      {#if p.patrimonio.bitcoinCentavos > 0}
-        <LinhaRazao
-          rotulo="Bitcoin"
-          detalhe="ao último preço informado"
-          centavos={p.patrimonio.bitcoinCentavos}
-        />
-      {/if}
-      {#if p.patrimonio.aPagarCartoesCentavos > 0}
-        <LinhaRazao
-          rotulo="Cartões a pagar"
-          detalhe="parcelas em faturas não pagas"
-          centavos={-p.patrimonio.aPagarCartoesCentavos}
-          testid="cartoes-a-pagar"
-        />
-      {/if}
-      <LinhaRazao rotulo="Patrimônio líquido" centavos={p.patrimonio.liquidoCentavos} total />
-    </div>
-  </div>
-</section>
-
-<section class="sec pad" aria-labelledby="h-mes" data-testid="painel-mes">
-  <div class="sec-head">
-    <h2 id="h-mes">Gastos de {mesNoTitulo}</h2>
-    <NavMes mes={p.mes} href={linkMes} />
-  </div>
-
-  <div class="mes-grid">
-    <div class="mes-sum">
-      <p class="big"><Valor centavos={p.totalMesCentavos} testid="total-mes" /></p>
-      {#if p.comparacao}
-        <p class="delta" class:up={p.comparacao.diferencaCentavos > 0}>
-          {p.comparacao.percentual > 0 ? '+' : ''}{p.comparacao.percentual}% em relação a {soNomeMes(
-            somarMeses(p.mes, -1),
-          )} até o dia {p.comparacao.ateDia}
-        </p>
-      {:else}
-        <p class="delta muted">
-          {p.ateDia === 0
-            ? 'Este mês ainda não começou.'
-            : 'Sem gastos no mês anterior para comparar.'}
-        </p>
-      {/if}
-
-      {#if p.fluxo.quantidadeReceitas}
-        <dl class="fluxo">
+      <dl class="composicao" aria-label="Composição do patrimônio">
+        <div>
+          <dt>
+            Contas
+            <small
+              >{p.patrimonio.quantidadeContas
+                ? plural(p.patrimonio.quantidadeContas, 'conta', 'contas')
+                : 'nenhuma conta ainda'}</small
+            >
+          </dt>
+          <dd class="num">{formatarBRL(p.patrimonio.contasCentavos)}</dd>
+        </div>
+        {#if p.patrimonio.bitcoinCentavos > 0}
           <div>
-            <dt>Entradas do mês</dt>
-            <dd>
-              <Valor class="pos" centavos={p.fluxo.entradasCentavos} testid="entradas-mes" />
-            </dd>
+            <dt>Bitcoin <small>ao último preço informado</small></dt>
+            <dd class="num">{formatarBRL(p.patrimonio.bitcoinCentavos)}</dd>
           </div>
-          <div>
-            <dt>Sobra do mês</dt>
-            <dd>
-              <Valor
-                class={p.fluxo.saldoCentavos < 0 ? 'neg' : 'pos'}
-                centavos={p.fluxo.saldoCentavos}
-                testid="sobra-mes"
-              />
-            </dd>
+        {/if}
+        {#if p.patrimonio.aPagarCartoesCentavos > 0}
+          <div data-testid="cartoes-a-pagar">
+            <dt>Cartões a pagar <small>parcelas em faturas não pagas</small></dt>
+            <dd class="num">−{formatarBRL(p.patrimonio.aPagarCartoesCentavos)}</dd>
           </div>
-          {#if p.fluxo.taxaPoupancaPercentual !== null}
-            <div>
-              <dt>Taxa de poupança</dt>
-              <dd class="num" data-testid="taxa-poupanca">
-                {p.fluxo.taxaPoupancaPercentual.toLocaleString('pt-BR', {
-                  maximumFractionDigits: 1,
-                })}%
-              </dd>
-            </div>
+        {/if}
+      </dl>
+    </section>
+
+    <section class="resumo" aria-labelledby="h-mes" data-testid="painel-mes">
+      <h2 id="h-mes" class="sr">Entradas e gastos de {mesNoTitulo}</h2>
+
+      <div class="card stat">
+        <div class="stat-cab">
+          <span class="ico receita"><ArrowUpRight size={20} /></span>
+          <span class="stat-rot">Receitas</span>
+        </div>
+        {#if p.fluxo.quantidadeReceitas}
+          <p class="stat-val pos">
+            <Valor centavos={p.fluxo.entradasCentavos} testid="entradas-mes" />
+          </p>
+          {#if p.aReceber.quantidade > 0}
+            <p class="small stat-nota" data-testid="a-receber-home">
+              A receber: <span class="num">{formatarBRL(p.aReceber.totalCentavos)}</span>
+              ({plural(p.aReceber.quantidade, 'prevista', 'previstas')}) ·
+              <a href={resolve('/receitas')}>ver receitas</a>
+            </p>
           {/if}
-        </dl>
-        {#if p.aReceber.quantidade > 0}
-          <p class="small a-receber" data-testid="a-receber-home">
-            A receber: <span class="num">{formatarBRL(p.aReceber.totalCentavos)}</span>
-            ({plural(p.aReceber.quantidade, 'prevista', 'previstas')}) ·
-            <a href={resolve('/receitas')}>ver receitas</a>
+        {:else}
+          <p class="small stat-nota">
+            Nenhuma receita neste mês. <a href="{resolve('/receitas')}#nova">Lançar receita</a>
           </p>
         {/if}
-        <p class="small muted">
-          Entradas são as receitas do mês. A sobra é o que entra menos os gastos.
-        </p>
-      {:else}
-        <p class="small muted">
-          Nenhuma receita neste mês. <a href={resolve('/receitas')}>Lançar receita</a>
-        </p>
+      </div>
+
+      <div class="card stat">
+        <div class="stat-cab">
+          <span class="ico gasto"><ArrowDownRight size={20} /></span>
+          <span class="stat-rot">Gastos</span>
+        </div>
+        <p class="stat-val neg"><Valor centavos={p.totalMesCentavos} testid="total-mes" /></p>
+        {#if p.comparacao}
+          <p class="small stat-nota delta" class:up={p.comparacao.diferencaCentavos > 0}>
+            {p.comparacao.percentual > 0 ? '+' : ''}{p.comparacao.percentual}% em relação a {soNomeMes(
+              somarMeses(p.mes, -1),
+            )} até o dia {p.comparacao.ateDia}
+          </p>
+        {:else}
+          <p class="small stat-nota">
+            {p.ateDia === 0
+              ? 'Este mês ainda não começou.'
+              : 'Sem gastos no mês anterior para comparar.'}
+          </p>
+        {/if}
+      </div>
+
+      {#if p.fluxo.quantidadeReceitas}
+        <div class="card stat">
+          <div class="stat-cab">
+            <span class="ico"><PiggyBank size={20} /></span>
+            <span class="stat-rot">Sobra do mês</span>
+          </div>
+          <p class="stat-val" class:neg={p.fluxo.saldoCentavos < 0}>
+            <Valor centavos={p.fluxo.saldoCentavos} testid="sobra-mes" />
+          </p>
+          {#if p.fluxo.taxaPoupancaPercentual !== null}
+            <p class="small stat-nota">
+              Taxa de poupança:
+              <b class="num" data-testid="taxa-poupanca"
+                >{p.fluxo.taxaPoupancaPercentual.toLocaleString('pt-BR', {
+                  maximumFractionDigits: 1,
+                })}%</b
+              >
+            </p>
+          {/if}
+        </div>
       {/if}
 
-      <div class="limite">
+      <div class="card stat limite">
+        <div class="stat-cab">
+          <span class="ico"><Target size={20} /></span>
+          <span class="stat-rot">Limite de gastos</span>
+        </div>
         {#if p.limite && !editandoLimite}
           <Medidor s={p.limite} />
           <p class="small muted" data-testid="limite-tipo">
@@ -185,7 +198,7 @@
               : 'Limite padrão, que vale para todos os meses.'}
           </p>
         {:else if !editandoLimite}
-          <p>Defina quanto quer gastar por mês e acompanhe quanto ainda resta.</p>
+          <p class="small muted">Defina quanto quer gastar por mês e acompanhe quanto resta.</p>
         {/if}
 
         {#if editandoLimite}
@@ -235,7 +248,7 @@
               />
             </div>
             <div class="acts">
-              <button class="btn ink sm" type="submit">Salvar limite</button>
+              <button class="btn go sm" type="submit">Salvar limite</button>
               <a
                 class="btn sm"
                 href={resolve(`/?mes=${p.mes}`)}
@@ -249,7 +262,7 @@
         {:else}
           <div>
             <a
-              class="btn ink sm"
+              class="btn text sm"
               href={resolve(`/?mes=${p.mes}&limite`)}
               onclick={(e) => {
                 e.preventDefault();
@@ -266,221 +279,332 @@
           {#if 'ok' in form && form.ok}<p class="ok-msg" role="status">{form.ok}</p>{/if}
         {/if}
       </div>
-    </div>
-
-    <GraficoMes atual={p.acumulado} anterior={p.acumuladoAnterior} ateDia={p.ateDia} />
+    </section>
   </div>
 
-  <div class="col">
-    <div class="col-head">
-      <h3>Por categoria</h3>
-      <a class="btn text" href={resolve('/categorias')}>Editar categorias</a>
-    </div>
-    {#if p.categorias.length}
-      <div class="stack" aria-hidden="true">
-        {#each p.categorias as c (c.categoriaId)}
-          <span style="--cc: {corCss(c.cor)}; flex-grow: {c.totalCentavos}"></span>
-        {/each}
+  <div class="meio">
+    <section class="card" aria-labelledby="h-cat">
+      <div class="card-head">
+        <h2 id="h-cat">Gastos por categoria</h2>
+        <a class="btn text sm" href={resolve('/categorias')}>Editar categorias</a>
       </div>
-      <ul class="cat-list" data-testid="categorias-mes">
-        {#each p.categorias as c (c.categoriaId)}
-          <li class="cat">
-            <span class="sq" style="--cc: {corCss(c.cor)}"></span>
-            <span class="cat-nome">{c.nome}</span>
-            <span class="num cat-val">{formatarBRL(c.totalCentavos)}</span>
-            <span class="num pc">{c.percentual}%</span>
-          </li>
-        {/each}
-      </ul>
-    {:else}
-      <div class="empty">
-        <strong>Nenhum gasto em {nomeMes}</strong>
-        <span>Os gastos lançados aparecem aqui, somados por categoria.</span>
-      </div>
-    {/if}
+      {#if p.categorias.length}
+        <div class="cat-corpo">
+          <Rosca {fatias} rotulo="Total" centro={formatarBRL(p.totalMesCentavos)} />
+          <ul class="cat-list" data-testid="categorias-mes">
+            {#each p.categorias as c (c.categoriaId)}
+              <li class="cat">
+                <IconeRedondo nome={c.nome} cor={corCss(c.cor)} tamanho={34} />
+                <span class="cat-main">
+                  <span class="cat-nome">{c.nome}</span>
+                  <span class="barra" aria-hidden="true"
+                    ><span style="--cc: {corCss(c.cor)}; width: {c.percentual}%"></span></span
+                  >
+                </span>
+                <span class="cat-num">
+                  <span class="num cat-val">{formatarBRL(c.totalCentavos)}</span>
+                  <span class="num pc">{c.percentual}%</span>
+                </span>
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {:else}
+        <div class="empty">
+          <strong>Nenhum gasto em {nomeMes}</strong>
+          <span>Os gastos lançados aparecem aqui, somados por categoria.</span>
+        </div>
+      {/if}
+    </section>
   </div>
-</section>
 
-<section class="sec alt pad" aria-labelledby="h-lanc">
-  <div class="two-col">
-    <div class="col">
+  <div class="baixo">
+    <section class="col" aria-labelledby="h-lanc">
       <div class="col-head">
-        <h2 id="h-lanc" class="h-sec">Lançamentos</h2>
-        <span class="muted">{plural(p.quantidade, 'lançamento', 'lançamentos')}</span>
+        <h2 id="h-lanc">Últimos lançamentos</h2>
+        {#if p.dias.length}
+          <a class="btn text sm" href={linkGastos}>Ver todos</a>
+        {/if}
       </div>
       {#if p.dias.length}
-        <ListaLancamentos dias={p.dias} limiteDias={5} />
-        <a class="btn" href={linkGastos}>Ver todos os gastos de {nomeMes}</a>
+        <ListaLancamentos dias={p.dias} limiteDias={4} />
+        <p class="small muted">{plural(p.quantidade, 'lançamento', 'lançamentos')} em {nomeMes}</p>
       {:else}
         <div class="empty">
           <strong>Nada lançado em {nomeMes}</strong>
           <span>Lance o primeiro gasto: valor, categoria e pronto.</span>
-          <a class="btn ink" href="{resolve('/gastos')}#novo">Lançar gasto</a>
+          <a class="btn go" href="{resolve('/gastos')}#novo">Lançar gasto</a>
         </div>
       {/if}
-    </div>
+    </section>
 
-    <div class="col">
-      <div class="col-head">
-        <h3>Contas</h3>
-        <a class="btn text" href={resolve('/contas')}>Atualizar saldos</a>
-      </div>
-      <p class="note">Saldos informados por você. Lançar um gasto não muda esses valores.</p>
-      {#if p.contas.length}
-        <ul class="rows">
-          {#each p.contas as c (c.id)}
-            <li>
-              <a class="row conta" href={resolve('/contas/[id]', { id: c.id })}>
-                <span class="sq" style="--cc: var(--ink)"></span>
-                <span class="row-main"><span class="row-title">{c.nome}</span></span>
-                <span class="row-val num" class:neg={c.saldoCentavos < 0}
-                  >{formatarBRL(c.saldoCentavos)}</span
-                >
-              </a>
-            </li>
-          {/each}
-        </ul>
-      {:else}
-        <div class="empty">
-          <strong>Nenhuma conta ainda</strong>
-          <span>Cadastre conta corrente, poupança, investimentos ou dinheiro em espécie.</span>
-          <a class="btn ink" href={resolve('/contas')}>Cadastrar conta</a>
+    <div class="col lado">
+      <section class="card" aria-labelledby="h-graf">
+        <div class="card-head">
+          <h2 id="h-graf">Gasto acumulado</h2>
+          <span class="small muted">{tituloMes(p.mes)} contra o mês anterior</span>
         </div>
-      {/if}
+        <GraficoMes atual={p.acumulado} anterior={p.acumuladoAnterior} ateDia={p.ateDia} />
+      </section>
+
+      <section class="col" aria-labelledby="h-contas">
+        <div class="col-head">
+          <h2 id="h-contas">Contas</h2>
+          <a class="btn text sm" href={resolve('/contas')}>Atualizar saldos</a>
+        </div>
+        {#if p.contas.length}
+          <ul class="rows">
+            {#each p.contas as c (c.id)}
+              <li>
+                <a class="row" href={resolve('/contas/[id]', { id: c.id })}>
+                  <IconeRedondo icone={ICONE_CONTA[c.tipo]} cor="var(--orange)" suave />
+                  <span class="row-main">
+                    <span class="row-title">{c.nome}</span>
+                    <span class="row-meta">{ROTULO_TIPO[c.tipo]}</span>
+                  </span>
+                  <span class="row-val num" class:neg={c.saldoCentavos < 0}
+                    >{formatarBRL(c.saldoCentavos)}</span
+                  >
+                </a>
+              </li>
+            {/each}
+          </ul>
+          <p class="small muted">
+            Saldos informados por você. Lançar um gasto não muda esses valores.
+          </p>
+        {:else}
+          <div class="empty">
+            <strong>Nenhuma conta ainda</strong>
+            <span>Cadastre conta corrente, poupança, investimentos ou dinheiro em espécie.</span>
+            <a class="btn go" href={resolve('/contas')}>Cadastrar conta</a>
+          </div>
+        {/if}
+      </section>
     </div>
   </div>
-</section>
+</div>
 
 <style>
-  .hero {
-    background: var(--surface);
-    color: var(--ink);
-    border-bottom: 1px solid var(--line);
-    padding-block: clamp(28px, 5vw, 56px) clamp(28px, 5vw, 56px);
+  .painel {
     display: grid;
-    gap: clamp(20px, 3vw, 36px);
+    gap: 20px;
+    padding-block: clamp(20px, 3vw, 32px) 32px;
   }
-  .hero-top {
+  .ola {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: end;
     gap: 12px 24px;
     flex-wrap: wrap;
   }
-  .hero h1 {
-    font-size: var(--s-lead);
-    font-weight: 600;
-    letter-spacing: -0.01em;
+  .ola h1 {
+    font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
-  .hero-note {
+
+  .topo {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 20px;
+    align-items: stretch;
+  }
+  .baixo {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 20px;
+    align-items: start;
+  }
+  .lado {
+    gap: 20px;
+  }
+  @media (max-width: 1100px) {
+    .topo {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  @media (max-width: 860px) {
+    .baixo {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* Cartão do saldo: o destaque da tela, na cor do site */
+  .saldo {
+    background: var(--hero);
+    color: var(--hero-ink);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: clamp(20px, 2.6vw, 28px);
+  }
+  .composicao {
+    margin-top: auto !important;
+  }
+  .saldo-cab {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .saldo h2 {
     font-size: 0.9375rem;
+    font-weight: 600;
+    opacity: 0.85;
+  }
+  .saldo-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    min-height: 36px;
+    padding: 0 6px 0 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--hero-ink) 16%, transparent);
+    color: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .saldo-link:hover {
+    background: color-mix(in srgb, var(--hero-ink) 26%, transparent);
   }
   .giant {
-    /* Encolhe com a quantidade de dígitos: um valor nunca é cortado. */
-    font-size: min(var(--s-giant), calc((100vw - 2 * var(--gut)) / (var(--n, 12) * 0.56)));
+    font-size: var(--s-giant);
     font-weight: 700;
-    letter-spacing: -0.03em;
-    line-height: 0.88;
+    letter-spacing: -0.035em;
+    line-height: 1;
     white-space: nowrap;
-    padding-bottom: 0.06em;
+    overflow-wrap: normal;
   }
   .giant span {
     display: inline-block;
   }
   .giant :global(.cur) {
-    font-size: 0.32em;
-    vertical-align: 0.95em;
-    margin-right: 0.18em;
+    font-size: 0.4em;
+    vertical-align: 0.9em;
+    margin-right: 0.2em;
   }
   .giant :global(.cts) {
-    font-size: 0.5em;
+    font-size: 0.55em;
   }
-  .hero-bottom {
+  .saldo-nota {
+    font-size: 0.8125rem;
+    opacity: 0.85;
+  }
+  .composicao {
+    margin: 6px 0 0;
     display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    gap: 24px 48px;
-    align-items: end;
-  }
-  @media (max-width: 860px) {
-    .hero-bottom {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-  .hero-lead {
-    font-size: 1.125rem;
-    max-width: 34ch;
-  }
-  .hero-acts {
-    display: flex;
     gap: 8px;
-    flex-wrap: wrap;
-    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid color-mix(in srgb, var(--hero-ink) 22%, transparent);
   }
-  .hero .btn {
-    background: var(--orange);
-    color: var(--orange-ink);
+  .composicao div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
   }
-  .hero .btn:hover {
-    background: color-mix(in srgb, var(--orange) 88%, #000 12%);
+  .composicao dt {
+    font-size: 0.875rem;
+    font-weight: 600;
   }
-  .hero .btn.alt {
-    background: var(--step);
-    color: var(--ink);
+  .composicao small {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 400;
+    opacity: 0.8;
   }
-  .ledger {
-    display: grid;
-    gap: 4px;
+  .composicao dd {
+    margin: 0;
+    font-weight: 650;
+    white-space: nowrap;
   }
 
-  .mes-grid {
+  /* Resumo do mês: cartões pequenos lado a lado */
+  .resumo {
     display: grid;
-    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
-    gap: 32px 56px;
-    align-items: start;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 20px;
   }
-  @media (max-width: 900px) {
-    .mes-grid {
-      grid-template-columns: minmax(0, 1fr);
+  .stat {
+    gap: 8px;
+  }
+  @media (max-width: 560px) {
+    .resumo {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px;
+    }
+    .stat {
+      padding: 14px;
+    }
+    .stat-val {
+      font-size: 1.25rem !important;
+    }
+    .stat-cab .ico {
+      width: 32px;
+      height: 32px;
     }
   }
-  .mes-sum {
-    display: grid;
-    gap: 18px;
-    align-content: start;
+  .stat-cab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
-  .big {
-    font-size: clamp(2rem, 1.4rem + 2.4vw, 3rem);
+  .stat-rot {
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 0.9375rem;
+  }
+  .ico {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    flex: none;
+    background: var(--orange-soft);
+    color: var(--orange);
+  }
+  .ico.gasto {
+    background: var(--neg-soft);
+    color: var(--neg);
+  }
+  .ico.receita {
+    background: var(--pos-soft);
+    color: var(--pos);
+  }
+  .stat-val {
+    font-size: clamp(1.5rem, 1.2rem + 1vw, 1.875rem);
     font-weight: 700;
-    letter-spacing: -0.04em;
-    line-height: 0.95;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+  .stat-val :global(.cur) {
+    font-size: 0.5em;
+    vertical-align: 0.6em;
+  }
+  .stat-nota {
+    color: var(--muted);
+  }
+  .stat-nota a {
+    color: var(--orange);
+    font-weight: 600;
+  }
+  .stat-nota b {
+    color: var(--ink);
   }
   .delta {
-    font-weight: 600;
-    font-size: 0.9375rem;
     color: var(--pos);
+    font-weight: 600;
   }
   .delta.up {
     color: var(--neg);
   }
-  .delta.muted {
-    color: var(--muted);
-    font-weight: 500;
-  }
   .limite {
-    display: grid;
-    gap: 12px;
-    padding: 18px;
-    background: var(--surface);
-  }
-  .limite .field input {
-    background: var(--paper);
+    grid-column: 1 / -1;
   }
   .escopo {
     gap: 8px;
-  }
-  .escopo legend {
-    padding: 0;
-    margin-bottom: 2px;
   }
   .opc {
     display: flex;
@@ -496,10 +620,9 @@
     margin: 0;
     accent-color: var(--orange);
   }
-  .form-limite,
-  .acts {
+  .form-limite {
     display: grid;
-    gap: 10px;
+    gap: 12px;
   }
   .acts {
     display: flex;
@@ -507,89 +630,68 @@
     flex-wrap: wrap;
   }
 
-  .stack {
+  /* Categorias: rosca e lista com barras */
+  .cat-corpo {
     display: flex;
-    height: 28px;
-    background: var(--step);
-    overflow: hidden;
-    gap: 2px;
+    gap: 24px;
+    align-items: center;
   }
-  .stack > span {
-    height: 100%;
-    background: var(--cc);
-    min-width: 3px;
-    flex-basis: 0;
+  @media (max-width: 560px) {
+    .cat-corpo {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .cat-corpo > :global(.rosca) {
+      align-self: center;
+    }
   }
   .cat-list {
+    flex: 1;
+    min-width: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
-    gap: 2px 32px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+    gap: 12px 28px;
   }
   .cat {
     display: grid;
-    grid-template-columns: 12px minmax(0, 1fr) auto 3em;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 12px;
-    align-items: baseline;
-    padding-block: 8px;
+    align-items: center;
   }
-  .cat .sq {
-    align-self: center;
+  .cat-main {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
   }
   .cat-nome {
+    font-weight: 600;
+    font-size: 0.9375rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .barra {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--step);
+    overflow: hidden;
+  }
+  .barra span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--cc);
+  }
+  .cat-num {
+    display: grid;
+    justify-items: end;
+  }
   .cat-val {
-    font-weight: 600;
+    font-weight: 650;
+    font-size: 0.9375rem;
   }
   .pc {
     color: var(--muted);
-    font-size: var(--s-small);
-    text-align: right;
-  }
-  .h-sec {
-    font-size: var(--s-head);
-  }
-  .conta {
-    color: inherit;
-    text-decoration: none;
-    transition: background-color var(--t);
-  }
-  .conta:hover {
-    background: var(--step) !important;
-  }
-  .neg {
-    color: var(--neg);
-  }
-  .pos {
-    color: var(--pos);
-  }
-  .a-receber a,
-  .mes-sum p a {
-    color: var(--ink);
-    font-weight: 600;
-    text-underline-offset: 3px;
-  }
-  .fluxo {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px 24px;
-    margin: 0;
-  }
-  .fluxo dt {
-    color: var(--muted);
-    font-size: var(--s-small);
-    font-weight: 600;
-  }
-  .fluxo dd {
-    margin: 2px 0 0;
-    font-size: 1.5rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    font-variant-numeric: tabular-nums;
-  }
-  .two-col > .col > .btn {
-    justify-self: start;
+    font-size: 0.75rem;
   }
 </style>
