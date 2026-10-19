@@ -24,6 +24,12 @@
   const L = 640;
   const ALTURA = 160;
 
+  /** Retângulo com os dois cantos de cima arredondados (a base fica reta, sobre o filete). */
+  function topoArredondado(x: number, y: number, w: number, h: number): string {
+    const r = Math.max(0, Math.min(8, w / 2, h));
+    return `M${x.toFixed(1)},${(y + h).toFixed(1)}V${(y + r).toFixed(1)}Q${x.toFixed(1)},${y.toFixed(1)} ${(x + r).toFixed(1)},${y.toFixed(1)}H${(x + w - r).toFixed(1)}Q${(x + w).toFixed(1)},${y.toFixed(1)} ${(x + w).toFixed(1)},${(y + r).toFixed(1)}V${(y + h).toFixed(1)}Z`;
+  }
+
   const n = $derived(pares.length);
   const topo = $derived(
     Math.max(1, ...pares.flatMap((p) => [p.entradasCentavos, p.saidasCentavos])),
@@ -73,7 +79,7 @@
       <line class="base" x1="0" x2={L} y1={ALTURA} y2={ALTURA} />
       {#each retangulos as r (r.chave)}
         {#if r.h > 0}
-          <rect x={r.x} y={r.y} width={r.w} height={r.h} rx="3" style="fill: {r.cor}" />
+          <path d={topoArredondado(r.x, r.y, r.w, r.h)} style="fill: {r.cor}" />
         {/if}
       {/each}
     </svg>
@@ -107,6 +113,9 @@
   .base {
     stroke: var(--line);
     stroke-width: 1;
+  }
+  path {
+    stroke: none;
   }
   .eixo {
     display: grid;
@@ -145,6 +154,6 @@
     display: inline-block;
     width: 10px;
     height: 10px;
-    border-radius: 3px;
+    border-radius: 50%;
   }
 </style>

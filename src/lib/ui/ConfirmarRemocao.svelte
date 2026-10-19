@@ -3,6 +3,7 @@
    * "Mandar para a lixeira" em dois passos. Sem JavaScript o formulário envia direto; com ele,
    * o primeiro clique pergunta, o foco vai para a confirmação e volta ao botão ao cancelar.
    */
+  import Trash2 from '@lucide/svelte/icons/trash';
   import { enhance } from '$app/forms';
   import { tick } from 'svelte';
 
@@ -41,7 +42,9 @@
   </form>
 {:else}
   <form method="POST" action={acao} onsubmit={perguntar}>
-    <button class="btn" type="submit" bind:this={botaoInicial}>{rotulo}</button>
+    <button class="btn remover-inicial" type="submit" bind:this={botaoInicial}
+      ><Trash2 size={18} aria-hidden="true" />{rotulo}</button
+    >
   </form>
 {/if}
 
@@ -50,5 +53,14 @@
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+  }
+  /* Primeiro passo: vermelho suave, para sinalizar saída sem ser o botão de confirmar */
+  button.remover-inicial {
+    background: var(--neg-soft);
+    color: var(--neg);
+    font-weight: 650;
+  }
+  button.remover-inicial:hover {
+    background: color-mix(in srgb, var(--neg-soft) 80%, var(--neg) 20%);
   }
 </style>

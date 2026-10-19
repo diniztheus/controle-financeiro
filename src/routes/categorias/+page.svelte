@@ -4,6 +4,7 @@
   import { ariaErro } from '$lib/ui/formularios';
   import { resolve } from '$app/paths';
   import EscolhaCor from '$lib/ui/EscolhaCor.svelte';
+  import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
   import { corCss, plural } from '$lib/ui/formato';
   import type { PageProps } from './$types';
 
@@ -36,7 +37,7 @@
 
 <section class="sec alt pad grade">
   <div class="col">
-    <ul class="cats" data-testid="lista-categorias">
+    <ul class="rows cats" data-testid="lista-categorias">
       {#each data.ativas as c, i (c.id)}
         {@const erroLinha = form?.id === c.id && !('ok' in form) ? form : null}
         {@const erroEdicao =
@@ -45,7 +46,7 @@
             : null}
         <li class="cat">
           <div class="cat-linha">
-            <span class="sq" style="--cc: {corCss(c.cor)}"></span>
+            <IconeRedondo nome={c.nome} cor={corCss(c.cor)} tamanho={40} />
             <span class="cat-nome">{c.nome}</span>
             <span class="muted small num">{plural(c.uso, 'gasto', 'gastos')}</span>
             <div class="cat-acts">
@@ -118,11 +119,11 @@
 
     {#if data.arquivadas.length}
       <div class="col-head arq-head"><h2 class="h">Arquivadas</h2></div>
-      <ul class="cats">
+      <ul class="rows cats">
         {#each data.arquivadas as c (c.id)}
           <li class="cat arquivada">
             <div class="cat-linha">
-              <span class="sq" style="--cc: {corCss(c.cor)}"></span>
+              <IconeRedondo nome={c.nome} cor={corCss(c.cor)} tamanho={40} />
               <span class="cat-nome">{c.nome}</span>
               <span class="muted small num">{plural(c.uso, 'gasto', 'gastos')}</span>
               <form method="POST" action="?/arquivar" use:enhance>
@@ -165,22 +166,21 @@
 
 <style>
   .cats {
-    display: grid;
-    gap: 4px;
+    min-width: 0;
   }
   .cat {
-    background: var(--paper);
-    padding: 10px 12px;
+    padding: 12px 14px;
     display: grid;
     gap: 12px;
-    --chip-bg: var(--surface);
+    min-width: 0;
+    --chip-bg: var(--paper);
   }
   .cat .field input {
-    background: var(--surface);
+    background: var(--paper);
   }
   .cat-linha {
     display: grid;
-    grid-template-columns: 12px minmax(0, 1fr) auto auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     gap: 12px;
     align-items: center;
   }
@@ -206,7 +206,7 @@
   .editar {
     display: grid;
     gap: 12px;
-    padding: 4px 0 6px 24px;
+    padding: 4px 0 6px 52px;
   }
   .fe {
     display: grid;
@@ -223,7 +223,7 @@
   }
   @media (max-width: 520px) {
     .cat-linha {
-      grid-template-columns: 12px minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr) auto;
     }
     .cat-linha > .muted {
       display: none;

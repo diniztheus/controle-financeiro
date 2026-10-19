@@ -17,7 +17,7 @@ test('home sem receitas no mês atual mostra a linha discreta com link para rece
   await expect(painel.getByText('Nenhuma receita neste mês.')).toBeVisible();
   await expect(painel.getByRole('link', { name: 'Lançar receita' })).toHaveAttribute(
     'href',
-    '/receitas',
+    '/receitas#nova',
   );
   await expect(page.getByTestId('entradas-mes')).toHaveCount(0);
   await expect(page.getByTestId('sobra-mes')).toHaveCount(0);

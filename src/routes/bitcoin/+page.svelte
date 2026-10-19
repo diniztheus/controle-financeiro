@@ -1,4 +1,7 @@
 <script lang="ts">
+  import ArrowDownLeft from '@lucide/svelte/icons/arrow-down-left';
+  import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
+  import Bitcoin from '@lucide/svelte/icons/bitcoin';
   import { enhance } from '$app/forms';
   import { resolve } from '$app/paths';
   import { untrack } from 'svelte';
@@ -11,6 +14,7 @@
   } from '$lib/dominio/bitcoin';
   import { formatarBRL, parseValor } from '$lib/dominio/dinheiro';
   import GraficoBitcoin from '$lib/ui/GraficoBitcoin.svelte';
+  import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
   import { diaCurto, diaPorExtenso } from '$lib/ui/formato';
   import { ariaErro, focarPrimeiroErro, manterCampos } from '$lib/ui/formularios';
   import type { PageProps } from './$types';
@@ -110,16 +114,14 @@
 
 <div class="pad indi">
   <dl class="indicadores" data-testid="indicadores">
-    <div class="ind">
-      <dt>Total em bitcoin</dt>
+    <div class="ind destaque">
+      <dt><span class="ico-btc" aria-hidden="true"><Bitcoin size={16} /></span>Total em bitcoin</dt>
       <dd class="num" data-testid="total-sats">
         {formatarSats(pos.sats)}
         <small>{btcTotal} BTC</small>
       </dd>
-    </div>
-    <div class="ind">
-      <dt>Valor atual</dt>
-      <dd class="num" data-testid="valor-atual">
+      <dt class="sub-dt">Valor atual</dt>
+      <dd class="num valor-atual" data-testid="valor-atual">
         {#if pos.valorAtualCentavos !== null}
           {formatarBRL(pos.valorAtualCentavos)}
         {:else}
@@ -160,10 +162,13 @@
 
 <section class="sec alt pad grade">
   <div class="col">
-    <article class="cartao">
-      <h2>Evolução</h2>
+    <section class="card" aria-labelledby="h-evolucao">
+      <div class="card-head">
+        <h2 id="h-evolucao">Evolução</h2>
+        <span class="small muted">Sats e valor em reais, dia a dia</span>
+      </div>
       <GraficoBitcoin pontos={data.painel.evolucao} />
-    </article>
+    </section>
 
     <div class="col-head">
       <h2 class="h">Compras e vendas</h2>
@@ -174,39 +179,43 @@
       <p class="err" role="alert">{form.erro}</p>
     {/if}
     {#if data.painel.movimentos.length}
-      <ul class="movs" data-testid="movimentos">
+      <ul class="rows" data-testid="movimentos">
         {#each data.painel.movimentos as m (m.id)}
           {@const compra = m.sats > 0}
           {@const erroLinha =
             form?.id === m.id && form.acao === 'remover' && !('ok' in form) ? form : null}
-          <li class="mov">
-            <span class="sq" style="--cc: {compra ? 'var(--pos)' : 'var(--neg)'}"></span>
-            <div class="mov-main">
-              <p class="mov-titulo">
-                <span>{compra ? 'Compra' : 'Venda'}</span>
-                <span class="num">{formatarSats(Math.abs(m.sats))}</span>
-              </p>
-              <p class="small muted">
-                {diaPorExtenso(m.data)}{m.nota ? ` · ${m.nota}` : ''}
-              </p>
-            </div>
-            <p class="mov-val num">
-              {#if m.valorCentavos}
-                {formatarBRL(m.valorCentavos)}
-              {:else}
-                <span class="muted small">sem valor</span>
-              {/if}
-            </p>
-            <form method="POST" action="?/remover" use:enhance>
-              <input type="hidden" name="id" value={m.id} />
-              <button
-                class="btn sm"
-                type="submit"
-                aria-label="Mandar {compra ? 'compra' : 'venda'} de {formatarSats(
-                  Math.abs(m.sats),
-                )} de {diaCurto(m.data)} para a lixeira">Remover</button
+          <li class="row">
+            <IconeRedondo
+              icone={compra ? ArrowDownLeft : ArrowUpRight}
+              cor={compra ? 'var(--pos)' : 'var(--neg)'}
+              suave
+            />
+            <span class="row-main">
+              <span class="row-title"
+                >{compra ? 'Compra' : 'Venda'}
+                <span class="num">{formatarSats(Math.abs(m.sats))}</span></span
               >
-            </form>
+              <span class="row-meta">{diaPorExtenso(m.data)}{m.nota ? ` · ${m.nota}` : ''}</span>
+            </span>
+            <span class="mov-acoes">
+              <span class="row-val num">
+                {#if m.valorCentavos}
+                  {formatarBRL(m.valorCentavos)}
+                {:else}
+                  <span class="muted small">sem valor</span>
+                {/if}
+              </span>
+              <form method="POST" action="?/remover" use:enhance>
+                <input type="hidden" name="id" value={m.id} />
+                <button
+                  class="btn sm"
+                  type="submit"
+                  aria-label="Mandar {compra ? 'compra' : 'venda'} de {formatarSats(
+                    Math.abs(m.sats),
+                  )} de {diaCurto(m.data)} para a lixeira">Remover</button
+                >
+              </form>
+            </span>
             {#if erroLinha}
               <p class="err mov-erro" role="alert">{erroLinha.erro}</p>
             {/if}
@@ -226,17 +235,21 @@
       <div class="col-head">
         <h2 class="h">Na lixeira</h2>
       </div>
-      <ul class="movs" data-testid="lixeira-bitcoin">
+      <ul class="rows" data-testid="lixeira-bitcoin">
         {#each data.lixeira as m (m.id)}
-          <li class="mov">
-            <span class="sq" style="--cc: var(--muted)"></span>
-            <div class="mov-main">
-              <p class="mov-titulo">
-                <span>{m.sats > 0 ? 'Compra' : 'Venda'}</span>
-                <span class="num">{formatarSats(Math.abs(m.sats))}</span>
-              </p>
-              <p class="small muted">{diaPorExtenso(m.data)}</p>
-            </div>
+          <li class="row">
+            <IconeRedondo
+              icone={m.sats > 0 ? ArrowDownLeft : ArrowUpRight}
+              cor="var(--muted)"
+              suave
+            />
+            <span class="row-main">
+              <span class="row-title"
+                >{m.sats > 0 ? 'Compra' : 'Venda'}
+                <span class="num">{formatarSats(Math.abs(m.sats))}</span></span
+              >
+              <span class="row-meta">{diaPorExtenso(m.data)}</span>
+            </span>
             <form method="POST" action="?/restaurar" use:enhance>
               <input type="hidden" name="id" value={m.id} />
               <button class="btn sm" type="submit">Restaurar</button>
@@ -273,8 +286,8 @@
       >
         <fieldset class="field">
           <legend class="lbl">Operação</legend>
-          <div class="opcoes">
-            <label class="op">
+          <div class="pilulas op-pilulas">
+            <label>
               <input
                 type="radio"
                 name="tipo"
@@ -282,7 +295,7 @@
                 checked={(erroRegistrar?.valores?.tipo ?? 'compra') === 'compra'}
               /> Compra
             </label>
-            <label class="op">
+            <label>
               <input
                 type="radio"
                 name="tipo"
@@ -360,7 +373,7 @@
         </div>
 
         {#if erroRegistrar?.erro}<p class="err" role="alert">{erroRegistrar.erro}</p>{/if}
-        <div><button class="btn ink" type="submit">Registrar</button></div>
+        <div><button class="btn go" type="submit">Registrar</button></div>
         {#if okRegistrar}<p class="ok-msg" role="status">{okRegistrar}</p>{/if}
       </form>
     </div>
@@ -449,7 +462,7 @@
           </div>
         </div>
         {#if erroPreco?.erro}<p class="err" role="alert">{erroPreco.erro}</p>{/if}
-        <div><button class="btn ink" type="submit">Salvar preço do dia</button></div>
+        <div><button class="btn go" type="submit">Salvar preço do dia</button></div>
         {#if okPreco}<p class="ok-msg" role="status">{okPreco}</p>{/if}
       </form>
 
@@ -502,13 +515,13 @@
   .indicadores {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 8px;
+    gap: 12px;
     margin: 0;
   }
   .ind {
     background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--r);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow);
     padding: 16px 18px;
     display: grid;
     gap: 8px;
@@ -519,6 +532,9 @@
     font-size: var(--s-small);
     font-weight: 600;
     color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   .ind dd {
     margin: 0;
@@ -537,6 +553,46 @@
     color: var(--muted);
     line-height: 1.4;
   }
+  /* Cartão de destaque: o saldo em BTC e o valor em reais, na cor do site (como o patrimônio). */
+  .destaque {
+    grid-column: 1 / -1;
+    background: var(--hero);
+    color: var(--hero-ink);
+    box-shadow: none;
+    padding: clamp(20px, 2.6vw, 28px);
+    gap: 6px;
+  }
+  .destaque dt {
+    color: inherit;
+    opacity: 0.85;
+  }
+  .destaque dt.sub-dt {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid color-mix(in srgb, var(--hero-ink) 22%, transparent);
+  }
+  .destaque dd {
+    font-size: clamp(2rem, 1.4rem + 2.6vw, 3rem);
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+  }
+  .destaque .valor-atual {
+    font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem);
+  }
+  .destaque dd small {
+    color: inherit;
+    opacity: 0.8;
+  }
+  .ico-btc {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    flex: none;
+    background: color-mix(in srgb, var(--hero-ink) 18%, transparent);
+    color: inherit;
+  }
   .alta {
     color: var(--pos);
   }
@@ -553,17 +609,6 @@
     align-content: start;
     min-width: 0;
   }
-  .cartao {
-    background: var(--paper);
-    border-radius: var(--r);
-    padding: clamp(16px, 2vw, 24px);
-    display: grid;
-    gap: 16px;
-    min-width: 0;
-  }
-  .cartao h2 {
-    font-size: var(--s-lead);
-  }
   .fc {
     display: grid;
     gap: 16px;
@@ -571,39 +616,23 @@
   .painel-form .hint {
     margin-top: -8px;
   }
-  .opcoes {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+  .op-pilulas {
+    display: flex;
+    width: 100%;
     margin-top: 6px;
   }
-  .opcoes .op {
-    display: flex;
-    align-items: center;
+  .op-pilulas > label {
+    flex: 1;
     justify-content: center;
     gap: 8px;
     min-height: 44px;
-    padding: 0 12px;
-    border-radius: var(--r);
-    background: var(--surface);
-    color: var(--ink);
-    font-size: 0.9375rem;
-    font-weight: 600;
     cursor: pointer;
   }
-  .opcoes .op input {
+  .op-pilulas input {
     accent-color: var(--orange);
     width: 16px;
     height: 16px;
     margin: 0;
-  }
-  .opcoes .op:has(input:checked) {
-    background: var(--orange);
-    color: var(--orange-ink);
-  }
-  .opcoes .op:focus-within {
-    outline: 2px solid var(--ink);
-    outline-offset: 2px;
   }
   .opc {
     font-weight: 500;
@@ -622,61 +651,14 @@
     border-top: 1px solid var(--line);
   }
 
-  .movs {
+  /* Movimentos: o valor e o botão empilhados à direita da linha */
+  .mov-acoes {
     display: grid;
-    gap: 4px;
-  }
-  .mov {
-    display: grid;
-    grid-template-columns: 12px minmax(0, 1fr) auto auto;
-    gap: 12px;
-    align-items: center;
-    padding: 12px;
-    background: var(--paper);
-    border-radius: var(--r);
-    min-width: 0;
-  }
-  .mov .sq {
-    width: 12px;
-    height: 12px;
-    border-radius: 3px;
-    background: var(--cc);
-    align-self: center;
-  }
-  .mov-main {
-    min-width: 0;
-    display: grid;
+    justify-items: end;
     gap: 2px;
-  }
-  .mov-titulo {
-    display: flex;
-    gap: 8px;
-    align-items: baseline;
-    flex-wrap: wrap;
-    font-weight: 600;
-  }
-  .mov-val {
-    font-weight: 600;
-    white-space: nowrap;
-    text-align: right;
-  }
-  .mov form .btn.sm {
-    min-height: 44px;
   }
   .mov-erro {
     grid-column: 1 / -1;
-  }
-  @media (max-width: 560px) {
-    .mov {
-      grid-template-columns: 12px minmax(0, 1fr) auto;
-    }
-    .mov-val {
-      grid-column: 2;
-      text-align: left;
-    }
-    .mov form {
-      grid-column: 3;
-      grid-row: 1;
-    }
+    padding: 0 16px 12px;
   }
 </style>

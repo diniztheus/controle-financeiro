@@ -42,9 +42,10 @@
     grid-template-columns: minmax(0, 1fr) auto 3.2em;
     align-items: baseline;
     column-gap: 2px;
-    padding: 8px 12px;
-    background: var(--orange-soft);
-    color: inherit;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: var(--paper);
+    color: var(--ink);
   }
   .lb {
     font-size: 0.9375rem;
@@ -55,7 +56,7 @@
     display: block;
     font-size: var(--s-small);
     font-weight: 400;
-    opacity: 0.8;
+    color: var(--muted);
   }
   .li {
     font-size: clamp(1.5rem, 1rem + 1.8vw, 2.5rem);
@@ -72,7 +73,7 @@
     padding-left: 0.12em;
   }
   .total {
-    background: var(--orange);
-    color: var(--orange-ink);
+    background: var(--orange-soft);
+    color: var(--ink);
   }
 </style>

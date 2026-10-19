@@ -3,7 +3,9 @@
   import { resolve } from '$app/paths';
   import { ROTULO_TIPO, TIPOS_CONTA } from '$lib/dominio/contas';
   import { centavosParaCampo } from '$lib/dominio/dinheiro';
+  import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
   import Valor from '$lib/ui/Valor.svelte';
+  import { ICONE_CONTA } from '$lib/ui/icones';
   import { dataDeIso, plural } from '$lib/ui/formato';
   import { ariaErro } from '$lib/ui/formularios';
   import type { PageProps } from './$types';
@@ -31,18 +33,17 @@
       atualização fica guardada no histórico.
     </p>
   </div>
-  <div class="soma">
-    <p class="soma-val"><Valor centavos={data.total.totalCentavos} testid="total-contas" /></p>
-    <p class="muted">
-      {resumoContas}
-    </p>
+  <div class="destaque">
+    <p class="destaque-rot">Total em contas</p>
+    <p class="destaque-val"><Valor centavos={data.total.totalCentavos} testid="total-contas" /></p>
+    <p class="destaque-nota">{resumoContas}</p>
   </div>
 </header>
 
 <section class="sec alt pad grade">
   <div class="col">
     {#if data.contas.length}
-      <ul class="contas" data-testid="lista-contas">
+      <ul class="rows contas" data-testid="lista-contas">
         {#each data.contas as c, i (c.id)}
           {@const erroLinha =
             form?.id === c.id && (form.acao === 'saldo' || form.acao === 'mover') && !('ok' in form)
@@ -50,11 +51,12 @@
               : null}
           <li class="conta">
             <div class="conta-top">
+              <IconeRedondo icone={ICONE_CONTA[c.tipo]} cor="var(--orange)" suave />
               <div class="conta-id">
                 <a class="conta-nome" href={resolve('/contas/[id]', { id: c.id })}>{c.nome}</a>
                 <span class="muted small">{ROTULO_TIPO[c.tipo]}</span>
               </div>
-              <p class="conta-saldo" class:neg={c.saldoCentavos < 0}>
+              <p class="conta-saldo num" class:neg={c.saldoCentavos < 0}>
                 <Valor centavos={c.saldoCentavos} />
               </p>
             </div>
@@ -162,21 +164,41 @@
 </section>
 
 <style>
-  .soma {
-    text-align: right;
+  .destaque {
+    background: var(--hero);
+    color: var(--hero-ink);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow);
+    padding: clamp(18px, 2.4vw, 24px) clamp(18px, 2.4vw, 26px);
     display: grid;
-    gap: 4px;
+    gap: 6px;
+    min-width: min(100%, 280px);
   }
-  .soma-val {
-    font-size: clamp(2rem, 1.2rem + 3vw, 3.5rem);
+  .page-head {
+    align-items: center;
+  }
+  @media (max-width: 700px) {
+    .destaque {
+      flex-basis: 100%;
+    }
+  }
+  .destaque-rot {
+    color: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    opacity: 0.85;
+  }
+  .destaque-val {
+    color: inherit;
+    font-size: clamp(2rem, 1.2rem + 3vw, 3.25rem);
     font-weight: 700;
     letter-spacing: -0.04em;
     line-height: 1;
   }
-  @media (max-width: 700px) {
-    .soma {
-      text-align: left;
-    }
+  .destaque-nota {
+    color: inherit;
+    font-size: 0.8125rem;
+    opacity: 0.85;
   }
   @media (max-width: 900px) {
     .painel-form {
@@ -184,43 +206,44 @@
     }
   }
   .contas {
-    display: grid;
-    gap: 4px;
+    min-width: 0;
   }
   .conta {
-    background: var(--paper);
-    padding: 18px;
+    padding: 14px 16px;
     display: grid;
-    gap: 14px;
+    gap: 12px;
+    min-width: 0;
   }
   .conta-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 8px 16px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
   }
   .conta-id {
     display: grid;
-    gap: 2px;
+    gap: 1px;
     min-width: 0;
   }
   .conta-nome {
     font-weight: 600;
-    font-size: 1.25rem;
-    letter-spacing: -0.02em;
+    font-size: 1rem;
     color: var(--ink);
     text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .conta-nome:hover {
     text-decoration: underline;
     text-underline-offset: 4px;
   }
   .conta-saldo {
-    font-size: clamp(1.5rem, 1rem + 1.6vw, 2.25rem);
+    font-size: clamp(1.25rem, 1rem + 1vw, 1.625rem);
     font-weight: 700;
-    letter-spacing: -0.035em;
+    letter-spacing: -0.03em;
     line-height: 1;
+    white-space: nowrap;
   }
   .neg {
     color: var(--neg);
@@ -239,7 +262,7 @@
   }
   .saldo .inp {
     flex: 1;
-    background: var(--surface);
+    background: var(--paper);
     font-weight: 600;
   }
   .ordem {

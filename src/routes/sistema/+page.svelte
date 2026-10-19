@@ -1,5 +1,14 @@
 <script lang="ts">
+  import ArchiveRestore from '@lucide/svelte/icons/archive-restore';
+  import CircleCheck from '@lucide/svelte/icons/circle-check';
+  import Clock from '@lucide/svelte/icons/clock';
+  import Database from '@lucide/svelte/icons/database';
+  import ShieldAlert from '@lucide/svelte/icons/shield-alert';
+  import ShieldCheck from '@lucide/svelte/icons/shield-check';
+  import Table from '@lucide/svelte/icons/table';
+  import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
   import { enhance } from '$app/forms';
+  import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
   import LinhaRazao from '$lib/ui/LinhaRazao.svelte';
   import type { PageProps } from './$types';
 
@@ -55,121 +64,131 @@
 </svelte:head>
 
 <section
-  class="hero pad"
+  class="sec pad"
   aria-labelledby="h-estado"
   data-testid="status"
   data-ok={st?.ok ? 'sim' : 'nao'}
 >
-  <div class="hero-top">
-    <h1 id="h-estado">Estado do sistema</h1>
-    <p class="hero-note">
-      {#if st}Verificado em {quando(st.verificadoEm)}{:else}Não foi possível ler o banco{/if}
-    </p>
-  </div>
-
-  <p class="giant" aria-live="polite">
-    <span class="rise" data-testid="veredito">{st?.ok ? 'Tudo ok' : 'Atenção'}</span>
-  </p>
-
-  <div class="hero-bottom">
-    <div>
-      {#if st?.ok}
-        <p class="hero-lead">
-          O banco {st.criadoAgora ? 'foi criado agora' : 'está conectado'} e o esquema está em dia. Contas,
-          categorias e gastos já funcionam; cartões e bitcoin chegam nas próximas ondas.
+  <div class="card cabeca">
+    <div class="cabeca-topo">
+      <IconeRedondo
+        icone={st?.ok ? ShieldCheck : ShieldAlert}
+        cor={st?.ok ? 'var(--pos)' : 'var(--neg)'}
+        tamanho={52}
+        suave
+      />
+      <div class="cabeca-texto">
+        <h1 id="h-estado">Estado do sistema</h1>
+        <p class="hero-note">
+          {#if st}Verificado em {quando(st.verificadoEm)}{:else}Não foi possível ler o banco{/if}
         </p>
-      {:else if st}
-        <p class="hero-lead">
-          O banco abriu, mas algo não bate: {st.migrationsPendentes} migration(s) pendente(s),
-          {st.tabelasPresentes} de {st.tabelasEsperadas} tabelas, verificação “{st.pragmas
-            .integridadeRapida}”.
-        </p>
-      {:else}
-        <p class="hero-lead">O banco não respondeu: {data.erro}</p>
-      {/if}
-
-      {#if st}
-        <form
-          class="hero-acts"
-          method="POST"
-          action="?/backup"
-          use:enhance={() => {
-            salvando = true;
-            return async ({ update }) => {
-              await update({ reset: false });
-              salvando = false;
-            };
-          }}
-        >
-          <button class="btn" type="submit" disabled={salvando}>
-            {salvando ? 'Copiando…' : 'Fazer backup agora'}
-          </button>
-        </form>
-        {#if form?.backup}
-          <p class="hero-msg" role="status" data-testid="backup-feito">
-            Backup criado: {form.backup}
-          </p>
-        {:else if form?.erroBackup}
-          <p class="hero-msg" role="alert">Falhou: {form.erroBackup}</p>
-        {/if}
-      {/if}
+      </div>
     </div>
 
-    {#if st}
-      <div class="ledger" aria-label="Resumo do banco">
-        <LinhaRazao
-          rotulo="Tabelas"
-          detalhe="do esquema completo"
-          inteiro={fmtInt(st.tabelasPresentes)}
-          cauda={`/${st.tabelasEsperadas}`}
-          testid="linha-tabelas"
-        />
-        <LinhaRazao
-          rotulo="Migrations aplicadas"
-          detalhe={st.versaoEsquema ?? 'nenhuma'}
-          inteiro={fmtInt(st.migrationsAplicadas)}
-          testid="linha-migrations"
-        />
-        <LinhaRazao
-          rotulo="Backups guardados"
-          detalhe="na pasta de dados"
-          inteiro={fmtInt(st.backups.length)}
-        />
-        <LinhaRazao
-          rotulo="Tamanho do banco"
-          detalhe="arquivo e diário"
-          inteiro={tam.inteiro}
-          cauda={tam.cauda}
-        />
-        <LinhaRazao
-          rotulo="Integridade"
-          detalhe={data.integridade
-            ? `verificada em ${quando(data.integridade.verificadoEm)}`
-            : 'ainda não verificada'}
-          inteiro={data.integridade ? (data.integridade.ok ? 'ok' : 'problemas') : '—'}
-          testid="linha-integridade"
-        />
-        <LinhaRazao
-          rotulo="Backup automático"
-          detalhe={data.backupAuto?.ultimoAutomatico
-            ? `último em ${quando(data.backupAuto.ultimoAutomatico)}`
-            : 'nenhum automático ainda'}
-          inteiro={data.backupAuto?.ativo ? 'ligado' : 'desligado'}
-          testid="linha-backup-auto"
-        />
-        <LinhaRazao
-          rotulo={st.conectado ? 'Banco conectado' : 'Banco sem resposta'}
-          detalhe={`SQLite ${st.pragmas.sqliteVersao} · ${st.pragmas.journalMode.toUpperCase()}`}
-          inteiro={st.ok ? 'ok' : '—'}
-          total
-        />
+    <p class="etiqueta" class:ok={st?.ok} class:falha={!st?.ok} aria-live="polite">
+      <span class="rise" data-testid="veredito">{st?.ok ? 'Tudo ok' : 'Atenção'}</span>
+    </p>
+
+    <div class="cabeca-base">
+      <div class="cabeca-acoes">
+        {#if st?.ok}
+          <p class="hero-lead">
+            O banco {st.criadoAgora ? 'foi criado agora' : 'está conectado'} e o esquema está em dia.
+            Todas as seções do site estão funcionando.
+          </p>
+        {:else if st}
+          <p class="hero-lead">
+            O banco abriu, mas algo não bate: {st.migrationsPendentes} migration(s) pendente(s),
+            {st.tabelasPresentes} de {st.tabelasEsperadas} tabelas, verificação “{st.pragmas
+              .integridadeRapida}”.
+          </p>
+        {:else}
+          <p class="hero-lead">O banco não respondeu: {data.erro}</p>
+        {/if}
+
+        {#if st}
+          <form
+            class="hero-acts"
+            method="POST"
+            action="?/backup"
+            use:enhance={() => {
+              salvando = true;
+              return async ({ update }) => {
+                await update({ reset: false });
+                salvando = false;
+              };
+            }}
+          >
+            <button class="btn go" type="submit" disabled={salvando}>
+              {salvando ? 'Copiando…' : 'Fazer backup agora'}
+            </button>
+          </form>
+          {#if form?.backup}
+            <p class="hero-msg ok-msg" role="status" data-testid="backup-feito">
+              Backup criado: {form.backup}
+            </p>
+          {:else if form?.erroBackup}
+            <p class="hero-msg err" role="alert">Falhou: {form.erroBackup}</p>
+          {/if}
+        {/if}
       </div>
-    {/if}
+
+      {#if st}
+        <div class="ledger" aria-label="Resumo do banco">
+          <LinhaRazao
+            rotulo="Tabelas"
+            detalhe="do esquema completo"
+            inteiro={fmtInt(st.tabelasPresentes)}
+            cauda={`/${st.tabelasEsperadas}`}
+            testid="linha-tabelas"
+          />
+          <LinhaRazao
+            rotulo="Migrations aplicadas"
+            detalhe={st.versaoEsquema ?? 'nenhuma'}
+            inteiro={fmtInt(st.migrationsAplicadas)}
+            testid="linha-migrations"
+          />
+          <LinhaRazao
+            rotulo="Backups guardados"
+            detalhe="na pasta de dados"
+            inteiro={fmtInt(st.backups.length)}
+          />
+          <LinhaRazao
+            rotulo="Tamanho do banco"
+            detalhe="arquivo e diário"
+            inteiro={tam.inteiro}
+            cauda={tam.cauda}
+          />
+          <LinhaRazao
+            rotulo="Integridade"
+            detalhe={data.integridade
+              ? `verificada em ${quando(data.integridade.verificadoEm)}`
+              : 'ainda não verificada'}
+            inteiro={data.integridade ? (data.integridade.ok ? 'ok' : 'problemas') : '—'}
+            testid="linha-integridade"
+          />
+          <LinhaRazao
+            rotulo="Backup automático"
+            detalhe={data.backupAuto?.ultimoAutomatico
+              ? `último em ${quando(data.backupAuto.ultimoAutomatico)}`
+              : 'nenhum automático ainda'}
+            inteiro={data.backupAuto?.ativo ? 'ligado' : 'desligado'}
+            testid="linha-backup-auto"
+          />
+          <LinhaRazao
+            rotulo={st.conectado ? 'Banco conectado' : 'Banco sem resposta'}
+            detalhe={`SQLite ${st.pragmas.sqliteVersao} · ${st.pragmas.journalMode.toUpperCase()}`}
+            inteiro={st.ok ? 'ok' : '—'}
+            total
+          />
+        </div>
+      {/if}
+    </div>
   </div>
 </section>
 
 {#if st}
-  <section class="sec alt pad" aria-labelledby="h-dados">
+  <section class="sec pad" aria-labelledby="h-dados">
     <div class="sec-head">
       <div>
         <h2 id="h-dados">Onde ficam seus dados</h2>
@@ -179,12 +198,18 @@
 
     <div class="two-col">
       <div class="col">
-        <div class="caminho">
-          <span class="lbl">Arquivo do banco</span>
+        <div class="card caminho">
+          <div class="caminho-cab">
+            <IconeRedondo icone={Database} cor="var(--orange)" tamanho={38} suave />
+            <span class="lbl">Arquivo do banco</span>
+          </div>
           <span class="path" data-testid="caminho-banco">{st.bancoArquivo}</span>
         </div>
-        <div class="caminho">
-          <span class="lbl">Pasta de backups</span>
+        <div class="card caminho">
+          <div class="caminho-cab">
+            <IconeRedondo icone={ArchiveRestore} cor="var(--orange)" tamanho={38} suave />
+            <span class="lbl">Pasta de backups</span>
+          </div>
           <span class="path">{st.backupsDir}</span>
         </div>
         <p class="note">
@@ -217,7 +242,7 @@
           <ul class="rows">
             {#each st.backups.slice(0, 4) as b (b.nome)}
               <li class="row">
-                <span class="sq" style="--cc: var(--pos)"></span>
+                <IconeRedondo icone={ArchiveRestore} cor="var(--pos)" tamanho={36} suave />
                 <span class="row-main"><span class="row-title num">{b.nome}</span></span>
                 <span class="row-val num">{tamanho(b.bytes).inteiro} {tamanho(b.bytes).cauda}</span>
               </li>
@@ -256,13 +281,13 @@
         <ul class="rows tabelas">
           {#each st.tabelas as t, i (t.nome)}
             <li class="row">
-              <span class="sq" style="--cc: var(--c{i % 11})"></span>
+              <IconeRedondo icone={Table} cor="var(--c{i % 11})" tamanho={36} suave />
               <span class="row-main">
                 <span class="row-title">{NOMES[t.nome] ?? t.nome}</span>
                 <span class="row-meta">{t.nome}</span>
               </span>
               <span class="row-val num">
-                {#if t.linhas < 0}faltando{:else}{fmtInt(t.linhas)}<small
+                {#if t.linhas < 0}<span class="neg">faltando</span>{:else}{fmtInt(t.linhas)}<small
                     >{t.linhas === 1 ? 'linha' : 'linhas'}</small
                   >{/if}
               </span>
@@ -281,14 +306,20 @@
         <ul class="rows">
           {#each st.migrations as m (m.tag)}
             <li class="row">
-              <span class="sq" style="--cc: {m.aplicadaEm ? 'var(--pos)' : 'var(--warn)'}"></span>
+              {#if m.aplicadaEm}
+                <IconeRedondo icone={CircleCheck} cor="var(--pos)" tamanho={36} suave />
+              {:else}
+                <IconeRedondo icone={TriangleAlert} cor="var(--warn)" tamanho={36} suave />
+              {/if}
               <span class="row-main">
                 <span class="row-title">{m.tag}</span>
                 <span class="row-meta"
                   >{m.aplicadaEm ? `gerada em ${quando(m.aplicadaEm)}` : 'pendente'}</span
                 >
               </span>
-              <span class="row-val">{m.aplicadaEm ? 'aplicada' : 'pendente'}</span>
+              <span class="etiqueta pequena" class:ok={m.aplicadaEm} class:aviso={!m.aplicadaEm}
+                >{m.aplicadaEm ? 'aplicada' : 'pendente'}</span
+              >
             </li>
           {/each}
         </ul>
@@ -301,7 +332,7 @@
   </section>
 {/if}
 
-<section class="sec alt pad" aria-labelledby="h-ondas">
+<section class="sec pad" aria-labelledby="h-ondas">
   <div class="sec-head">
     <div>
       <h2 id="h-ondas">O que vem a seguir</h2>
@@ -311,101 +342,125 @@
       </p>
     </div>
   </div>
-  <ol class="ondas">
+  <ol class="rows ondas">
     {#each ONDAS as o (o.n)}
-      <li class:feita={o.n <= ONDA_ATUAL}>
+      <li class="row" class:feita={o.n <= ONDA_ATUAL}>
+        {#if o.n <= ONDA_ATUAL}
+          <IconeRedondo icone={CircleCheck} cor="var(--pos)" tamanho={36} suave />
+        {:else}
+          <IconeRedondo icone={Clock} cor="var(--c9)" tamanho={36} suave />
+        {/if}
+        <span class="row-main">
+          <span class="row-title onda-nome"
+            >{o.nome}{#if o.n <= ONDA_ATUAL}<span class="etiqueta pequena ok">pronta</span
+              >{/if}</span
+          >
+          <span class="row-meta onda-o">{o.o}</span>
+        </span>
         <span class="onda-n num">Onda {o.n}</span>
-        <span class="onda-nome"
-          >{o.nome}{#if o.n <= ONDA_ATUAL}<span class="tag">pronta</span>{/if}</span
-        >
-        <span class="onda-o">{o.o}</span>
       </li>
     {/each}
   </ol>
 </section>
 
 <style>
-  /* Cabeça da página */
-  .hero {
-    background: var(--surface);
-    color: var(--ink);
-    border-bottom: 1px solid var(--line);
-    padding-block: clamp(28px, 5vw, 56px) clamp(28px, 5vw, 56px);
-    display: grid;
-    gap: clamp(20px, 3vw, 36px);
+  .cabeca {
+    gap: 18px;
+    padding: clamp(20px, 3vw, 28px);
   }
-  .hero-top {
+  .cabeca-topo {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 12px 24px;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
   }
-  .hero h1 {
-    font-size: var(--s-lead);
-    font-weight: 600;
-    letter-spacing: -0.01em;
+  .cabeca-texto {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .cabeca h1 {
+    font-size: var(--s-head);
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
   .hero-note {
     font-size: 0.9375rem;
+    color: var(--muted);
   }
-  .giant {
-    font-size: var(--s-giant);
+  /* "Tudo ok" é uma etiqueta: verde quando está bem, vermelha quando há problema */
+  .etiqueta {
+    display: inline-flex;
+    align-items: center;
+    justify-self: start;
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 999px;
+    font-size: clamp(1.125rem, 0.9rem + 0.8vw, 1.375rem);
     font-weight: 700;
-    letter-spacing: -0.03em;
-    line-height: 0.88;
-    white-space: nowrap;
-    overflow: hidden;
-    padding-bottom: 0.06em;
+    letter-spacing: -0.01em;
+    background: var(--step);
+    color: var(--muted);
   }
-  .giant span {
-    display: inline-block;
+  .etiqueta.ok {
+    background: var(--pos-soft);
+    color: var(--pos);
   }
-  .hero-bottom {
+  .etiqueta.falha {
+    background: var(--neg-soft);
+    color: var(--neg);
+  }
+  .etiqueta.aviso {
+    background: var(--warn-soft);
+    color: var(--warn);
+  }
+  .etiqueta.pequena {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 0.8125rem;
+    margin-left: 8px;
+    vertical-align: 1px;
+  }
+  .cabeca-base {
     display: grid;
     grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    gap: 24px 48px;
-    align-items: end;
+    gap: 20px 32px;
+    align-items: start;
   }
   @media (max-width: 860px) {
-    .hero-bottom {
+    .cabeca-base {
       grid-template-columns: minmax(0, 1fr);
     }
   }
+  .cabeca-acoes {
+    display: grid;
+    gap: 12px;
+  }
   .hero-lead {
-    font-size: 1.125rem;
-    max-width: 34ch;
+    font-size: 1.0625rem;
+    max-width: 38ch;
   }
   .hero-acts {
     display: flex;
-    gap: 8px;
     flex-wrap: wrap;
-    margin-top: 18px;
-  }
-  .hero .btn {
-    background: var(--orange);
-    color: var(--orange-ink);
-  }
-  .hero .btn:hover {
-    background: color-mix(in srgb, var(--orange) 88%, #000 12%);
   }
   .hero-msg {
-    margin-top: 12px;
     font-size: 0.9375rem;
-    font-weight: 600;
     overflow-wrap: anywhere;
   }
   .ledger {
     display: grid;
-    gap: 4px;
+    gap: 8px;
   }
 
-  /* Caminhos e fatos */
+  /* Caminhos */
   .caminho {
-    display: grid;
-    gap: 6px;
+    gap: 12px;
     padding: 18px;
-    background: var(--paper);
+  }
+  .caminho-cab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
   .lbl {
     font-size: 0.875rem;
@@ -413,8 +468,8 @@
     color: var(--muted);
   }
   .path {
-    font-size: clamp(1.0625rem, 0.9rem + 0.6vw, 1.375rem);
-    font-weight: 600;
+    font-size: clamp(1.0625rem, 0.9rem + 0.6vw, 1.25rem);
+    font-weight: 650;
     letter-spacing: -0.01em;
     overflow-wrap: anywhere;
   }
@@ -425,11 +480,13 @@
   .fatos {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px;
+    gap: 8px;
     margin: 0;
   }
   .fatos div {
-    background: var(--paper);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    border-radius: var(--r);
     padding: 14px 16px;
     display: grid;
     gap: 2px;
@@ -441,40 +498,39 @@
   }
   .fatos dd {
     margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
+    font-size: 1.125rem;
+    font-weight: 650;
     letter-spacing: -0.02em;
   }
 
-  /* Ondas */
-  .ondas {
-    display: grid;
-    gap: 4px;
+  /* Listas: a linha de cada onda ganha ícone e a etiqueta de pronta */
+  .ondas .row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
-  .ondas li {
-    display: grid;
-    grid-template-columns: 7em minmax(0, 14em) minmax(0, 1fr);
-    gap: 4px 24px;
-    align-items: baseline;
-    padding: 16px 12px;
-    background: var(--paper);
+  .onda-nome {
+    font-size: 1rem;
   }
-  .ondas li.feita {
-    background: var(--orange-soft);
+  .onda-o {
+    white-space: normal;
   }
   .onda-n {
     color: var(--muted);
     font-weight: 600;
-    font-size: 0.9375rem;
+    font-size: var(--s-small);
   }
-  .onda-nome {
-    font-weight: 600;
-    font-size: 1.125rem;
-    letter-spacing: -0.01em;
+  .ondas li.feita .row-title {
+    color: var(--ink);
   }
-  @media (max-width: 700px) {
-    .ondas li {
+  @media (max-width: 560px) {
+    .fatos {
       grid-template-columns: minmax(0, 1fr);
+    }
+    .ondas .row {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+    .ondas .onda-n {
+      grid-column: 2;
+      justify-self: start;
     }
   }
 </style>

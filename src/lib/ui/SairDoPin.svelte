@@ -12,18 +12,24 @@
 
 <style>
   .sair {
-    display: inline;
+    display: block;
     margin: 0;
   }
   .link {
-    background: none;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
     border: 0;
-    padding: 0;
+    border-radius: var(--r);
+    background: var(--step);
     font: inherit;
-    color: inherit;
-    text-decoration: underline;
-    text-underline-offset: 4px;
+    font-weight: 600;
+    color: var(--ink);
     cursor: pointer;
+    transition: background-color var(--t);
+  }
+  .link:hover {
+    background: color-mix(in srgb, var(--step) 82%, var(--ink) 18%);
   }
   .link:focus-visible {
     outline: 2px solid var(--orange);

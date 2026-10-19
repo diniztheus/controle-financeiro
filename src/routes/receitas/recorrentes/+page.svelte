@@ -3,6 +3,7 @@
   import { resolve } from '$app/paths';
   import { formatarDia } from '$lib/dominio/datas';
   import FormRecorrente from '$lib/ui/FormRecorrente.svelte';
+  import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
   import Valor from '$lib/ui/Valor.svelte';
   import { plural } from '$lib/ui/formato';
   import type { PageProps } from './$types';
@@ -64,18 +65,24 @@
     </div>
 
     {#if data.recorrentes.length}
-      <ul class="modelos" data-testid="lista-recorrentes">
+      <ul class="assinaturas" data-testid="lista-recorrentes">
         {#each data.recorrentes as r (r.id)}
-          <li class="modelo" class:pausada={!r.ativa}>
-            <div class="modelo-top">
-              <div class="modelo-id">
-                <span class="modelo-nome">{r.descricao ?? r.categoria}</span>
-                <span class="muted small">{r.categoria} · {r.descricaoRecorrencia}</span>
+          <li class="card assinatura" class:pausada={!r.ativa}>
+            <div class="assin-topo">
+              <IconeRedondo nome={r.descricao ?? r.categoria} cor="var(--pos)" />
+              <div class="assin-id">
+                <span class="assin-nome">{r.descricao ?? r.categoria}</span>
+                <span class="small muted">{r.categoria}</span>
               </div>
-              <p class="modelo-valor"><Valor centavos={r.valorCentavos} /></p>
+              <span class="etiq" class:ativa={r.ativa} class:pausa={!r.ativa}
+                >{r.ativa ? 'Ativa' : 'Pausada'}</span
+              >
             </div>
-            <p class="modelo-estado">
-              <span class="tag">{r.ativa ? 'Ativa' : 'Pausada'}</span>
+            <div class="assin-valor-linha">
+              <p class="assin-valor pos">+<Valor centavos={r.valorCentavos} /></p>
+              <p class="small muted">{r.descricaoRecorrencia}</p>
+            </div>
+            <p class="assin-estado small">
               {#if !r.ativa}
                 <span>Não lança novas receitas até ser retomada</span>
               {:else if r.proxima}
@@ -126,49 +133,71 @@
   .h {
     font-size: var(--s-lead);
   }
-  .modelos {
+  .assinaturas {
     display: grid;
-    gap: 10px;
+    gap: 12px;
     margin: 0;
     padding: 0;
     list-style: none;
   }
-  .modelo {
-    background: var(--paper);
-    border-radius: var(--r);
-    padding: 16px 18px;
-    display: grid;
-    gap: 10px;
-  }
-  .modelo.pausada {
-    opacity: 0.8;
-  }
-  .modelo-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+  /* Assinatura de entrada: cartão com ícone, valor, dia e estado */
+  .assinatura {
     gap: 12px;
+    padding: 16px 18px;
   }
-  .modelo-id {
+  .assinatura.pausada {
+    opacity: 0.85;
+  }
+  .assin-topo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  .assin-id {
     display: grid;
     gap: 2px;
     min-width: 0;
+    flex: 1;
   }
-  .modelo-nome {
-    font-weight: 600;
+  .assin-nome {
+    font-weight: 650;
     overflow-wrap: anywhere;
   }
-  .modelo-valor {
+  .assin-valor-linha {
+    display: grid;
+    gap: 2px;
+  }
+  .assin-valor {
+    font-size: clamp(1.375rem, 1.1rem + 0.8vw, 1.75rem);
     font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
     white-space: nowrap;
   }
-  .modelo-estado {
+  .assin-estado {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 10px;
+    gap: 2px 8px;
     margin: 0;
-    font-size: var(--s-small);
+  }
+  .etiq {
+    display: inline-block;
+    flex: none;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--step);
+    color: var(--muted);
+  }
+  .etiq.ativa {
+    background: var(--pos-soft);
+    color: var(--pos);
+  }
+  .etiq.pausa {
+    background: var(--warn-soft);
+    color: var(--warn);
   }
   .modelo-acts {
     display: flex;

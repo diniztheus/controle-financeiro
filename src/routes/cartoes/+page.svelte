@@ -2,12 +2,13 @@
   import { enhance } from '$app/forms';
   import { resolve } from '$app/paths';
   import { formatarDia } from '$lib/dominio/datas';
-  import { formatarBRL } from '$lib/dominio/dinheiro';
   import { situacaoLimite } from '$lib/dominio/resumo';
   import FormCartao from '$lib/ui/FormCartao.svelte';
+  import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
   import Medidor from '$lib/ui/Medidor.svelte';
   import Valor from '$lib/ui/Valor.svelte';
   import { tituloMes } from '$lib/ui/formato';
+  import CreditCard from '@lucide/svelte/icons/credit-card';
   import type { PageProps } from './$types';
 
   let { data, form }: PageProps = $props();
@@ -36,9 +37,10 @@
       Compras no cartão caem na fatura do mês certo. Pagar uma fatura não mexe no saldo das contas.
     </p>
   </div>
-  <div class="soma">
-    <p class="soma-val"><Valor centavos={data.aPagarTotal} testid="a-pagar-cartoes" /></p>
-    <p class="muted">a pagar em todos os cartões</p>
+  <div class="destaque">
+    <p class="destaque-rot">A pagar nos cartões</p>
+    <p class="destaque-val"><Valor centavos={data.aPagarTotal} testid="a-pagar-cartoes" /></p>
+    <p class="destaque-nota">a pagar em todos os cartões</p>
   </div>
 </header>
 
@@ -52,58 +54,55 @@
   <div class="col">
     {#if data.cartoes.length}
       <ul class="cartoes" data-testid="lista-cartoes">
-        {#each data.cartoes as c (c.id)}
+        {#each data.cartoes as c, i (c.id)}
           <li class="cartao">
-            <div class="cartao-top">
-              <div class="cartao-id">
-                <a class="cartao-nome" href={resolve('/cartoes/[id]', { id: c.id })}>{c.nome}</a>
-                <span class="muted small num"
-                  >Fecha dia {c.diaFechamento} · vence dia {c.diaVencimento}</span
-                >
+            <div class="cc" style="--fundo: {i % 2 ? 'var(--night)' : 'var(--hero)'}">
+              <div class="cc-top">
+                <IconeRedondo icone={CreditCard} cor="rgb(255 255 255 / 0.2)" tamanho={36} />
+                <a class="cc-nome" href={resolve('/cartoes/[id]', { id: c.id })}>{c.nome}</a>
               </div>
-              <dl class="numeros">
-                <div>
-                  <dt>Limite</dt>
-                  <dd class="num">
-                    {c.limiteCentavos > 0 ? formatarBRL(c.limiteCentavos) : 'Sem limite'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>A pagar</dt>
-                  <dd class="num"><Valor centavos={c.aPagarCentavos} /></dd>
-                </div>
-              </dl>
+              <div class="cc-fatura">
+                <span class="cc-rot">A pagar</span>
+                <span class="cc-val"><Valor centavos={c.aPagarCentavos} /></span>
+              </div>
+              <span class="cc-dias num"
+                >Fecha dia {c.diaFechamento} · vence dia {c.diaVencimento}</span
+              >
             </div>
 
-            {#if c.limiteCentavos > 0}
-              <Medidor s={situacaoLimite(c.aPagarCentavos, c.limiteCentavos)!} />
-            {/if}
+            <div class="cartao-info">
+              {#if c.limiteCentavos > 0}
+                <Medidor s={situacaoLimite(c.aPagarCentavos, c.limiteCentavos)!} />
+              {:else}
+                <p class="muted small">Sem limite informado.</p>
+              {/if}
 
-            {#if c.proximaFatura}
-              <p class="proxima">
-                <span class="muted">Próxima fatura</span>
-                <a
-                  href={resolve('/cartoes/[id]/faturas/[mes]', {
-                    id: c.id,
-                    mes: c.proximaFatura.mes,
-                  })}>{tituloMes(c.proximaFatura.mes)}</a
-                >
-                <span class="num">
-                  · vence {formatarDia(c.proximaFatura.vencimento)} · <Valor
-                    centavos={c.proximaFatura.totalCentavos}
-                  /></span
-                >
-              </p>
-            {:else}
-              <p class="muted small">Nenhuma compra em aberto neste cartão.</p>
-            {/if}
+              {#if c.proximaFatura}
+                <p class="proxima">
+                  <span class="muted">Próxima fatura</span>
+                  <a
+                    href={resolve('/cartoes/[id]/faturas/[mes]', {
+                      id: c.id,
+                      mes: c.proximaFatura.mes,
+                    })}>{tituloMes(c.proximaFatura.mes)}</a
+                  >
+                  <span class="num">
+                    · vence {formatarDia(c.proximaFatura.vencimento)} · <Valor
+                      centavos={c.proximaFatura.totalCentavos}
+                    /></span
+                  >
+                </p>
+              {:else}
+                <p class="muted small">Nenhuma compra em aberto neste cartão.</p>
+              {/if}
 
-            <div class="cartao-acts">
-              <a class="btn sm" href={resolve('/cartoes/[id]', { id: c.id })}>Editar</a>
-              <form method="POST" action="?/arquivar" use:enhance>
-                <input type="hidden" name="id" value={c.id} />
-                <button class="btn sm" type="submit">Arquivar</button>
-              </form>
+              <div class="cartao-acts">
+                <a class="btn text sm" href={resolve('/cartoes/[id]', { id: c.id })}>Editar</a>
+                <form method="POST" action="?/arquivar" use:enhance>
+                  <input type="hidden" name="id" value={c.id} />
+                  <button class="btn text sm" type="submit">Arquivar</button>
+                </form>
+              </div>
             </div>
           </li>
         {/each}
@@ -124,7 +123,7 @@
         <ul class="rows" data-testid="lista-arquivados">
           {#each data.arquivados as c (c.id)}
             <li class="row">
-              <span class="sq" style="--cc: var(--ink)"></span>
+              <IconeRedondo icone={CreditCard} cor="var(--c9)" suave />
               <span class="row-main">
                 <a class="row-title" href={resolve('/cartoes/[id]', { id: c.id })}>{c.nome}</a>
                 <span class="row-meta"
@@ -162,21 +161,41 @@
 </section>
 
 <style>
-  .soma {
-    text-align: right;
+  .destaque {
+    background: var(--hero);
+    color: var(--hero-ink);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow);
+    padding: clamp(18px, 2.4vw, 24px) clamp(18px, 2.4vw, 26px);
     display: grid;
-    gap: 4px;
+    gap: 6px;
+    min-width: min(100%, 280px);
   }
-  .soma-val {
-    font-size: clamp(2rem, 1.2rem + 3vw, 3.5rem);
+  .page-head {
+    align-items: center;
+  }
+  @media (max-width: 700px) {
+    .destaque {
+      flex-basis: 100%;
+    }
+  }
+  .destaque-rot {
+    color: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    opacity: 0.85;
+  }
+  .destaque-val {
+    color: inherit;
+    font-size: clamp(2rem, 1.2rem + 3vw, 3.25rem);
     font-weight: 700;
     letter-spacing: -0.04em;
     line-height: 1;
   }
-  @media (max-width: 700px) {
-    .soma {
-      text-align: left;
-    }
+  .destaque-nota {
+    color: inherit;
+    font-size: 0.8125rem;
+    opacity: 0.85;
   }
   @media (max-width: 900px) {
     .painel-form {
@@ -185,63 +204,82 @@
   }
   .cartoes {
     display: grid;
-    gap: 4px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+    gap: 16px;
+    min-width: 0;
   }
   .cartao {
-    background: var(--paper);
-    padding: 18px;
     display: grid;
-    gap: 14px;
+    gap: 10px;
+    align-content: start;
+    min-width: 0;
   }
-  .cartao-top {
+  /* O cartão de crédito em si: cor sólida, cantos de 18px, fatura em destaque */
+  .cc {
+    background: var(--fundo);
+    color: #fff;
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-up);
+    padding: 18px 20px;
+    min-height: 168px;
+    display: grid;
+    gap: 16px;
+    align-content: space-between;
+    min-width: 0;
+  }
+  .cc-top {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 12px 24px;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
   }
-  .cartao-id {
+  .cc-nome {
+    font-weight: 650;
+    font-size: 1.0625rem;
+    color: inherit;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .cc-nome:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  .cc-fatura {
     display: grid;
     gap: 2px;
     min-width: 0;
   }
-  .cartao-nome {
+  .cc-rot {
+    font-size: 0.8125rem;
     font-weight: 600;
-    font-size: 1.25rem;
-    letter-spacing: -0.02em;
-    color: var(--ink);
-    text-decoration: none;
+    opacity: 0.85;
   }
-  .cartao-nome:hover {
-    text-decoration: underline;
-    text-underline-offset: 4px;
+  .cc-val {
+    font-size: clamp(1.75rem, 1.3rem + 1.6vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
   }
-  .numeros {
-    display: flex;
-    gap: 20px;
-    margin: 0;
+  .cc-dias {
+    font-size: 0.8125rem;
+    opacity: 0.85;
   }
-  .numeros div {
+  .cartao-info {
+    background: var(--surface);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
     display: grid;
-    gap: 2px;
-    text-align: right;
-  }
-  .numeros dt {
-    font-size: var(--s-small);
-    color: var(--muted);
-  }
-  .numeros dd {
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    gap: 12px;
+    align-content: start;
+    min-width: 0;
   }
   .proxima {
     margin: 0;
     font-size: 0.9375rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 8px;
   }
   .proxima a {
     color: var(--ink);
@@ -250,13 +288,13 @@
   }
   .cartao-acts {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     flex-wrap: wrap;
     align-items: center;
+    margin-left: -10px;
   }
   .cartao-acts .btn {
     min-height: 44px;
-    cursor: pointer;
   }
   .arquivados {
     display: grid;

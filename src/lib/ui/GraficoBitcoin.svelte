@@ -264,7 +264,7 @@
     font-weight: 600;
     position: sticky;
     top: 0;
-    background: var(--paper);
+    background: var(--surface);
   }
   td.num {
     text-align: right;

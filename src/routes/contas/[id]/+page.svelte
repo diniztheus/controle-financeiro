@@ -4,7 +4,9 @@
   import { ROTULO_TIPO, TIPOS_CONTA } from '$lib/dominio/contas';
   import { centavosParaCampo, formatarBRL } from '$lib/dominio/dinheiro';
   import ConfirmarRemocao from '$lib/ui/ConfirmarRemocao.svelte';
+  import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
   import Valor from '$lib/ui/Valor.svelte';
+  import { ICONE_CONTA } from '$lib/ui/icones';
   import { dataDeIso } from '$lib/ui/formato';
   import { ariaErro, manterCampos } from '$lib/ui/formularios';
   import type { PageProps } from './$types';
@@ -24,7 +26,10 @@
     <p>{ROTULO_TIPO[c.tipo]}</p>
     <p class="voltar-l"><a class="voltar" href={resolve('/contas')}>‹ Voltar às contas</a></p>
   </div>
-  <p class="saldo" class:neg={c.saldoCentavos < 0}><Valor centavos={c.saldoCentavos} /></p>
+  <div class="destaque" class:neg={c.saldoCentavos < 0}>
+    <p class="destaque-rot">Saldo atual</p>
+    <p class="destaque-val"><Valor centavos={c.saldoCentavos} /></p>
+  </div>
 </header>
 
 <section class="sec alt pad grade form-primeiro">
@@ -77,7 +82,7 @@
     <ul class="rows" data-testid="historico">
       {#each data.historico as h (h.id)}
         <li class="row">
-          <span class="sq" style="--cc: var(--ink)"></span>
+          <IconeRedondo icone={ICONE_CONTA[c.tipo]} cor="var(--orange)" suave tamanho={34} />
           <span class="row-main"
             ><span class="row-title num">{dataDeIso(h.registradoEm)}</span></span
           >
@@ -105,14 +110,31 @@
 </section>
 
 <style>
-  .saldo {
-    font-size: clamp(2rem, 1.2rem + 3vw, 3.5rem);
+  .destaque {
+    background: var(--hero);
+    color: var(--hero-ink);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow);
+    padding: clamp(18px, 2.4vw, 24px) clamp(18px, 2.4vw, 26px);
+    display: grid;
+    gap: 6px;
+    min-width: min(100%, 280px);
+  }
+  .destaque-rot {
+    color: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    opacity: 0.85;
+  }
+  .destaque-val {
+    color: inherit;
+    font-size: clamp(2rem, 1.2rem + 3vw, 3.25rem);
     font-weight: 700;
     letter-spacing: -0.04em;
     line-height: 1;
   }
-  .neg {
-    color: var(--neg);
+  .destaque.neg {
+    background: var(--night);
   }
   .fc {
     display: grid;
@@ -120,6 +142,12 @@
   }
   .h {
     font-size: var(--s-lead);
+  }
+  .neg {
+    color: var(--neg);
+  }
+  .row-val {
+    font-weight: 600;
   }
   .remover {
     display: grid;

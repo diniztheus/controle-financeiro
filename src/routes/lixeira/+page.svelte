@@ -1,7 +1,11 @@
 <script lang="ts">
+  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+  import CreditCard from '@lucide/svelte/icons/credit-card';
   import { enhance } from '$app/forms';
   import { formatarDia } from '$lib/dominio/datas';
   import { formatarBRL } from '$lib/dominio/dinheiro';
+  import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
+  import { ICONE_CONTA } from '$lib/ui/icones';
   import { corCss, dataDeIso } from '$lib/ui/formato';
   import type { PageProps } from './$types';
 
@@ -50,7 +54,7 @@
         <ul class="rows" data-testid="lixeira-gastos">
           {#each data.gastos as g (g.id)}
             <li class="row">
-              <span class="sq" style="--cc: {corCss(g.categoriaCor)}"></span>
+              <IconeRedondo nome={g.categoriaNome} cor={corCss(g.categoriaCor)} />
               <span class="row-main">
                 <span class="row-title"
                   >{g.descricao ?? g.categoriaNome} · {formatarBRL(g.valorTotalCentavos)}</span
@@ -61,7 +65,9 @@
               </span>
               <form method="POST" action="?/gasto" use:enhance>
                 <input type="hidden" name="id" value={g.id} />
-                <button class="btn sm ink" type="submit">Restaurar</button>
+                <button class="btn sm restaurar" type="submit"
+                  ><RotateCcw size={16} aria-hidden="true" />Restaurar</button
+                >
               </form>
             </li>
           {/each}
@@ -76,7 +82,7 @@
         <ul class="rows" data-testid="lixeira-receitas">
           {#each data.receitas as r (r.id)}
             <li class="row">
-              <span class="sq" style="--cc: var(--pos)"></span>
+              <IconeRedondo nome={r.categoria} cor="var(--pos)" />
               <span class="row-main">
                 <span class="row-title"
                   >{r.descricao ?? r.categoria} · {formatarBRL(r.valorCentavos)}</span
@@ -87,7 +93,9 @@
               </span>
               <form method="POST" action="?/receita" use:enhance>
                 <input type="hidden" name="id" value={r.id} />
-                <button class="btn sm ink" type="submit">Restaurar</button>
+                <button class="btn sm restaurar" type="submit"
+                  ><RotateCcw size={16} aria-hidden="true" />Restaurar</button
+                >
               </form>
             </li>
           {/each}
@@ -102,7 +110,7 @@
         <ul class="rows" data-testid="lixeira-recorrentes">
           {#each data.recorrentes as m (m.id)}
             <li class="row">
-              <span class="sq" style="--cc: var(--pos)"></span>
+              <IconeRedondo nome={m.categoria} cor="var(--pos)" />
               <span class="row-main">
                 <span class="row-title"
                   >{m.descricao ?? m.categoria} · {formatarBRL(m.valorCentavos)}</span
@@ -115,7 +123,9 @@
               </span>
               <form method="POST" action="?/recorrente" use:enhance>
                 <input type="hidden" name="id" value={m.id} />
-                <button class="btn sm ink" type="submit">Restaurar</button>
+                <button class="btn sm restaurar" type="submit"
+                  ><RotateCcw size={16} aria-hidden="true" />Restaurar</button
+                >
               </form>
             </li>
           {/each}
@@ -130,7 +140,7 @@
         <ul class="rows" data-testid="lixeira-contas">
           {#each data.contas as c (c.id)}
             <li class="row">
-              <span class="sq" style="--cc: var(--ink)"></span>
+              <IconeRedondo icone={ICONE_CONTA[c.tipo]} cor="var(--orange)" suave />
               <span class="row-main">
                 <span class="row-title">{c.nome} · {formatarBRL(c.saldoCentavos)}</span>
                 <span class="row-meta">removida em {dataDeIso(c.removidoEm ?? c.atualizadoEm)}</span
@@ -138,7 +148,9 @@
               </span>
               <form method="POST" action="?/conta" use:enhance>
                 <input type="hidden" name="id" value={c.id} />
-                <button class="btn sm ink" type="submit">Restaurar</button>
+                <button class="btn sm restaurar" type="submit"
+                  ><RotateCcw size={16} aria-hidden="true" />Restaurar</button
+                >
               </form>
             </li>
           {/each}
@@ -153,7 +165,7 @@
         <ul class="rows" data-testid="lixeira-cartoes">
           {#each data.cartoes as k (k.id)}
             <li class="row">
-              <span class="sq" style="--cc: var(--ink)"></span>
+              <IconeRedondo icone={CreditCard} cor="var(--orange)" suave />
               <span class="row-main">
                 <span class="row-title">{k.nome}</span>
                 <span class="row-meta">removido em {dataDeIso(k.removidoEm ?? k.atualizadoEm)}</span
@@ -161,7 +173,9 @@
               </span>
               <form method="POST" action="?/cartao" use:enhance>
                 <input type="hidden" name="id" value={k.id} />
-                <button class="btn sm ink" type="submit">Restaurar</button>
+                <button class="btn sm restaurar" type="submit"
+                  ><RotateCcw size={16} aria-hidden="true" />Restaurar</button
+                >
               </form>
             </li>
           {/each}
@@ -180,5 +194,17 @@
   .aviso {
     background: var(--orange-soft);
     padding-block: 12px;
+  }
+  /* Restaurar: botão claro, com o azul suave do site (a ação segura, sem competir com o resto) */
+  button.restaurar {
+    background: var(--orange-soft);
+    color: var(--orange);
+    font-weight: 650;
+  }
+  button.restaurar:hover {
+    background: color-mix(in srgb, var(--orange-soft) 80%, var(--orange) 20%);
+  }
+  .row form {
+    margin: 0;
   }
 </style>

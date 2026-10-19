@@ -128,21 +128,25 @@
 </dialog>
 
 <style>
+  /* Cartão flutuante: cantos grandes, sombra forte e teclas como chaves arredondadas */
   .atalhos {
     width: min(420px, calc(100vw - 32px));
     max-height: calc(100vh - 32px);
     padding: 24px;
     background: var(--surface);
     color: var(--ink);
-    border: 1px solid var(--line);
-    border-radius: var(--r);
+    border: 0;
+    border-radius: 24px;
+    box-shadow: var(--shadow-up);
   }
   .atalhos::backdrop {
-    background: rgb(0 0 0 / 0.45);
+    background: rgb(10 12 18 / 0.45);
   }
   .atalhos h2 {
     margin: 0 0 16px;
     font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
   }
   .atalhos table {
     width: 100%;
@@ -152,27 +156,33 @@
   .atalhos th,
   .atalhos td {
     text-align: left;
-    padding: 8px 4px;
+    padding: 9px 4px;
     border-bottom: 1px solid var(--line);
+  }
+  .atalhos tbody tr:last-child td {
+    border-bottom: 0;
   }
   .atalhos th {
     color: var(--muted);
-    font-weight: 500;
-    font-size: 0.85rem;
+    font-weight: 600;
+    font-size: var(--s-small);
   }
   .atalhos td:first-child {
-    width: 72px;
+    width: 88px;
   }
   .atalhos kbd {
     display: inline-block;
-    min-width: 2em;
-    padding: 2px 8px;
+    min-width: 2.2em;
+    padding: 3px 9px;
     text-align: center;
     font-family: inherit;
-    font-weight: 600;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    background: var(--paper);
+    font-weight: 650;
+    font-size: 0.9375rem;
+    color: var(--ink);
+    border: 0;
+    border-radius: 10px;
+    background: var(--step);
+    box-shadow: inset 0 -2px 0 var(--line);
   }
   .atalhos .nota {
     margin: 16px 0 0;

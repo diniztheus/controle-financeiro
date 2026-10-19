@@ -2,6 +2,22 @@
 
 Uma nota curta por onda. Versões seguem as tags do git (`v0.0`, `v0.1`…).
 
+## Novo visual (19/10/2026)
+
+- Visual de app de finanças: fundo cinza-claro, conteúdo em cartões arredondados, acento azul,
+  verde para entradas e vermelho para saídas.
+- **Menu lateral** com ícones no computador (botão "Novo" para gasto ou receita, ferramentas no
+  pé). No **celular**, abas embaixo (Início, Gastos, +, Receitas, Mais); o "+" abre a escolha
+  entre gasto e receita e o "Mais" mostra as outras seções.
+- **Ícones de categoria** em círculos coloridos, escolhidos pelo nome (mercado, transporte,
+  saúde…); ícones por tipo de conta.
+- **Painel** novo: cartão de patrimônio, cartões de receitas, gastos, sobra e limite, gráfico de
+  rosca por categoria, gasto acumulado, últimos lançamentos e contas.
+- **Lançar gasto**: valor grande, forma de pagamento em pílulas e categorias em grade com ícones.
+  Cartões de crédito aparecem como cartões de verdade, com a fatura em destaque.
+- **Esconder valores** (o olho no menu): borra os valores da tela; fica salvo no navegador.
+- Ícones do app (favicon, PWA) em azul.
+
 ## Onda 5: Acabamento e operação (17/10/2026)
 
 - **Backups** (`/backups`): automático uma vez por dia, com rotação (guarda os últimos 30 por

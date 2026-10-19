@@ -4,12 +4,15 @@
   import { nomeMesCurto } from '$lib/dominio/datas';
   import ConfirmarRemocao from '$lib/ui/ConfirmarRemocao.svelte';
   import FormGasto from '$lib/ui/FormGasto.svelte';
+  import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
+  import { corCss } from '$lib/ui/formato';
   import type { PageProps } from './$types';
 
   let { data, form }: PageProps = $props();
   const g = $derived(data.gasto);
   const voltar = $derived(resolve(`/gastos?mes=${g.dataCompra.slice(0, 7)}`));
   const erroSalvar = $derived(form?.acao === 'salvar' ? form : null);
+  const corDaCategoria = $derived(corCss(data.categorias.find((c) => c.id === g.categoriaId)?.cor));
 </script>
 
 <svelte:head>
@@ -19,10 +22,26 @@
 <header class="page-head pad">
   <div>
     <h1>{g.meio === 'cartao' ? 'Compra no cartão' : 'Editar gasto'}</h1>
-    <p>{g.descricao ?? data.categoriaNome} · {formatarBRL(g.valorTotalCentavos)}</p>
     <p class="voltar-l"><a class="voltar" href={voltar}>‹ Voltar aos gastos</a></p>
   </div>
 </header>
+
+<section class="pad topo-gasto" aria-label="Resumo do gasto">
+  <div class="card gasto-cartao">
+    <div class="gasto-cab">
+      <IconeRedondo nome={data.categoriaNome} cor={corDaCategoria} tamanho={56} />
+      <div class="gasto-txt">
+        <p class="small muted">
+          {data.categoriaNome}{g.meio === 'cartao' && data.cartaoNome
+            ? ` · ${data.cartaoNome}`
+            : ''}
+        </p>
+        <h2>{g.descricao ?? data.categoriaNome}</h2>
+      </div>
+    </div>
+    <p class="gasto-val num">−{formatarBRL(g.valorTotalCentavos)}</p>
+  </div>
+</section>
 
 <section class="sec alt pad grade">
   <div class="painel-form">
@@ -98,6 +117,36 @@
 </section>
 
 <style>
+  .topo-gasto {
+    padding-block: 12px 0;
+  }
+  .gasto-cartao {
+    gap: 14px;
+  }
+  .gasto-cab {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+  .gasto-txt {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .gasto-txt h2 {
+    font-size: clamp(1.125rem, 1rem + 0.6vw, 1.375rem);
+    font-weight: 650;
+    overflow-wrap: anywhere;
+  }
+  .gasto-val {
+    font-size: clamp(2.25rem, 1.6rem + 2.6vw, 3.25rem);
+    font-weight: 750;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+    color: var(--neg);
+    overflow-wrap: anywhere;
+  }
   .remover h2 {
     font-size: var(--s-lead);
   }

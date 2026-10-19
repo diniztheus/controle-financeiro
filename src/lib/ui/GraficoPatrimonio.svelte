@@ -25,7 +25,13 @@
   const passo = $derived(n > 12 ? 3 : n > 6 ? 2 : 1);
   const temSaldo = $derived(pontos.some((p) => p.temSaldo));
   const temAlgo = $derived(pontos.some((p) => p.temSaldo || p.bitcoinCentavos > 0));
-  const topo = $derived(Math.max(1, ...pontos.map((p) => p.totalCentavos)));
+  // Escala pela soma bruta (contas + bitcoin): o total líquido pode ser negativo com dívida de cartão.
+  const topo = $derived(
+    Math.max(
+      1,
+      ...pontos.map((p) => Math.max(0, p.contasCentavos) + Math.max(0, p.bitcoinCentavos)),
+    ),
+  );
 
   const colunas = $derived(
     pontos.map((p, i) => {
@@ -52,6 +58,12 @@
   );
 
   const rotuloMes = (mes: string) => `${nomeMesCurto(mes)}/${mes.slice(2, 4)}`;
+
+  /** Retângulo com os dois cantos de cima arredondados (só o segmento de cima da coluna). */
+  function topoArredondado(x: number, y: number, w: number, h: number): string {
+    const r = Math.max(0, Math.min(8, w / 2, h));
+    return `M${x.toFixed(1)},${(y + h).toFixed(1)}V${(y + r).toFixed(1)}Q${x.toFixed(1)},${y.toFixed(1)} ${(x + r).toFixed(1)},${y.toFixed(1)}H${(x + w - r).toFixed(1)}Q${(x + w).toFixed(1)},${y.toFixed(1)} ${(x + w).toFixed(1)},${(y + r).toFixed(1)}V${(y + h).toFixed(1)}Z`;
+  }
 </script>
 
 {#if !n}
@@ -76,10 +88,14 @@
       <line class="base" x1="0" x2={L} y1={ALTURA} y2={ALTURA} />
       {#each colunas as c (c.i)}
         {#if c.hContas > 0}
-          <rect class="contas" x={c.x} y={c.yContas} width={c.w} height={c.hContas} />
+          {#if c.hBtc > 0}
+            <rect class="contas" x={c.x} y={c.yContas} width={c.w} height={c.hContas} />
+          {:else}
+            <path class="contas" d={topoArredondado(c.x, c.yContas, c.w, c.hContas)} />
+          {/if}
         {/if}
         {#if c.hBtc > 0}
-          <rect class="btc" x={c.x} y={c.yBtc} width={c.w} height={c.hBtc} />
+          <path class="btc" d={topoArredondado(c.x, c.yBtc, c.w, c.hBtc)} />
         {/if}
       {/each}
     </svg>
@@ -153,10 +169,13 @@
     stroke-width: 1;
   }
   .contas {
-    fill: var(--c0);
+    fill: var(--orange);
   }
   .btc {
     fill: var(--c2);
+  }
+  path {
+    stroke: none;
   }
   .eixo {
     display: grid;
@@ -194,8 +213,8 @@
   .sw {
     width: 14px;
     height: 10px;
-    border-radius: 2px;
-    background: var(--c0);
+    border-radius: 999px;
+    background: var(--orange);
   }
   .btc-sw {
     background: var(--c2);
@@ -234,7 +253,7 @@
     font-weight: 600;
     position: sticky;
     top: 0;
-    background: var(--paper);
+    background: var(--surface);
   }
   td.num,
   th.num {

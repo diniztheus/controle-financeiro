@@ -11,6 +11,7 @@
   import { ehDia, nomeMesCurto } from '$lib/dominio/datas';
   import { centavosParaCampo, formatarBRL, MAX_PARCELAS, parseValor } from '$lib/dominio/dinheiro';
   import { previaParcelas } from '$lib/dominio/cartoes';
+  import IconeRedondo from './IconeRedondo.svelte';
   import { corCss } from './formato';
   import { focarPrimeiroErro } from './formularios';
 
@@ -161,29 +162,32 @@
     };
   }}
 >
-  <div class="field big">
+  <div class="field valor-campo">
     <label for="{id}-valor">Valor (R$)</label>
-    <input
-      id="{id}-valor"
-      name="valor"
-      inputmode="decimal"
-      placeholder="0,00"
-      required
-      bind:value={valorTxt}
-      bind:this={campoValor}
-      {...aria('valor')}
-    />
+    <div class="valor-linha">
+      <span class="cifrao" aria-hidden="true">R$</span>
+      <input
+        id="{id}-valor"
+        name="valor"
+        inputmode="decimal"
+        placeholder="0,00"
+        required
+        bind:value={valorTxt}
+        bind:this={campoValor}
+        {...aria('valor')}
+      />
+    </div>
     {#if erros?.valor}<span class="err" id="{id}-valor-erro">{erros.valor}</span>{/if}
   </div>
 
   {#if cartoes.length}
     <fieldset class="field" data-testid="forma-pagamento">
       <legend class="lbl">Forma de pagamento</legend>
-      <div class="chips">
-        <label class="chip">
+      <div class="pilulas">
+        <label>
           <input type="radio" name="meio" value="conta" bind:group={meioTxt} />Conta
         </label>
-        <label class="chip">
+        <label>
           <input type="radio" name="meio" value="cartao" bind:group={meioTxt} />Cartão
         </label>
       </div>
@@ -206,9 +210,9 @@
 
   <fieldset class="field" {...aria('categoriaId')}>
     <legend class="lbl">Categoria</legend>
-    <div class="chips">
+    <div class="cats">
       {#each categorias as c (c.id)}
-        <label class="chip">
+        <label class="cat-opc">
           <input
             type="radio"
             name="categoriaId"
@@ -216,7 +220,10 @@
             checked={c.id === v.categoriaId}
             required
           />
-          <i class="sq" style="--cc: {corCss(c.cor)}"></i>{c.nome}
+          <span class="cat-bola"
+            ><IconeRedondo nome={c.nome} cor={corCss(c.cor)} tamanho={44} /></span
+          >
+          <span class="cat-nome">{c.nome}</span>
         </label>
       {/each}
     </div>
@@ -289,7 +296,7 @@
   {#if erro}<p class="err" role="alert">{erro}</p>{/if}
 
   <div class="acts">
-    <button class="btn ink" type="submit" disabled={enviando}>
+    <button class="btn go" type="submit" disabled={enviando}>
       {enviando ? 'Salvando…' : rotulo}
     </button>
   </div>
@@ -313,51 +320,159 @@
   .opc {
     font-weight: 400;
   }
-  .chips {
+  /* Valor: o campo do gasto é o destaque da tela; saída em vermelho suave */
+  .valor-linha {
     display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  .chip {
-    position: relative;
-    background: var(--chip-bg, var(--paper));
-    padding: 8px 12px 8px 10px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    padding: 0 16px 0 18px;
+    border: 1px solid transparent;
+    border-radius: var(--r-card);
+    background: var(--paper);
+    transition:
+      border-color var(--t),
+      background-color var(--t),
+      box-shadow var(--t);
+  }
+  .valor-linha:focus-within {
+    background: var(--surface);
+    border-color: var(--orange);
+    box-shadow: 0 0 0 3px var(--orange-soft);
+  }
+  .valor-linha:has(input[aria-invalid='true']) {
+    border-color: var(--neg);
+    box-shadow: 0 0 0 3px var(--neg-soft);
+  }
+  .fg .cifrao {
+    flex: none;
+    font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem);
+    font-weight: 700;
+    color: var(--neg);
+  }
+  .fg .valor-linha input {
+    flex: 1;
+    min-width: 0;
+    min-height: 72px;
+    padding: 8px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: clamp(2.25rem, 1.7rem + 2.2vw, 3rem);
+    font-weight: 750;
+    letter-spacing: -0.03em;
+    color: var(--neg);
+  }
+  .fg .valor-linha input:focus,
+  .fg .valor-linha input[aria-invalid='true'] {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .fg .valor-linha input::placeholder {
+    color: var(--muted);
+    opacity: 0.6;
+  }
+
+  /* Forma de pagamento: pílulas que ocupam a largura do formulário */
+  .fg .pilulas {
+    display: flex;
+    width: 100%;
+  }
+  .fg .pilulas > label {
+    position: relative;
+    flex: 1;
     min-height: 44px;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .fg .pilulas > label input {
+    position: absolute;
+    /* Rádio invisível de 1px no meio da opção: o clique no texto vai para o rótulo,
+       e o próprio rádio continua clicável. */
+    top: 50%;
+    left: 50%;
+    width: 1px;
+    height: 1px;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .fg .pilulas > label:has(input:focus-visible) {
+    outline: 2px solid var(--orange);
+    outline-offset: 2px;
+  }
+
+  /* Categorias: grade de bolinhas coloridas com o nome embaixo; a escolhida ganha anel */
+  .cats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 8px;
+  }
+  .cat-opc {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 6px;
+    min-height: 44px;
+    padding: 12px 6px 10px;
+    border-radius: var(--r-card);
+    background: var(--paper);
+    text-align: center;
     cursor: pointer;
     transition:
       background-color var(--t),
-      color var(--t),
       transform var(--t);
   }
-  .chip:hover {
+  .cat-opc:hover {
     background: var(--step);
   }
-  .chip:active {
+  .cat-opc:active {
     transform: scale(0.97);
   }
-  .chip input {
+  .cat-opc input {
     position: absolute;
-    opacity: 0;
-    inset: 0;
+    /* Rádio invisível de 1px no meio da opção: o clique no texto vai para o rótulo,
+       e o próprio rádio continua clicável. */
+    top: 50%;
+    left: 50%;
+    width: 1px;
+    height: 1px;
+    min-height: 0;
+    padding: 0;
     margin: 0;
+    opacity: 0;
     cursor: pointer;
   }
-  .chip:has(input:checked) {
-    background: var(--ink);
-    color: var(--paper);
-  }
-  .chip:has(input:focus-visible) {
-    outline: 2px solid var(--ink);
+  .cat-opc:has(input:focus-visible) {
+    outline: 2px solid var(--orange);
     outline-offset: 2px;
   }
-  .chip .sq {
-    width: 10px;
-    height: 10px;
+  .cat-bola {
+    display: grid;
+    border-radius: 50%;
+    transition: box-shadow var(--t);
+  }
+  .cat-nome {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+  .cat-opc:has(input:checked) {
+    background: var(--orange-soft);
+    color: var(--ink);
+  }
+  .cat-opc:has(input:checked) .cat-bola {
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--orange);
+  }
+  .cat-opc:has(input:checked) .cat-nome {
+    color: var(--orange);
   }
   .acts {
     display: flex;

@@ -1,5 +1,5 @@
 <script lang="ts">
-  /** Escolha de cor entre as 11 da paleta (rádios com o quadradinho da cor). */
+  /** Escolha de cor entre as 11 da paleta (bolinhas redondas; a escolhida tem anel). */
   import { CORES } from '$lib/dominio/categorias';
   import { corCss, NOMES_CORES } from './formato';
 
@@ -47,7 +47,7 @@
   .opcoes {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 6px;
   }
   .op {
     position: relative;
@@ -55,7 +55,7 @@
     height: 44px;
     display: grid;
     place-items: center;
-    background: var(--chip-bg, var(--paper));
+    border-radius: 50%;
     cursor: pointer;
     transition: transform var(--t);
   }
@@ -64,28 +64,48 @@
   }
   .op.auto {
     width: auto;
-    padding-inline: 10px;
-    font-size: 0.8125rem;
+    height: 44px;
+    padding-inline: 16px;
+    border-radius: 999px;
+    background: var(--step);
+    color: var(--muted);
+    font-size: 0.875rem;
     font-weight: 600;
   }
   .op input {
     position: absolute;
-    inset: 0;
+    /* Rádio invisível de 1px no meio da opção: o clique no texto vai para o rótulo,
+       e o próprio rádio continua clicável. */
+    top: 50%;
+    left: 50%;
+    width: 1px;
+    height: 1px;
+    min-height: 0;
+    padding: 0;
     opacity: 0;
     margin: 0;
     cursor: pointer;
   }
   .op i {
-    width: 20px;
-    height: 20px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
     background: var(--cc);
+    transition: box-shadow var(--t);
   }
-  .op:has(input:checked) {
+  /* Bolinha escolhida: anel na cor do texto, com um vão do fundo do cartão */
+  .op:has(input:checked) i {
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--ink);
+  }
+  .op.auto:has(input:checked) {
     background: var(--ink);
     color: var(--paper);
+    box-shadow: none;
   }
   .op:has(input:focus-visible) {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--orange);
     outline-offset: 2px;
   }
 </style>

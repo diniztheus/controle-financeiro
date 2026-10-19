@@ -91,7 +91,7 @@
     };
   }}
 >
-  <div class="field big">
+  <div class="campo-valor">
     <label for="{id}-valor">Valor (R$)</label>
     <input
       id="{id}-valor"
@@ -120,11 +120,11 @@
     {#if erros?.descricao}<span class="err" id="{id}-descricao-erro">{erros.descricao}</span>{/if}
   </div>
 
-  <fieldset class="field" {...aria('categoria')}>
+  <fieldset class="campo" {...aria('categoria')}>
     <legend class="lbl">Categoria</legend>
-    <div class="chips">
+    <div class="pilulas escolhas">
       {#each categorias as c (c)}
-        <label class="chip">
+        <label>
           <input type="radio" name="categoria" value={c} checked={c === v.categoria} required />
           {c}
         </label>
@@ -170,7 +170,7 @@
   {#if erro}<p class="err" role="alert">{erro}</p>{/if}
 
   <div class="acts">
-    <button class="btn ink" type="submit" disabled={enviando}>
+    <button class="btn go" type="submit" disabled={enviando}>
       {enviando ? 'Salvando…' : rotulo}
     </button>
   </div>
@@ -181,11 +181,54 @@
     display: grid;
     gap: 16px;
   }
-  fieldset {
+  /* Valor em destaque: caixa verde suave, número grande na cor de entrada */
+  .campo-valor {
+    display: grid;
+    gap: 4px;
+    padding: 18px 20px;
+    border-radius: var(--r-card);
+    background: var(--pos-soft);
+    color: var(--pos);
+  }
+  .campo-valor:focus-within {
+    box-shadow: 0 0 0 3px var(--orange-soft);
+  }
+  .campo-valor:has(input[aria-invalid='true']) {
+    box-shadow: 0 0 0 3px var(--neg-soft);
+  }
+  .campo-valor label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--pos);
+  }
+  .campo-valor input {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--pos);
+    font-size: clamp(2rem, 1.6rem + 2vw, 2.75rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    outline: none;
+  }
+  .campo-valor input::placeholder {
+    color: color-mix(in srgb, var(--pos) 40%, transparent);
+  }
+  .campo-valor .err {
+    color: var(--neg);
+  }
+  .campo {
     border: 0;
     margin: 0;
     padding: 0;
     min-width: 0;
+    display: grid;
+    gap: 6px;
   }
   legend {
     padding: 0;
@@ -194,53 +237,52 @@
   .opc {
     font-weight: 400;
   }
-  .chips {
+  /* Categorias como pílulas de escolha (alvo de 44px) */
+  .pilulas.escolhas {
     display: flex;
     flex-wrap: wrap;
+    border-radius: var(--r-card);
     gap: 4px;
   }
-  .chip {
+  .escolhas > label {
     position: relative;
-    background: var(--chip-bg, var(--paper));
-    padding: 8px 12px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
     min-height: 44px;
+    padding: 0 14px;
     cursor: pointer;
     transition:
       background-color var(--t),
       color var(--t),
       transform var(--t);
   }
-  .chip:hover {
-    background: var(--step);
-  }
-  .chip:active {
+  .escolhas > label:active {
     transform: scale(0.97);
   }
-  .chip input {
+  .escolhas input {
     position: absolute;
-    opacity: 0;
-    inset: 0;
+    /* Rádio invisível de 1px no meio da opção: o clique no texto vai para o rótulo,
+       e o próprio rádio continua clicável. */
+    top: 50%;
+    left: 50%;
+    width: 1px;
+    height: 1px;
+    min-height: 0;
     margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    opacity: 0;
     cursor: pointer;
   }
-  .chip:has(input:checked) {
-    background: var(--ink);
-    color: var(--paper);
-  }
-  .chip:has(input:focus-visible) {
-    outline: 2px solid var(--ink);
+  .escolhas > label:has(input:focus-visible) {
+    outline: 2px solid var(--orange);
     outline-offset: 2px;
   }
   textarea {
     width: 100%;
-    border: 0;
+    border: 1px solid transparent;
     border-radius: var(--r);
     background: var(--paper);
-    padding: 11px 12px;
+    padding: 11px 14px;
     min-width: 0;
     font: inherit;
     resize: vertical;
@@ -249,16 +291,21 @@
     background: var(--surface);
   }
   textarea:focus {
-    outline: 2px solid var(--ink);
-    outline-offset: 0;
+    outline: none;
+    border-color: var(--orange);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px var(--orange-soft);
   }
   textarea[aria-invalid='true'] {
-    outline: 2px solid var(--neg);
-    outline-offset: 0;
+    border-color: var(--neg);
+    box-shadow: 0 0 0 3px var(--neg-soft);
   }
   .acts {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+  }
+  .acts .btn {
+    flex: 1 1 auto;
   }
 </style>

@@ -28,52 +28,55 @@
 </header>
 
 {#if data.previsto}
-  <section class="sec pad previa" aria-labelledby="previa-titulo" data-testid="receita-prevista">
-    <div class="previa-texto">
-      <h2 id="previa-titulo">Receita prevista</h2>
-      <p class="small muted">
-        Lançada pela recorrente e ainda não confirmada: não entra nos totais. Quando o dinheiro
-        cair, confirme; se o valor ou a data reais forem outros, ajuste aqui.
-      </p>
+  <section class="sec pad" aria-labelledby="previa-titulo" data-testid="receita-prevista">
+    <div class="card previa">
+      <div class="previa-texto">
+        <h2 id="previa-titulo">Receita prevista <span class="etiq">Prevista</span></h2>
+        <p class="small muted">
+          Lançada pela recorrente e ainda não confirmada: não entra nos totais. Quando o dinheiro
+          cair, confirme; se o valor ou a data reais forem outros, ajuste aqui.
+        </p>
+      </div>
+      <form class="confirmar" method="POST" action="?/confirmar" use:enhance>
+        <div class="campos">
+          <div class="field">
+            <label for="c-valor">Valor recebido (R$)</label>
+            <input
+              id="c-valor"
+              name="valor"
+              inputmode="decimal"
+              required
+              value={erroConfirmar?.valores?.valor ?? centavosParaCampo(r.valorCentavos)}
+              aria-invalid={erroConfirmar?.erros?.valor ? 'true' : undefined}
+            />
+            {#if erroConfirmar?.erros?.valor}<span class="err">{erroConfirmar.erros.valor}</span
+              >{/if}
+          </div>
+          <div class="field">
+            <label for="c-data">Data recebida</label>
+            <input
+              id="c-data"
+              name="data"
+              type="date"
+              required
+              min={primeiroDiaDoMes(mesDe(r.data))}
+              max={ultimoDiaDoMes(mesDe(r.data))}
+              value={erroConfirmar?.valores?.data ?? r.data}
+              aria-invalid={erroConfirmar?.erros?.data ? 'true' : undefined}
+              aria-describedby="c-data-dica"
+            />
+            <span class="small muted" id="c-data-dica"
+              >A data fica dentro de {soNomeMes(mesDe(r.data))}</span
+            >
+            {#if erroConfirmar?.erros?.data}<span class="err">{erroConfirmar.erros.data}</span>{/if}
+          </div>
+        </div>
+        {#if erroConfirmar?.erro}<p class="err" role="alert">{erroConfirmar.erro}</p>{/if}
+        <div class="acts">
+          <button class="btn go" type="submit">Confirmar recebimento</button>
+        </div>
+      </form>
     </div>
-    <form class="confirmar" method="POST" action="?/confirmar" use:enhance>
-      <div class="campos">
-        <div class="field">
-          <label for="c-valor">Valor recebido (R$)</label>
-          <input
-            id="c-valor"
-            name="valor"
-            inputmode="decimal"
-            required
-            value={erroConfirmar?.valores?.valor ?? centavosParaCampo(r.valorCentavos)}
-            aria-invalid={erroConfirmar?.erros?.valor ? 'true' : undefined}
-          />
-          {#if erroConfirmar?.erros?.valor}<span class="err">{erroConfirmar.erros.valor}</span>{/if}
-        </div>
-        <div class="field">
-          <label for="c-data">Data recebida</label>
-          <input
-            id="c-data"
-            name="data"
-            type="date"
-            required
-            min={primeiroDiaDoMes(mesDe(r.data))}
-            max={ultimoDiaDoMes(mesDe(r.data))}
-            value={erroConfirmar?.valores?.data ?? r.data}
-            aria-invalid={erroConfirmar?.erros?.data ? 'true' : undefined}
-            aria-describedby="c-data-dica"
-          />
-          <span class="small muted" id="c-data-dica"
-            >A data fica dentro de {soNomeMes(mesDe(r.data))}</span
-          >
-          {#if erroConfirmar?.erros?.data}<span class="err">{erroConfirmar.erros.data}</span>{/if}
-        </div>
-      </div>
-      {#if erroConfirmar?.erro}<p class="err" role="alert">{erroConfirmar.erro}</p>{/if}
-      <div class="acts">
-        <button class="btn ink" type="submit">Confirmar recebimento</button>
-      </div>
-    </form>
   </section>
 {/if}
 
@@ -113,13 +116,29 @@
   .remover h2 {
     font-size: var(--s-lead);
   }
+  /* Previsto: cartão âmbar, para ficar claro que ainda não entrou */
   .previa {
     display: grid;
     gap: 16px;
     max-width: 760px;
+    background: var(--warn-soft);
+    box-shadow: none;
   }
   .previa h2 {
     font-size: var(--s-lead);
+  }
+  .previa .field input {
+    background: var(--surface);
+  }
+  .etiq {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--warn);
+    vertical-align: 2px;
   }
   .previa-texto {
     display: grid;

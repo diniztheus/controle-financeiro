@@ -84,16 +84,18 @@
     stroke-linecap: round;
   }
   .atu {
-    stroke: var(--ink);
-    stroke-width: 3;
+    stroke: var(--orange);
+    stroke-width: 2.5;
   }
   .ant {
     stroke: var(--muted);
     stroke-width: 2;
-    opacity: 0.45;
+    opacity: 0.5;
   }
   .pt {
     fill: var(--orange);
+    stroke: var(--surface);
+    stroke-width: 2;
   }
   .eixo {
     position: relative;
@@ -129,7 +131,8 @@
   .sw {
     width: 14px;
     height: 4px;
-    background: var(--ink);
+    border-radius: 999px;
+    background: var(--orange);
   }
   .ant-sw {
     background: var(--muted);

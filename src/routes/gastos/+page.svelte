@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ArrowDownRight from '@lucide/svelte/icons/arrow-down-right';
   import { enhance } from '$app/forms';
   import { replaceState } from '$app/navigation';
   import { page } from '$app/state';
@@ -57,6 +58,20 @@
   <p class="aviso pad err" role="alert">{form.erro}</p>
 {/if}
 
+<section class="pad total-sec" aria-label="Total do mês">
+  <div class="card total">
+    <div class="total-cab">
+      <span class="ico"><ArrowDownRight size={20} /></span>
+      <div class="total-txt">
+        <p class="small muted">Total gasto em</p>
+        <h2>{tituloMes(data.mes)}</h2>
+      </div>
+    </div>
+    <p class="total-val"><Valor centavos={data.totalCentavos} testid="total-gastos" /></p>
+    <p class="small muted">{plural(data.quantidade, 'lançamento', 'lançamentos')}</p>
+  </div>
+</section>
+
 <section class="sec alt pad grade form-primeiro" aria-label="Lançar e listar gastos">
   <div class="painel-form" id="novo">
     <h2>Novo gasto</h2>
@@ -85,10 +100,8 @@
 
   <div class="col">
     <div class="col-head">
-      <h2 class="h-sec">{tituloMes(data.mes)}</h2>
-      <p class="total"><Valor centavos={data.totalCentavos} testid="total-gastos" /></p>
+      <h2 class="h-sec">Lançamentos</h2>
     </div>
-    <p class="muted">{plural(data.quantidade, 'lançamento', 'lançamentos')}</p>
     {#if data.dias.length}
       <ListaLancamentos dias={data.dias} />
     {:else}
@@ -119,11 +132,50 @@
   .h-sec {
     font-size: var(--s-head);
   }
+  /* Total do mês: cartão de destaque, com o valor grande em vermelho (saída) */
+  .total-sec {
+    padding-block: 12px 0;
+  }
   .total {
-    font-size: clamp(1.75rem, 1.2rem + 2vw, 3rem);
-    font-weight: 700;
-    letter-spacing: -0.04em;
-    line-height: 1;
+    gap: 10px;
+  }
+  .total-cab {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .total-txt {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .total-txt h2 {
+    font-size: 1.0625rem;
+    font-weight: 650;
+  }
+  .ico {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    flex: none;
+    background: var(--neg-soft);
+    color: var(--neg);
+  }
+  .total-val {
+    font-size: clamp(2rem, 1.5rem + 2.4vw, 3rem);
+    font-weight: 750;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+    color: var(--neg);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+  .total-val :global(.cur) {
+    font-size: 0.5em;
+    vertical-align: 0.7em;
+    margin-right: 0.15em;
   }
   .note a,
   .ok-msg a {

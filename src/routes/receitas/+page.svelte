@@ -5,8 +5,11 @@
   import { mesDe, primeiroDiaDoMes, ultimoDiaDoMes, type Mes } from '$lib/dominio/datas';
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { centavosParaCampo, formatarBRL } from '$lib/dominio/dinheiro';
+  import ArrowDownLeft from '@lucide/svelte/icons/arrow-down-left';
+  import Clock from '@lucide/svelte/icons/clock';
+  import { centavosParaCampo, formatarBRL, somar } from '$lib/dominio/dinheiro';
   import FormReceita from '$lib/ui/FormReceita.svelte';
+  import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
   import NavMes from '$lib/ui/NavMes.svelte';
   import Valor from '$lib/ui/Valor.svelte';
   import { diaPorExtenso, plural, soNomeMes, tituloMes } from '$lib/ui/formato';
@@ -30,6 +33,14 @@
     if (!r.contaNome) return r.categoria;
     return `${r.categoria} · ${r.contaNome}${r.contaRemovida ? ' (na lixeira)' : ''}`;
   }
+  /** Previstas do mês (não confirmadas): não entram no total recebido. */
+  const previstasMes = $derived(
+    data.dias.flatMap((d) => d.itens).filter((i) => i.confirmada === false),
+  );
+  const recebidasMes = $derived(
+    data.dias.flatMap((d) => d.itens).filter((i) => i.confirmada !== false).length,
+  );
+  const totalPrevistasCentavos = $derived(somar(previstasMes.map((i) => i.valorCentavos)));
   const lancado = $derived(
     form && 'lancado' in form
       ? form.lancado
@@ -52,6 +63,40 @@
   </div>
   <NavMes mes={data.mes} href={linkMes} />
 </header>
+
+<section class="resumo pad" aria-label="Resumo de {nomeMes}">
+  <div class="card resumo-item">
+    <div class="resumo-cab">
+      <span class="ico ico-pos"><ArrowDownLeft size={20} /></span>
+      <span class="resumo-rot">Recebido em {nomeMes}</span>
+    </div>
+    <p class="resumo-val pos"><Valor centavos={data.totalCentavos} testid="total-receitas" /></p>
+    <p class="small muted">
+      {plural(recebidasMes, 'receita confirmada', 'receitas confirmadas')}
+    </p>
+  </div>
+  <div class="card resumo-item">
+    <div class="resumo-cab">
+      <span class="ico ico-warn"><Clock size={20} /></span>
+      <span class="resumo-rot">A receber</span>
+    </div>
+    <p class="resumo-val neutro">
+      <Valor centavos={totalPrevistasCentavos} testid="previstas-mes" />
+    </p>
+    <p class="small muted">
+      {#if previstasMes.length}
+        {plural(previstasMes.length, 'prevista', 'previstas')} em {nomeMes}, ainda não confirmadas
+      {:else}
+        Nenhuma prevista em {nomeMes}
+      {/if}
+      {#if data.aReceber.length}
+        · <a href="#a-receber"
+          >{plural(data.aReceber.length, 'vencida', 'vencidas')} para confirmar</a
+        >
+      {/if}
+    </p>
+  </div>
+</section>
 
 {#if data.removido}
   <form class="aviso pad" method="POST" action="?/restaurar" use:enhance>
@@ -94,7 +139,12 @@
 
   <div class="col">
     {#if data.aReceber.length}
-      <section class="a-receber" aria-labelledby="a-receber-titulo" data-testid="a-receber">
+      <section
+        class="card a-receber"
+        id="a-receber"
+        aria-labelledby="a-receber-titulo"
+        data-testid="a-receber"
+      >
         <div class="col-head">
           <h2 class="sub" id="a-receber-titulo">A receber</h2>
           <p class="muted">
@@ -109,13 +159,17 @@
           {#each data.aReceber as r (r.id)}
             {@const f = falhaDaLinha(r.id)}
             <li class="prevista">
-              <div class="prevista-info">
-                <span class="row-title">{r.descricao ?? r.categoria}</span>
-                <span class="row-meta"
-                  >Prevista para {diaPorExtenso(r.data)} · {r.categoria}{r.contaNome
-                    ? ` · ${r.contaNome}`
-                    : ''}</span
-                >
+              <div class="prevista-topo">
+                <IconeRedondo nome={r.descricao ?? r.categoria} cor="var(--warn)" suave />
+                <div class="prevista-info">
+                  <span class="row-title">{r.descricao ?? r.categoria}</span>
+                  <span class="row-meta"
+                    >Prevista para {diaPorExtenso(r.data)} · {r.categoria}{r.contaNome
+                      ? ` · ${r.contaNome}`
+                      : ''}</span
+                  >
+                </div>
+                <span class="etiq etiq-prevista">Prevista</span>
               </div>
               <form
                 class="confirmar"
@@ -160,8 +214,8 @@
                 </div>
                 {#if f?.erro}<p class="err" role="alert">{f.erro}</p>{/if}
                 <div class="acts">
-                  <button class="btn sm ink" type="submit">Recebi</button>
-                  <button class="btn sm text" type="submit" formaction="?/naoRecebi" formnovalidate>
+                  <button class="btn go recebi" type="submit">Recebi</button>
+                  <button class="btn text" type="submit" formaction="?/naoRecebi" formnovalidate>
                     Não recebi
                   </button>
                 </div>
@@ -174,12 +228,15 @@
 
     <div class="col-head">
       <h2 class="h-sec">{tituloMes(data.mes)}</h2>
-      <p class="total"><Valor centavos={data.totalCentavos} testid="total-receitas" /></p>
+      <p class="muted">{plural(data.quantidade, 'lançamento', 'lançamentos')}</p>
     </div>
-    <p class="muted">{plural(data.quantidade, 'lançamento', 'lançamentos')}</p>
 
     {#if data.fatias.length}
-      <section class="cats" aria-label="Receitas por categoria" data-testid="receitas-categorias">
+      <section
+        class="card cats"
+        aria-label="Receitas por categoria"
+        data-testid="receitas-categorias"
+      >
         <h3 class="sub">Por categoria</h3>
         <ul class="fatias">
           {#each data.fatias as f (f.categoria)}
@@ -207,28 +264,27 @@
               <span>{diaPorExtenso(d.data)}</span>
               <span class="num">{formatarBRL(d.totalCentavos)}</span>
             </h3>
-            <ul class="itens">
+            <ul class="rows">
               {#each d.itens as r (r.id)}
                 {@const prevista = r.confirmada === false}
                 {@const f = falhaDaLinha(r.id)}
-                <li>
-                  <a
-                    class="row lanc"
-                    class:previa={prevista}
-                    href={resolve('/receitas/[id]', { id: r.id })}
-                  >
-                    <span class="sq" style="--cc: {prevista ? 'var(--muted)' : 'var(--pos)'}"
-                    ></span>
+                <li class="lanc-item">
+                  <a class="row lanc" href={resolve('/receitas/[id]', { id: r.id })}>
+                    <IconeRedondo
+                      nome={r.descricao ?? r.categoria}
+                      cor={prevista ? 'var(--muted)' : 'var(--pos)'}
+                      suave={prevista}
+                    />
                     <span class="row-main">
                       <span class="row-title"
                         >{r.descricao ?? r.categoria}{#if r.recorrente}
                           <span class="tag">Recorrente</span>{/if}{#if prevista}
-                          <span class="tag previa-tag">Prevista</span>{/if}</span
+                          <span class="etiq etiq-prevista">Prevista</span>{/if}</span
                       >
                       <span class="row-meta">{detalhe(r)}</span>
                     </span>
                     <span class="row-val num" class:pos={!prevista} class:previa-val={prevista}
-                      >{formatarBRL(r.valorCentavos)}</span
+                      >{prevista ? '' : '+'}{formatarBRL(r.valorCentavos)}</span
                     >
                   </a>
                   {#if r.recorrente && !prevista}
@@ -273,7 +329,8 @@
     flex-wrap: wrap;
     font-weight: 500;
   }
-  #nova {
+  #nova,
+  #a-receber {
     scroll-margin-top: 96px;
   }
   .h-sec {
@@ -285,11 +342,64 @@
     font-weight: 600;
     letter-spacing: 0;
   }
-  .total {
-    font-size: clamp(1.75rem, 1.2rem + 2vw, 3rem);
+
+  /* Resumo do mês: dois cartões no topo */
+  .resumo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    gap: 14px;
+    padding-block: 4px 0;
+  }
+  .resumo-item {
+    gap: 8px;
+  }
+  .resumo-cab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .resumo-rot {
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 0.9375rem;
+  }
+  .ico {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    flex: none;
+  }
+  .ico-pos {
+    background: var(--pos-soft);
+    color: var(--pos);
+  }
+  .ico-warn {
+    background: var(--warn-soft);
+    color: var(--warn);
+  }
+  .resumo-val {
+    font-size: clamp(1.75rem, 1.2rem + 1.4vw, 2.25rem);
     font-weight: 700;
-    letter-spacing: -0.04em;
-    line-height: 1;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+  .resumo-val.neutro {
+    color: var(--muted);
+  }
+  .resumo-item .small a {
+    color: var(--warn);
+    font-weight: 600;
+  }
+  @media (max-width: 560px) {
+    .resumo-val {
+      font-size: 1.5rem;
+    }
+  }
+
+  .h-sec {
+    letter-spacing: -0.01em;
   }
   .fatias {
     display: grid;
@@ -320,11 +430,11 @@
   }
   .days {
     display: grid;
-    gap: 6px;
+    gap: 16px;
   }
   .day {
     display: grid;
-    gap: 2px;
+    gap: 8px;
   }
   .day-head {
     display: flex;
@@ -334,60 +444,55 @@
     color: var(--muted);
     font-weight: 600;
     letter-spacing: 0;
-    padding: 14px 12px 6px;
+    padding: 0 4px;
   }
   .day-head span:first-child::first-letter {
     text-transform: uppercase;
   }
-  .itens {
-    display: grid;
-    gap: 2px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
+  .lanc-item {
+    min-width: 0;
   }
   .lanc {
     color: inherit;
     text-decoration: none;
-    transition:
-      background-color var(--t),
-      transform var(--t);
+    transition: background-color var(--t);
   }
   .lanc:hover {
-    background: var(--step) !important;
-  }
-  .lanc:active {
-    transform: scale(0.995);
+    background: var(--paper);
   }
   .pos {
     color: var(--pos);
+    font-weight: 700;
   }
-  /* Previstas: tom neutro (não é dinheiro que já entrou). */
-  .previa-val,
-  .previa-tag {
-    color: var(--muted);
+  /* Etiquetas: "Prevista" em âmbar, recorrência em azul do site */
+  .etiq {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 999px;
+    margin-left: 6px;
+    vertical-align: 1px;
   }
-  .previa-tag {
-    background: var(--step);
+  .etiq-prevista {
+    background: var(--warn-soft);
     color: var(--warn);
   }
-  .previa .row-title {
-    font-weight: 500;
+  /* Previstas: valor em cinza, sem o sinal de entrada */
+  .previa-val {
+    color: var(--muted);
+    font-weight: 600;
   }
   .desfazer {
-    padding: 0 12px 6px;
+    padding: 0 16px 8px;
     display: flex;
     justify-content: flex-end;
   }
   .desfazer-erro {
-    padding: 0 12px 6px;
+    padding: 0 16px 8px;
   }
   .a-receber {
-    display: grid;
-    gap: 10px;
-    margin-bottom: 28px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--line, var(--step));
+    gap: 12px;
   }
   .a-receber .col-head {
     align-items: baseline;
@@ -401,14 +506,29 @@
   }
   .prevista {
     display: grid;
-    gap: 10px;
+    gap: 12px;
     padding: 14px 16px;
-    background: var(--paper);
-    border-radius: var(--r);
+    background: var(--warn-soft);
+    border-radius: var(--r-card);
+  }
+  .prevista-topo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
   }
   .prevista-info {
     display: grid;
     gap: 2px;
+    min-width: 0;
+    flex: 1;
+  }
+  .prevista-topo .etiq {
+    margin-left: 0;
+    flex: none;
+  }
+  .prevista .field input {
+    background: var(--surface);
   }
   .confirmar {
     display: grid;
@@ -428,6 +548,9 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 8px 14px;
+  }
+  .confirmar .recebi {
+    flex: 1 1 160px;
   }
   .confirmar .err {
     font-size: 0.8125rem;

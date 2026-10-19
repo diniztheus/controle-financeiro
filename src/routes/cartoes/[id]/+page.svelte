@@ -5,9 +5,11 @@
   import { formatarBRL } from '$lib/dominio/dinheiro';
   import ConfirmarRemocao from '$lib/ui/ConfirmarRemocao.svelte';
   import FormCartao from '$lib/ui/FormCartao.svelte';
+  import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
   import Valor from '$lib/ui/Valor.svelte';
   import { tituloMes } from '$lib/ui/formato';
   import { CLASSE_SITUACAO, ROTULO_SITUACAO } from '$lib/ui/rotulosCartao';
+  import CreditCard from '@lucide/svelte/icons/credit-card';
   import type { PageProps } from './$types';
 
   let { data, form }: PageProps = $props();
@@ -38,9 +40,10 @@
     <p class="num">Fecha dia {c.diaFechamento} · vence dia {c.diaVencimento}</p>
     <p class="voltar-l"><a class="voltar" href={resolve('/cartoes')}>‹ Voltar aos cartões</a></p>
   </div>
-  <div class="soma">
-    <p class="soma-val"><Valor centavos={data.aPagar} testid="a-pagar" /></p>
-    <p class="muted">
+  <div class="destaque" style="--fundo: {c.ativo ? 'var(--hero)' : 'var(--night)'}">
+    <p class="destaque-rot">A pagar</p>
+    <p class="destaque-val"><Valor centavos={data.aPagar} testid="a-pagar" /></p>
+    <p class="destaque-nota">
       {c.limiteCentavos > 0 ? `de um limite de ${formatarBRL(c.limiteCentavos)}` : 'sem limite'}
       {#if !c.ativo}· <span class="tag">Arquivado</span>{/if}
     </p>
@@ -84,7 +87,15 @@
       <ul class="rows" data-testid="faturas">
         {#each data.faturas as f (f.mes)}
           <li class="row">
-            <span class="sq" style="--cc: var(--ink)"></span>
+            <IconeRedondo
+              icone={CreditCard}
+              cor={f.situacao === 'paga'
+                ? 'var(--pos)'
+                : f.situacao === 'vencida'
+                  ? 'var(--neg)'
+                  : 'var(--orange)'}
+              suave
+            />
             <span class="row-main">
               <a
                 class="row-title"
@@ -145,21 +156,37 @@
 </section>
 
 <style>
-  .soma {
-    text-align: right;
+  .destaque {
+    background: var(--fundo, var(--hero));
+    color: #fff;
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow);
+    padding: clamp(18px, 2.4vw, 24px) clamp(18px, 2.4vw, 26px);
     display: grid;
-    gap: 4px;
+    gap: 6px;
+    min-width: min(100%, 280px);
   }
-  .soma-val {
-    font-size: clamp(2rem, 1.2rem + 3vw, 3.5rem);
+  .destaque-rot {
+    color: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    opacity: 0.85;
+  }
+  .destaque-val {
+    color: inherit;
+    font-size: clamp(2rem, 1.2rem + 3vw, 3.25rem);
     font-weight: 700;
     letter-spacing: -0.04em;
     line-height: 1;
   }
-  @media (max-width: 700px) {
-    .soma {
-      text-align: left;
-    }
+  .destaque-nota {
+    color: inherit;
+    font-size: 0.8125rem;
+    opacity: 0.85;
+  }
+  .destaque .tag {
+    background: #fff;
+    color: var(--ink);
   }
   .h {
     font-size: var(--s-lead);

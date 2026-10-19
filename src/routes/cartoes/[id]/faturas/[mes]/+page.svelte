@@ -5,6 +5,7 @@
   import type { Mes } from '$lib/dominio/datas';
   import { formatarDia } from '$lib/dominio/datas';
   import { centavosParaCampo, formatarBRL } from '$lib/dominio/dinheiro';
+  import IconeRedondo from '$lib/ui/IconeRedondo.svelte';
   import NavMes from '$lib/ui/NavMes.svelte';
   import Valor from '$lib/ui/Valor.svelte';
   import { corCss, tituloMes } from '$lib/ui/formato';
@@ -45,28 +46,27 @@
   <p class="aviso pad err" role="alert">{erroDesfazer}</p>
 {/if}
 
+<div class="pad">
+  <section class="destaque" aria-label="Resumo da fatura">
+    <div class="destaque-cab">
+      <span class="destaque-rot">Total da fatura</span>
+      <span class="tag {CLASSE_SITUACAO[f.situacao]}" data-testid="situacao-fatura"
+        >{ROTULO_SITUACAO[f.situacao]}</span
+      >
+    </div>
+    <p class="destaque-val" data-testid="total-fatura"><Valor centavos={f.totalCentavos} /></p>
+    <p class="destaque-nota">
+      Vence <b class="num">{formatarDia(f.dataVencimento)}</b>
+    </p>
+  </section>
+</div>
+
 <section class="sec alt pad grade form-primeiro">
   <div class="col">
-    <dl class="fatos" data-testid="resumo-fatura">
-      <div>
-        <dt>Total</dt>
-        <dd class="num" data-testid="total-fatura"><Valor centavos={f.totalCentavos} /></dd>
-      </div>
-      <div>
-        <dt>Situação</dt>
-        <dd>
-          <span class="tag {CLASSE_SITUACAO[f.situacao]}" data-testid="situacao-fatura"
-            >{ROTULO_SITUACAO[f.situacao]}</span
-          >
-        </dd>
-      </div>
+    <dl class="rows fatos" data-testid="resumo-fatura">
       <div>
         <dt>Fechamento</dt>
         <dd class="num">{formatarDia(f.dataFechamento)}</dd>
-      </div>
-      <div>
-        <dt>Vencimento</dt>
-        <dd class="num">{formatarDia(f.dataVencimento)}</dd>
       </div>
       {#if paga && f.pagaEm}
         <div>
@@ -91,7 +91,11 @@
             <ul class="rows">
               {#each dia.itens as it (it.compraId + '-' + it.parcela)}
                 <li class="row">
-                  <span class="sq" style="--cc: {corCss(it.categoriaCor)}"></span>
+                  <IconeRedondo
+                    nome={it.categoriaNome}
+                    cor={corCss(it.categoriaCor)}
+                    tamanho={40}
+                  />
                   <span class="row-main">
                     <span class="row-title">{it.descricao ?? it.categoriaNome}</span>
                     <span class="row-meta">
@@ -173,33 +177,83 @@
     margin: 0;
     padding: 12px 14px;
     background: var(--orange-soft);
+    border-radius: var(--r);
     font-size: 0.9375rem;
   }
   .h {
     font-size: var(--s-lead);
   }
-  .fatos {
+  /* Cabeçalho da fatura: total em destaque, vencimento e estado */
+  .destaque {
+    background: var(--hero);
+    color: var(--hero-ink);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow);
+    padding: clamp(18px, 2.4vw, 24px) clamp(18px, 2.4vw, 26px);
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .destaque-cab {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px 12px;
+    flex-wrap: wrap;
+  }
+  .destaque-rot {
+    font-size: 0.875rem;
+    font-weight: 600;
+    opacity: 0.85;
+  }
+  .destaque .tag {
+    margin: 0;
+    padding: 3px 12px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.8125rem;
+  }
+  .destaque .tag.situacao-paga {
+    color: var(--pos);
+  }
+  .destaque .tag.situacao-vencida {
+    color: var(--neg);
+  }
+  .destaque .tag.situacao-aberta,
+  .destaque .tag.situacao-fechada {
+    color: var(--orange);
+  }
+  .destaque-val {
+    font-size: clamp(2.25rem, 1.4rem + 3vw, 3.5rem);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+  .destaque-nota {
+    font-size: 0.9375rem;
+  }
+  .destaque-nota b {
+    font-weight: 650;
+  }
+  .fatos {
     margin: 0;
   }
-  .fatos div {
-    background: var(--surface);
-    padding: 14px 16px;
-    display: grid;
-    gap: 2px;
+  .fatos > div {
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
     min-width: 0;
   }
   .fatos dt {
-    font-size: var(--s-small);
+    font-size: 0.9375rem;
     color: var(--muted);
   }
   .fatos dd {
     margin: 0;
-    font-size: 1.125rem;
     font-weight: 600;
-    letter-spacing: -0.02em;
+    text-align: right;
     overflow-wrap: anywhere;
   }
   .dias {
@@ -208,13 +262,14 @@
   }
   .dia {
     display: grid;
-    gap: 6px;
+    gap: 8px;
   }
   .dia-titulo {
     margin: 0;
     font-size: var(--s-small);
     font-weight: 600;
     color: var(--muted);
+    padding-inline: 4px;
   }
   .row-val {
     font-weight: 600;
@@ -231,10 +286,5 @@
   }
   .voltar-l {
     margin: 0;
-  }
-  @media (max-width: 420px) {
-    .fatos {
-      grid-template-columns: minmax(0, 1fr);
-    }
   }
 </style>
