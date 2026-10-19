@@ -6,6 +6,7 @@ import { obterBanco } from '$lib/server/db';
 import { listarContas, obterConta } from '$lib/server/servicos/contas';
 import {
   confirmarRecebimento,
+  desfazerConfirmacao,
   editarReceita,
   obterReceita,
   removerReceita,
@@ -27,7 +28,7 @@ export const load: PageServerLoad = ({ params }) => {
 
   return {
     receita: r,
-    /** Gerada por recorrente e ainda não confirmada: não entra nos totais. */
+    /** Ainda não confirmada (de recorrente ou lançada como "ainda não recebi"): fora dos totais. */
     previsto: r.confirmadaEm === null,
     categorias: CATEGORIAS_RECEITA,
     contas,
@@ -44,6 +45,12 @@ export const actions: Actions = {
     });
     if (falhou(r)) return r;
     redirect(303, `/receitas?mes=${mesDe(r.data)}&aviso=confirmada`);
+  },
+  /** "Ainda não recebi": volta a prevista (sai dos totais até confirmar de novo). */
+  desfazer: ({ params }) => {
+    const r = executar('desfazer', () => desfazerConfirmacao(obterBanco(), params.id));
+    if (falhou(r)) return r;
+    redirect(303, `/receitas?mes=${mesDe(r.data)}&aviso=desfeita`);
   },
   salvar: async ({ request, params }) => {
     const v = await validar(request, receitaForm, 'salvar');

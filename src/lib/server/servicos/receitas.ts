@@ -31,6 +31,11 @@ export interface DadosReceita {
   valorCentavos: Centavos;
   contaId?: string | null;
   observacao?: string | null;
+  /**
+   * Só ao lançar: false cria a receita como PREVISTA (ainda não recebida, fora dos totais até
+   * você confirmar). Padrão: true (já recebida).
+   */
+  recebida?: boolean;
 }
 
 const IMEDIATA = { behavior: 'immediate' } as const;
@@ -67,7 +72,8 @@ function validar(
 }
 
 /**
- * Lança uma receita à mão. Ela nasce CONFIRMADA (já recebida). Não altera o saldo de nenhuma conta.
+ * Lança uma receita à mão: confirmada (já recebida) ou, com `recebida: false`, prevista. Não
+ * altera o saldo de nenhuma conta.
  */
 export function lancarReceita(banco: Banco, d: DadosReceita, agora = new Date()): Receita {
   return banco.db.transaction((tx) => {
@@ -82,7 +88,7 @@ export function lancarReceita(banco: Banco, d: DadosReceita, agora = new Date())
         valorCentavos: d.valorCentavos,
         contaId: d.contaId ?? null,
         observacao: textoOuNulo(d.observacao),
-        confirmadaEm: quando,
+        confirmadaEm: d.recebida === false ? null : quando,
         criadoEm: quando,
         atualizadoEm: quando,
       })
@@ -230,7 +236,7 @@ export function aReceberDoMes(
   };
 }
 
-/** Previsão de uma receita a receber (gerada por recorrente e ainda não confirmada). */
+/** Receita a receber: prevista (de recorrente ou lançada como "ainda não recebi"). */
 export interface ReceitaAReceber {
   id: string;
   data: Dia;
@@ -238,7 +244,8 @@ export interface ReceitaAReceber {
   categoria: string;
   valorCentavos: Centavos;
   contaNome: string | null;
-  recorrente: true;
+  /** Gerada por recorrente (a data confirmada precisa ficar no mesmo mês). */
+  recorrente: boolean;
   /** Data prevista já chegou (data <= hoje). */
   atrasada: boolean;
 }
@@ -257,15 +264,16 @@ export function receitasAReceber(banco: Banco, ate: Dia = hoje()): ReceitaAReceb
       categoria: receitas.categoria,
       valorCentavos: receitas.valorCentavos,
       contaNome: contas.nome,
+      recorrenteId: receitas.recorrenteId,
     })
     .from(receitas)
     .leftJoin(contas, eq(contas.id, receitas.contaId))
     .where(and(isNull(receitas.removidoEm), isNull(receitas.confirmadaEm), lte(receitas.data, ate)))
     .orderBy(asc(receitas.data), asc(receitas.criadoEm), asc(receitas.id))
     .all()
-    .map((r) => ({
+    .map(({ recorrenteId, ...r }) => ({
       ...r,
-      recorrente: true as const,
+      recorrente: recorrenteId !== null,
       atrasada: r.data <= h,
     }));
 }
@@ -330,18 +338,12 @@ export function confirmarRecebimento(
   }, IMEDIATA);
 }
 
-/**
- * Desfaz a confirmação (volta a prevista), para corrigir engano. Só vale para receita gerada por
- * recorrente: lançamento à mão não tem a que voltar.
- */
+/** Desfaz a confirmação (volta a prevista), para corrigir engano ou marcar "ainda não recebi". */
 export function desfazerConfirmacao(banco: Banco, id: string, agora = new Date()): Receita {
   return banco.db.transaction((tx) => {
     const atual = exigirAtiva(tx, id);
     if (atual.confirmadaEm === null) {
       throw new ErroDeNegocio('Esta receita ainda está prevista.');
-    }
-    if (atual.recorrenteId === null) {
-      throw new ErroDeNegocio('Só receitas previstas de recorrentes podem voltar a prevista.');
     }
     return tx
       .update(receitas)

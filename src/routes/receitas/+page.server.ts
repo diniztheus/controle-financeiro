@@ -50,6 +50,7 @@ export const load: PageServerLoad = ({ url }) => {
     dataInicial: ehDia(url.searchParams.get('data')) ? url.searchParams.get('data')! : hoje(agora),
     /** Sem JavaScript, o valor da receita recém-lançada volta pela URL (para a confirmação). */
     lancadoSemJs: Number(url.searchParams.get('lancado')) || null,
+    lancadoPrevista: url.searchParams.has('prevista'),
     dias: agruparReceitasPorDia(receitas).map((d) => ({
       ...d,
       totalCentavos: somar(
@@ -85,10 +86,16 @@ export const actions: Actions = {
           descricao: d.descricao,
           contaId: d.contaId,
           observacao: d.observacao,
+          recebida: d.recebida,
         });
         return {
           acao: 'lancar',
-          lancado: { id: x.id, valorCentavos: d.valorCentavos, mes: mesDe(d.data) },
+          lancado: {
+            id: x.id,
+            valorCentavos: d.valorCentavos,
+            mes: mesDe(d.data),
+            prevista: !d.recebida,
+          },
         };
       },
       { valores: v.valores },
@@ -101,6 +108,7 @@ export const actions: Actions = {
         data: d.data,
         lancado: String(r.lancado.valorCentavos),
       });
+      if (r.lancado.prevista) q.set('prevista', '1');
       redirect(303, `/receitas?${q}`);
     }
     return r;

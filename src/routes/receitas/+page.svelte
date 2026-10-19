@@ -45,7 +45,12 @@
     form && 'lancado' in form
       ? form.lancado
       : data.lancadoSemJs
-        ? { id: '', valorCentavos: data.lancadoSemJs, mes: data.mes }
+        ? {
+            id: '',
+            valorCentavos: data.lancadoSemJs,
+            mes: data.mes,
+            prevista: data.lancadoPrevista,
+          }
         : null,
   );
 </script>
@@ -116,6 +121,7 @@
   <div class="painel-form" id="nova">
     <h2>Lançar receita</h2>
     <FormReceita
+      perguntarRecebida
       acao="?/lancar"
       rotulo="Lançar receita"
       categorias={data.categorias}
@@ -130,7 +136,8 @@
     />
     {#if lancado}
       <p class="ok-msg" role="status" data-testid="receita-lancada">
-        Receita de {formatarBRL(lancado.valorCentavos)} lançada{#if lancado.mes !== data.mes}
+        Receita de {formatarBRL(lancado.valorCentavos)}
+        {lancado.prevista ? 'lançada como prevista' : 'lançada'}{#if lancado.mes !== data.mes}
           em {soNomeMes(lancado.mes)}.
           <a href={linkMes(lancado.mes)}>Ver {tituloMes(lancado.mes).toLowerCase()}</a>{:else}.{/if}
       </p>
@@ -152,8 +159,8 @@
           </p>
         </div>
         <p class="small muted">
-          Receitas que as recorrentes lançaram. Confirme quando o dinheiro cair; se o valor ou a
-          data reais forem outros, ajuste antes.
+          Receitas previstas cuja data já chegou. Elas só entram nos totais quando você confirma que
+          o dinheiro caiu; se o valor ou a data reais forem outros, ajuste antes.
         </p>
         <ul class="previstas">
           {#each data.aReceber as r (r.id)}
@@ -200,15 +207,17 @@
                       name="data"
                       type="date"
                       required
-                      min={primeiroDiaDoMes(mesDe(r.data))}
-                      max={ultimoDiaDoMes(mesDe(r.data))}
+                      min={r.recorrente ? primeiroDiaDoMes(mesDe(r.data)) : undefined}
+                      max={r.recorrente ? ultimoDiaDoMes(mesDe(r.data)) : undefined}
                       value={f?.valores?.data ?? r.data}
                       aria-invalid={f?.erros?.data ? 'true' : undefined}
-                      aria-describedby="cr-{r.id}-data-dica"
+                      aria-describedby={r.recorrente ? `cr-${r.id}-data-dica` : undefined}
                     />
-                    <span class="small muted" id="cr-{r.id}-data-dica"
-                      >A data fica dentro de {soNomeMes(mesDe(r.data))}</span
-                    >
+                    {#if r.recorrente}
+                      <span class="small muted" id="cr-{r.id}-data-dica"
+                        >A data fica dentro de {soNomeMes(mesDe(r.data))}</span
+                      >
+                    {/if}
                     {#if f?.erros?.data}<span class="err">{f.erros.data}</span>{/if}
                   </div>
                 </div>

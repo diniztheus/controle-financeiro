@@ -23,6 +23,9 @@ Uma nota curta por onda. Versões seguem as tags do git (`v0.0`, `v0.1`…).
 - **Patrimônio** = contas + bitcoin. Compras no cartão não descontam mais nada: o patrimônio só
   muda quando um saldo é atualizado ou o bitcoin muda (preço ou quantidade). Vale para o painel e
   para a evolução nos relatórios.
+- **Receita prevista ao lançar**: o formulário pergunta "Já caiu na conta?" (Já recebi / Ainda vou
+  receber). A prevista fica fora dos totais até você confirmar, mesmo depois da data, como as das
+  recorrentes. Qualquer receita recebida pode voltar a "ainda não recebida" pela tela dela.
 
 ## Onda 5: Acabamento e operação (17/10/2026)
 

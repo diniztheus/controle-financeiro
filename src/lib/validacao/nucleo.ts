@@ -162,6 +162,8 @@ export const receitaForm = z
     descricao: textoOpcional('A descrição', 120),
     conta: idOpcional,
     observacao: textoOpcional('A observação', 500),
+    /** Só ao lançar: "nao" cria como prevista. Ausente (ou "sim") = já recebida. */
+    recebida: z.enum(['sim', 'nao']).optional(),
   })
   .transform((d) => ({
     valorCentavos: d.valor,
@@ -170,6 +172,7 @@ export const receitaForm = z
     descricao: d.descricao,
     contaId: d.conta,
     observacao: d.observacao,
+    recebida: d.recebida !== 'nao',
   }));
 export type ReceitaForm = z.output<typeof receitaForm>;
 

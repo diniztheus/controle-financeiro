@@ -35,6 +35,8 @@
     erro?: string | undefined;
     valores?: Record<string, string> | undefined;
     id?: string;
+    /** Ao lançar: pergunta se já recebeu ou se ainda vai receber (prevista). */
+    perguntarRecebida?: boolean;
   }
   let {
     acao,
@@ -46,6 +48,7 @@
     erro,
     valores,
     id = 'r',
+    perguntarRecebida = false,
   }: Props = $props();
 
   let enviando = $state(false);
@@ -61,6 +64,7 @@
     data: valores?.data ?? inicial.data,
     contaId: valores?.conta ?? inicial.contaId ?? '',
     observacao: valores?.observacao ?? inicial.observacao ?? '',
+    recebida: valores?.recebida === 'nao' ? 'nao' : 'sim',
   });
 
   /** Atributos de acessibilidade de um campo com (ou sem) erro. */
@@ -150,6 +154,25 @@
       {#if erros?.conta}<span class="err" id="{id}-conta-erro">{erros.conta}</span>{/if}
     </div>
   </div>
+
+  {#if perguntarRecebida}
+    <fieldset class="campo">
+      <legend class="lbl">Já caiu na conta?</legend>
+      <div class="pilulas escolhas">
+        <label>
+          <input type="radio" name="recebida" value="sim" checked={v.recebida === 'sim'} />
+          Já recebi
+        </label>
+        <label>
+          <input type="radio" name="recebida" value="nao" checked={v.recebida === 'nao'} />
+          Ainda vou receber
+        </label>
+      </div>
+      <span class="hint"
+        >"Ainda vou receber" lança como prevista: fica fora dos totais até você confirmar.</span
+      >
+    </fieldset>
+  {/if}
 
   <div class="field">
     <label for="{id}-obs">Observação <span class="opc">opcional</span></label>

@@ -33,8 +33,9 @@
       <div class="previa-texto">
         <h2 id="previa-titulo">Receita prevista <span class="etiq">Prevista</span></h2>
         <p class="small muted">
-          Lançada pela recorrente e ainda não confirmada: não entra nos totais. Quando o dinheiro
-          cair, confirme; se o valor ou a data reais forem outros, ajuste aqui.
+          {r.recorrenteId ? 'Lançada pela recorrente' : 'Lançada como "ainda não recebi"'} e ainda não
+          confirmada: não entra nos totais. Quando o dinheiro cair, confirme; se o valor ou a data reais
+          forem outros, ajuste aqui.
         </p>
       </div>
       <form class="confirmar" method="POST" action="?/confirmar" use:enhance>
@@ -59,15 +60,17 @@
               name="data"
               type="date"
               required
-              min={primeiroDiaDoMes(mesDe(r.data))}
-              max={ultimoDiaDoMes(mesDe(r.data))}
+              min={r.recorrenteId ? primeiroDiaDoMes(mesDe(r.data)) : undefined}
+              max={r.recorrenteId ? ultimoDiaDoMes(mesDe(r.data)) : undefined}
               value={erroConfirmar?.valores?.data ?? r.data}
               aria-invalid={erroConfirmar?.erros?.data ? 'true' : undefined}
-              aria-describedby="c-data-dica"
+              aria-describedby={r.recorrenteId ? 'c-data-dica' : undefined}
             />
-            <span class="small muted" id="c-data-dica"
-              >A data fica dentro de {soNomeMes(mesDe(r.data))}</span
-            >
+            {#if r.recorrenteId}
+              <span class="small muted" id="c-data-dica"
+                >A data fica dentro de {soNomeMes(mesDe(r.data))}</span
+              >
+            {/if}
             {#if erroConfirmar?.erros?.data}<span class="err">{erroConfirmar.erros.data}</span>{/if}
           </div>
         </div>
@@ -103,6 +106,17 @@
   </div>
 
   <div class="col remover">
+    {#if !data.previsto}
+      <h2>Recebimento</h2>
+      <p class="note">
+        Recebida. Se o dinheiro ainda não caiu, volte para prevista: ela sai dos totais até você
+        confirmar.
+      </p>
+      <form method="POST" action="?/desfazer" use:enhance>
+        <button class="btn" type="submit">Marcar como ainda não recebida</button>
+      </form>
+      {#if form?.acao === 'desfazer' && form.erro}<p class="err" role="alert">{form.erro}</p>{/if}
+    {/if}
     <h2>Remover</h2>
     <p class="note">
       A receita vai para a lixeira e sai das somas. Dá para restaurar quando quiser.

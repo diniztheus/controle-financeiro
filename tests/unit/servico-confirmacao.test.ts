@@ -257,7 +257,7 @@ describe('desfazer confirmação', () => {
     expect(receitasAReceber(banco, '2026-10-15').map((x) => x.id)).toContain(id);
   });
 
-  it('receita já prevista ou lançada à mão não pode voltar a prevista', () => {
+  it('receita já prevista não pode voltar a prevista; a lançada à mão pode', () => {
     criarSalario();
     expect(() => desfazerConfirmacao(banco, idDoMes('2026-08'), T1)).toThrow(/ainda está prevista/);
     const manual = lancarReceita(
@@ -265,9 +265,40 @@ describe('desfazer confirmação', () => {
       { categoria: 'Outros', data: '2026-10-03', valorCentavos: 900 },
       T1,
     );
-    expect(() => desfazerConfirmacao(banco, manual.id, T1)).toThrow(
-      /Só receitas previstas de recorrentes/,
+    expect(desfazerConfirmacao(banco, manual.id, T1).confirmadaEm).toBeNull();
+    expect(totalReceitasDoMes(banco, '2026-10')).toBe(0);
+  });
+});
+
+describe('lançar como "ainda vou receber"', () => {
+  it('nasce prevista, fica fora dos totais e entra ao confirmar (a data pode mudar de mês)', () => {
+    const r = lancarReceita(
+      banco,
+      { categoria: 'Freelance', data: '2026-10-05', valorCentavos: 50_000, recebida: false },
+      T1,
     );
+    expect(r.confirmadaEm).toBeNull();
+    expect(totalReceitasDoMes(banco, '2026-10')).toBe(0);
+    expect(receitasDoMes(banco, '2026-10')[0]).toMatchObject({ confirmada: false });
+    expect(receitasAReceber(banco, '2026-10-15')).toEqual([
+      expect.objectContaining({ id: r.id, recorrente: false, atrasada: true }),
+    ]);
+    // Data passada não confirma sozinha: continua prevista até o usuário marcar.
+    expect(receitasAReceber(banco, '2026-12-31').map((x) => x.id)).toEqual([r.id]);
+
+    confirmarRecebimento(banco, r.id, { data: '2026-11-02' }, AGORA);
+    expect(totalReceitasDoMes(banco, '2026-10')).toBe(0);
+    expect(totalReceitasDoMes(banco, '2026-11')).toBe(50_000);
+  });
+
+  it('recebida (padrão) nasce confirmada', () => {
+    const r = lancarReceita(
+      banco,
+      { categoria: 'Freelance', data: '2026-10-05', valorCentavos: 50_000, recebida: true },
+      T1,
+    );
+    expect(r.confirmadaEm).not.toBeNull();
+    expect(totalReceitasDoMes(banco, '2026-10')).toBe(50_000);
   });
 });
 

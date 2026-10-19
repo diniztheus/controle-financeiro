@@ -55,6 +55,42 @@ test('editar receita pela lista e salvar', async ({ page }) => {
   await expect(page.getByTestId('total-receitas')).toContainText('4.300');
 });
 
+test('"Ainda vou receber" lança prevista, fora do total, até confirmar', async ({ page }) => {
+  // Mês só deste teste: a prevista não pode aparecer nos totais dos outros.
+  await page.goto('/receitas?mes=2018-07');
+  const form = page.locator('#nova');
+  await form.getByLabel('Valor (R$)').fill('750,00');
+  await form.getByLabel('Descrição').fill('Freela prevista e2e');
+  await form.getByLabel('Data', { exact: true }).fill('2018-07-10');
+  await form.getByText('Freelance', { exact: true }).click();
+  await form.getByText('Ainda vou receber', { exact: true }).click();
+  await form.getByRole('button', { name: 'Lançar receita' }).click();
+
+  await expect(page.getByTestId('receita-lancada')).toContainText('lançada como prevista');
+  const linha = page
+    .getByTestId('lista-receitas')
+    .locator('li', { hasText: 'Freela prevista e2e' });
+  await expect(linha).toContainText('Prevista');
+  await expect(page.getByTestId('total-receitas')).toContainText('0,00');
+
+  // A data já passou, mas continua prevista até confirmar.
+  await linha.getByRole('link').click();
+  await expect(page.getByTestId('receita-prevista')).toBeVisible();
+  await page.getByRole('button', { name: 'Confirmar recebimento' }).click();
+  await expect(page).toHaveURL(/\/receitas\?mes=2018-07/);
+  await expect(page.getByTestId('total-receitas')).toContainText('750,00');
+
+  // E dá para voltar a "ainda não recebida" pela tela da receita.
+  await page.getByTestId('lista-receitas').getByText('Freela prevista e2e').click();
+  await page.getByRole('button', { name: 'Marcar como ainda não recebida' }).click();
+  await expect(page.getByTestId('total-receitas')).toContainText('0,00');
+
+  // Banco compartilhado: confirma de novo para não deixar uma prevista vencida para os outros.
+  await page.getByTestId('lista-receitas').getByText('Freela prevista e2e').click();
+  await page.getByRole('button', { name: 'Confirmar recebimento' }).click();
+  await expect(page.getByTestId('total-receitas')).toContainText('750,00');
+});
+
 test('erro de valor mantém o que foi digitado e marca o campo', async ({ page }) => {
   await page.goto('/receitas');
   const form = page.locator('#nova');
