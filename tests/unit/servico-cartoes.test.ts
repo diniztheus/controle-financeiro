@@ -401,14 +401,16 @@ describe('pagar e desfazer fatura', () => {
 });
 
 describe('dívida, lixeira e patrimônio', () => {
-  it('a dívida entra no patrimônio líquido e cai ao pagar', () => {
+  it('compras no cartão e pagar a fatura não mexem no patrimônio (só contas e bitcoin)', () => {
     criarConta(banco, { nome: 'Conta', tipo: 'corrente', saldoCentavos: 100_000 }, T);
     const c = cartao();
     compra(c, '2026-10-05', 30_000, 3);
     const painel = () => montarPainel(banco, '2026-10', '2026-10-15').patrimonio;
-    expect(painel()).toMatchObject({ aPagarCartoesCentavos: 30_000, liquidoCentavos: 70_000 });
+    expect(painel().liquidoCentavos).toBe(100_000);
+    expect(aPagarCartoes(banco)).toBe(30_000);
     pagarFatura(banco, c.id, '2026-10', {}, HOJE);
-    expect(painel()).toMatchObject({ aPagarCartoesCentavos: 20_000, liquidoCentavos: 80_000 });
+    expect(painel().liquidoCentavos).toBe(100_000);
+    expect(aPagarCartoes(banco)).toBe(20_000);
   });
 
   it('compra na lixeira sai das somas e das listas; restaurar devolve', () => {
@@ -435,7 +437,7 @@ describe('dívida, lixeira e patrimônio', () => {
     expect(aPagarCartoes(banco)).toBe(5_000);
   });
 
-  it('evolução do patrimônio desconta a dívida de cada fim de mês até a fatura ser paga', () => {
+  it('evolução do patrimônio ignora as compras no cartão', () => {
     criarConta(
       banco,
       { nome: 'Conta', tipo: 'corrente', saldoCentavos: 100_000 },
@@ -446,10 +448,10 @@ describe('dívida, lixeira e patrimônio', () => {
     // Fatura de setembro vence em 20/09 (fechamento 10): paga em 02/10.
     pagarFatura(banco, c.id, '2026-09', { pagaEm: '2026-10-02' }, new Date('2026-10-03T12:00:00Z'));
     const pontos = evolucaoPatrimonioMensal(banco, 3, new Date('2026-10-15T12:00:00Z'));
-    expect(pontos.map((p) => [p.mes, p.dividaCartaoCentavos, p.totalCentavos])).toEqual([
-      ['2026-08', 0, 100_000],
-      ['2026-09', 5_000, 95_000],
-      ['2026-10', 0, 100_000],
+    expect(pontos.map((p) => [p.mes, p.totalCentavos])).toEqual([
+      ['2026-08', 100_000],
+      ['2026-09', 100_000],
+      ['2026-10', 100_000],
     ]);
   });
 });

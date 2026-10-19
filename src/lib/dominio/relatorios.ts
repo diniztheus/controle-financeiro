@@ -51,11 +51,6 @@ export interface PontoPatrimonio {
   contasCentavos: number;
   bitcoinCentavos: number;
   totalCentavos: number;
-  /**
-   * Dívida de cartões no fim do mês (preenchida pelo serviço de relatórios, que já a desconta de
-   * `totalCentavos`). Ausente quando o ponto vem só do domínio.
-   */
-  dividaCartaoCentavos?: number;
   /** false quando nenhuma conta tinha saldo registrado até o fim do mês. */
   temSaldo: boolean;
 }

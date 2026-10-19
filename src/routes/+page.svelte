@@ -107,12 +107,6 @@
             <dd class="num">{formatarBRL(p.patrimonio.bitcoinCentavos)}</dd>
           </div>
         {/if}
-        {#if p.patrimonio.aPagarCartoesCentavos > 0}
-          <div data-testid="cartoes-a-pagar">
-            <dt>Cartões a pagar <small>parcelas em faturas não pagas</small></dt>
-            <dd class="num">−{formatarBRL(p.patrimonio.aPagarCartoesCentavos)}</dd>
-          </div>
-        {/if}
       </dl>
     </section>
 

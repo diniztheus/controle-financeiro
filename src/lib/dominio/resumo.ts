@@ -142,15 +142,13 @@ export function diaDeCorte(mes: Mes, hoje: Dia): number {
   return mes < mesHoje ? diasNoMes(mes) : 0;
 }
 
-/** Patrimônio líquido. Nesta onda só entram as contas; cartões e bitcoin chegam depois. */
+/**
+ * Patrimônio: saldos das contas mais o bitcoin. Só muda quando um saldo é atualizado ou o
+ * bitcoin muda (preço ou quantidade); gastos, receitas e compras no cartão não entram.
+ */
 export function patrimonioLiquido(partes: {
   saldosContas: readonly Centavos[];
   bitcoinCentavos?: Centavos;
-  aPagarCartoesCentavos?: Centavos;
 }): Centavos {
-  return somar([
-    somar(partes.saldosContas),
-    partes.bitcoinCentavos ?? 0,
-    -(partes.aPagarCartoesCentavos ?? 0),
-  ]);
+  return somar([somar(partes.saldosContas), partes.bitcoinCentavos ?? 0]);
 }

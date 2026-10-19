@@ -155,8 +155,8 @@
       <h2 id="h-evolucao">Evolução do patrimônio</h2>
     </div>
     <p class="small muted">
-      Contas pelo último saldo registrado em cada mês, mais o bitcoin pelo último preço conhecido,
-      menos as parcelas de cartão que ainda não estavam pagas.
+      Contas pelo último saldo registrado em cada mês, mais o bitcoin pelo último preço conhecido.
+      Compras no cartão não entram.
     </p>
     <GraficoPatrimonio pontos={data.patrimonio} />
   </section>

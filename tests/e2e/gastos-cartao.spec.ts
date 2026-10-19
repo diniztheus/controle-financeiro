@@ -56,7 +56,7 @@ async function pagarFatura(page: Page, cartaoId: string, mes: string) {
   await expect(page.getByRole('status')).toContainText('Fatura marcada como paga.');
 }
 
-test('compra parcelada cai nas faturas certas, bloqueia edição paga e some do patrimônio ao pagar', async ({
+test('compra parcelada cai nas faturas certas, bloqueia edição paga e zera a dívida do cartão ao pagar', async ({
   page,
 }) => {
   const cartaoId = await criarCartao(page);
@@ -92,10 +92,11 @@ test('compra parcelada cai nas faturas certas, bloqueia edição paga e some do 
   await page.getByRole('button', { name: 'Salvar alterações' }).click();
   await expect(page.getByText('desfaça o pagamento da fatura de 04/2019 primeiro')).toBeVisible();
 
-  // Com a fatura paga, a dívida que resta (parcelas 2 a 10 = R$ 900,00) aparece no painel.
+  // O painel não desconta o cartão do patrimônio: a dívida fica só na tela de cartões.
   await page.goto('/');
-  await expect(page.getByTestId('cartoes-a-pagar')).toContainText('900');
-  await expect(page.getByTestId('cartoes-a-pagar')).toContainText('Cartões a pagar');
+  await expect(page.getByTestId('cartoes-a-pagar')).toHaveCount(0);
+  await page.goto(`/cartoes/${cartaoId}`);
+  await expect(page.getByTestId('a-pagar')).toContainText('900');
 
   // Pagar todas as demais faturas da compra zera a dívida.
   for (const mes of [
@@ -111,8 +112,8 @@ test('compra parcelada cai nas faturas certas, bloqueia edição paga e some do 
   ]) {
     await pagarFatura(page, cartaoId, mes);
   }
-  await page.goto('/');
-  await expect(page.getByTestId('cartoes-a-pagar')).toHaveCount(0);
+  await page.goto(`/cartoes/${cartaoId}`);
+  await expect(page.getByTestId('a-pagar')).toContainText('0,00');
 });
 
 test('sem JavaScript: lançar compra no cartão redireciona e mostra a confirmação', async ({

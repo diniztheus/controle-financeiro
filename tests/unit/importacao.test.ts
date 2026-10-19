@@ -386,9 +386,9 @@ describe('onda 2: números do cartão e patrimônio batem com o app atual', () =
     expect(cartao?.proximaFatura).toMatchObject({ mes: '2026-11', totalCentavos: 33333 });
 
     const painel = montarPainel(banco, '2026-10', '2026-10-15');
-    expect(painel.patrimonio.aPagarCartoesCentavos).toBe(66666);
+    // A dívida do cartão não entra no patrimônio: só contas e bitcoin.
     expect(painel.patrimonio.liquidoCentavos).toBe(
-      painel.patrimonio.contasCentavos + painel.patrimonio.bitcoinCentavos - 66666,
+      painel.patrimonio.contasCentavos + painel.patrimonio.bitcoinCentavos,
     );
   });
 });

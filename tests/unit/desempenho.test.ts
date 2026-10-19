@@ -248,13 +248,11 @@ describe('desempenho e coerência com 10 anos de dados', () => {
     expect(r.lancamentos).toHaveLength(500);
   });
 
-  it('a evolução do patrimônio fecha: total = contas + bitcoin - dívida dos cartões', () => {
+  it('a evolução do patrimônio fecha: total = contas + bitcoin', () => {
     const pontos = evolucaoPatrimonioMensal(banco, 120, AGORA);
     expect(pontos).toHaveLength(120);
     for (const p of pontos) {
-      expect(p.totalCentavos).toBe(
-        p.contasCentavos + p.bitcoinCentavos - (p.dividaCartaoCentavos ?? 0),
-      );
+      expect(p.totalCentavos).toBe(p.contasCentavos + p.bitcoinCentavos);
     }
     // No último mês, as contas valem a soma dos saldos atuais.
     const saldos = um(banco, 'SELECT SUM(saldo_centavos) FROM contas WHERE removido_em IS NULL');

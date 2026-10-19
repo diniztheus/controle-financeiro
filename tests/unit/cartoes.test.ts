@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  dividaCartaoEmData,
   limiteDisponivel,
   previaParcelas,
   rotuloParcela,
@@ -125,35 +124,5 @@ describe('prévia de parcelas', () => {
     expect(() => previaParcelas('2026-10-01', ciclo, 10000, 0)).toThrow(RangeError);
     expect(() => previaParcelas('2026-10-01', ciclo, 10000, 25)).toThrow(RangeError);
     expect(() => previaParcelas('2026-10-01', ciclo, 0, 2)).toThrow();
-  });
-});
-
-describe('dívida do cartão em uma data', () => {
-  const parcelas = [
-    // Compra de 01/10, 1ª parcela na fatura de outubro (não paga).
-    { dataCompra: '2026-10-01', valorCentavos: 10000, mesFatura: '2026-10', pagaEm: null },
-    // Mesma compra, 2ª parcela na fatura de novembro, paga em 10/11.
-    { dataCompra: '2026-10-01', valorCentavos: 5000, mesFatura: '2026-11', pagaEm: '2026-11-10' },
-    // Compra de 20/11, na fatura de dezembro (não paga).
-    { dataCompra: '2026-11-20', valorCentavos: 3000, mesFatura: '2026-12', pagaEm: null },
-  ];
-
-  it('zero antes de qualquer compra', () => {
-    expect(dividaCartaoEmData(parcelas, '2026-09-30')).toBe(0);
-    expect(dividaCartaoEmData([], '2026-10-01')).toBe(0);
-  });
-
-  it('inclui parcelas futuras de compras já feitas', () => {
-    expect(dividaCartaoEmData(parcelas, '2026-10-01')).toBe(15000);
-  });
-
-  it('a fatura paga no dia deixa de ser dívida naquele dia, não antes', () => {
-    expect(dividaCartaoEmData(parcelas, '2026-11-09')).toBe(15000);
-    expect(dividaCartaoEmData(parcelas, '2026-11-10')).toBe(10000);
-  });
-
-  it('compra feita depois da data não entra', () => {
-    expect(dividaCartaoEmData(parcelas, '2026-11-19')).toBe(10000);
-    expect(dividaCartaoEmData(parcelas, '2026-11-20')).toBe(13000);
   });
 });

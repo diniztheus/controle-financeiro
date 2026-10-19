@@ -5,8 +5,8 @@
  * - a fatura é identificada pelo mês do vencimento; a linha de `faturas` nasce ao lançar a
  *   primeira parcela daquele mês (ou ao pagar). Mês sem parcelas aparece vazio, sem linha;
  * - pagar fatura NÃO altera o saldo das contas;
- * - a dívida do patrimônio é a soma das parcelas (inclusive futuras) de compras e cartões fora
- *   da lixeira cujas faturas não estão pagas;
+ * - a dívida dos cartões é a soma das parcelas (inclusive futuras) de compras e cartões fora
+ *   da lixeira cujas faturas não estão pagas; ela NÃO entra no patrimônio (só contas e bitcoin);
  * - mudar fechamento/vencimento vale só para compras novas: as parcelas já ligadas continuam
  *   nas faturas que tinham;
  * - arquivar esconde o cartão dos formulários novos e mantém o histórico; remover manda para a
@@ -96,14 +96,6 @@ export interface FaturaNaLista {
   vencimento: Dia;
   totalCentavos: Centavos;
   situacao: SituacaoFatura;
-}
-
-/** Parcela de compra de cartão, para a dívida e os relatórios. */
-export interface ParcelaDeCartao {
-  dataCompra: Dia;
-  valorCentavos: Centavos;
-  mesFatura: Mes;
-  pagaEm: Dia | null;
 }
 
 type Leitor = Pick<BancoDrizzle, 'select'>;
@@ -275,32 +267,6 @@ export function cartoesNaLixeira(banco: Banco): Cartao[] {
     .all();
 }
 
-/**
- * Parcelas de compras de cartão fora da lixeira, com a fatura ligada (todas, pagas ou não).
- * Base da dívida: a lixeira de compras e de cartões já sai daqui.
- */
-export function parcelasDeCartoes(banco: Banco): ParcelaDeCartao[] {
-  return banco.db
-    .select({
-      dataCompra: compras.dataCompra,
-      valorCentavos: parcelas.valorCentavos,
-      mesFatura: faturas.mesVencimento,
-      pagaEm: faturas.pagaEm,
-    })
-    .from(parcelas)
-    .innerJoin(
-      compras,
-      and(
-        eq(compras.id, parcelas.compraId),
-        isNull(compras.removidoEm),
-        isNotNull(compras.cartaoId),
-      ),
-    )
-    .innerJoin(cartoes, and(eq(cartoes.id, compras.cartaoId), isNull(cartoes.removidoEm)))
-    .innerJoin(faturas, eq(faturas.id, parcelas.faturaId))
-    .all();
-}
-
 /** Parcelas ainda não pagas (fatura sem `pagaEm`), de um cartão ou de todos. */
 function parcelasEmAberto(db: Leitor, cartaoId?: string): { valorCentavos: Centavos }[] {
   return db
@@ -325,7 +291,7 @@ export function aPagarDoCartao(banco: Banco, cartaoId: string): Centavos {
   return somar(parcelasEmAberto(banco.db, cartaoId).map((p) => p.valorCentavos));
 }
 
-/** Dívida de todos os cartões fora da lixeira: entra no patrimônio com sinal de menos. */
+/** Dívida de todos os cartões fora da lixeira (não entra no patrimônio). */
 export function aPagarCartoes(banco: Banco): Centavos {
   return somar(parcelasEmAberto(banco.db).map((p) => p.valorCentavos));
 }

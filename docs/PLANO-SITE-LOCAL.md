@@ -163,7 +163,7 @@ Objetivo: cartões, compras parceladas e faturas, com as mesmas regras de hoje.
 3. Lançamento de **compra no cartão** com 1 a 24 parcelas: gera `parcelas`, cria/associa `faturas` automaticamente, tudo numa transação. Editar a compra regera as parcelas.
 4. Tela de **fatura**: itens (com "3/10"), total, fechamento, vencimento, marcar como paga/desfazer, navegação entre faturas.
 5. **Limite disponível** do cartão (limite − parcelas em faturas não pagas).
-6. Painel do mês passa a incluir parcelas de cartão por competência; patrimônio passa a descontar o que falta pagar.
+6. Painel do mês passa a incluir parcelas de cartão por competência; o patrimônio NÃO desconta o cartão (decisão de 19/10/2026: patrimônio = contas + bitcoin).
 7. Testes e2e: compra parcelada aparece nas faturas certas; pagar fatura atualiza o patrimônio.
 
 Pronto quando: os números de faturas e patrimônio batem com o app atual para os mesmos dados importados.
@@ -183,7 +183,7 @@ Pronto quando: a seção de bitcoin faz tudo que a v3 faz, mais preço médio e 
 ### Onda 4: Visão completa e relatórios
 Objetivo: aproveitar o histórico que o banco local guarda.
 
-1. **Evolução do patrimônio** mês a mês (contas pelo histórico de saldos + BTC pelo preço da época − dívida de cartão naquela data).
+1. **Evolução do patrimônio** mês a mês (contas pelo histórico de saldos + BTC pelo preço da época; cartão não entra).
 2. **Relatórios**: gastos por categoria ao longo dos meses, comparativo mês a mês, maiores gastos, média por categoria.
 3. **Busca e filtros** de lançamentos (texto, período, categoria, conta/cartão, faixa de valor).
 4. **Limite por mês** (além do padrão) e, opcionalmente, limite por categoria com alerta visual.

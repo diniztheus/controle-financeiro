@@ -208,11 +208,9 @@ describe('resumo do mês', () => {
     expect(diaDeCorte('2026-11', '2026-10-15')).toBe(0);
   });
 
-  it('patrimônio líquido: contas, bitcoin e cartões a pagar', () => {
+  it('patrimônio líquido: só contas e bitcoin', () => {
     expect(patrimonioLiquido({ saldosContas: [150000, -2000] })).toBe(148000);
-    expect(
-      patrimonioLiquido({ saldosContas: [1000], bitcoinCentavos: 500, aPagarCartoesCentavos: 300 }),
-    ).toBe(1200);
+    expect(patrimonioLiquido({ saldosContas: [1000], bitcoinCentavos: 500 })).toBe(1500);
     expect(patrimonioLiquido({ saldosContas: [] })).toBe(0);
   });
 });

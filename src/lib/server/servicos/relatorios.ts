@@ -26,11 +26,8 @@ import {
   mesDe,
   mesesEntre,
   somarMeses,
-  ultimoDiaDoMes,
   type Mes,
 } from '../../dominio/datas.ts';
-import { dividaCartaoEmData } from '../../dominio/cartoes.ts';
-import { parcelasDeCartoes } from './cartoes.ts';
 import { somar } from '../../dominio/dinheiro.ts';
 import type { Lancamento } from '../../dominio/lancamentos.ts';
 import type { Banco } from '../db/conexao.ts';
@@ -172,13 +169,8 @@ export function evolucaoPatrimonioMensal(
     .from(btcPrecos)
     .all();
 
-  // Dívida de cartões: parcelas de compras feitas até o fim do mês cuja fatura ainda não estava
-  // paga naquele dia (pagaEm da fatura ligada à parcela).
-  const parcelasCartao = parcelasDeCartoes(banco);
-  return evolucaoPatrimonio(meses, saldos, btcMovs, precos).map((p) => {
-    const divida = dividaCartaoEmData(parcelasCartao, ultimoDiaDoMes(p.mes));
-    return { ...p, totalCentavos: p.totalCentavos - divida, dividaCartaoCentavos: divida };
-  });
+  // Compras no cartão não entram: o patrimônio é só contas e bitcoin.
+  return evolucaoPatrimonio(meses, saldos, btcMovs, precos);
 }
 
 /**

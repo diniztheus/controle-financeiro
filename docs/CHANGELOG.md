@@ -20,6 +20,9 @@ Uma nota curta por onda. Versões seguem as tags do git (`v0.0`, `v0.1`…).
 - **Cartões**: o destaque de cada cartão agora é a **fatura atual** (só as parcelas daquele mês),
   com a próxima fatura, o limite disponível e o limite utilizado (todas as parcelas em aberto,
   inclusive futuras) logo abaixo. Antes o destaque mostrava a dívida inteira.
+- **Patrimônio** = contas + bitcoin. Compras no cartão não descontam mais nada: o patrimônio só
+  muda quando um saldo é atualizado ou o bitcoin muda (preço ou quantidade). Vale para o painel e
+  para a evolução nos relatórios.
 
 ## Onda 5: Acabamento e operação (17/10/2026)
 

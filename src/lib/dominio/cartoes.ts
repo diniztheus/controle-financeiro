@@ -85,25 +85,3 @@ export function previaParcelas(
     };
   });
 }
-
-/**
- * Dívida de cartão numa data: parcelas de compras feitas até `data` (inclusive) cuja fatura
- * não estava paga até `data` (sem `pagaEm`, ou paga depois de `data`). Inclui parcelas futuras.
- * Usado na evolução do patrimônio.
- */
-export function dividaCartaoEmData(
-  parcelas: readonly {
-    dataCompra: Dia;
-    valorCentavos: Centavos;
-    mesFatura: Mes;
-    pagaEm: Dia | null;
-  }[],
-  data: Dia,
-): number {
-  return somar(
-    parcelas
-      .filter((p) => comparar(p.dataCompra, data) <= 0)
-      .filter((p) => p.pagaEm === null || comparar(p.pagaEm, data) > 0)
-      .map((p) => p.valorCentavos),
-  );
-}

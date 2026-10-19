@@ -18,7 +18,6 @@ import type { Banco } from '../db/conexao.ts';
 import { listarContas, totalDasContas, type Conta } from './contas.ts';
 import { listarCategorias } from './categorias.ts';
 import { valorBitcoinCentavos } from './bitcoin.ts';
-import { aPagarCartoes } from './cartoes.ts';
 import { lancamentosDoMes } from './gastos.ts';
 import { agruparPorDia, type DiaDeLancamentos } from '../../dominio/lancamentos.ts';
 import { limiteDoMes } from './limite.ts';
@@ -44,8 +43,6 @@ export interface Painel {
     quantidadeContas: number;
     /** Valor atual da posição em bitcoin (0 se sem preço). */
     bitcoinCentavos: Centavos;
-    /** Dívida de cartões (parcelas em faturas não pagas); entra com sinal de menos. */
-    aPagarCartoesCentavos: Centavos;
     /** Quando um saldo foi informado pela última vez. */
     saldoAtualizadoEm: string | null;
   };
@@ -89,7 +86,6 @@ function ler(banco: Banco, mes: Mes, hoje: Dia): Painel {
   const listaContas = listarContas(banco);
   const contas = totalDasContas(banco, listaContas);
   const bitcoin = valorBitcoinCentavos(banco);
-  const cartoesAPagar = aPagarCartoes(banco);
   const entradas = receitasDoMes(banco, mes).filter((r) => r.confirmada !== false);
   return {
     mes,
@@ -97,12 +93,10 @@ function ler(banco: Banco, mes: Mes, hoje: Dia): Painel {
       liquidoCentavos: patrimonioLiquido({
         saldosContas: [contas.totalCentavos],
         bitcoinCentavos: bitcoin,
-        aPagarCartoesCentavos: cartoesAPagar,
       }),
       contasCentavos: contas.totalCentavos,
       quantidadeContas: contas.quantidade,
       bitcoinCentavos: bitcoin,
-      aPagarCartoesCentavos: cartoesAPagar,
       saldoAtualizadoEm: contas.saldoAtualizadoEm,
     },
     contas: listaContas,

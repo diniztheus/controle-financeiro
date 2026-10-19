@@ -10,8 +10,7 @@
   import type { PontoPatrimonio } from '$lib/dominio/relatorios';
 
   interface Props {
-    /** `dividaCartaoCentavos` (parcelas em faturas não pagas) já vem descontado no `totalCentavos`. */
-    pontos: (PontoPatrimonio & { dividaCartaoCentavos?: number })[];
+    pontos: PontoPatrimonio[];
   }
   let { pontos }: Props = $props();
 
@@ -19,13 +18,11 @@
   const ALTURA = 200;
 
   const n = $derived(pontos.length);
-  /** A coluna de cartões só aparece quando algum mês tem dívida de cartão. */
-  const temDivida = $derived(pontos.some((p) => (p.dividaCartaoCentavos ?? 0) > 0));
   const largura = $derived(n ? L / n : L);
   const passo = $derived(n > 12 ? 3 : n > 6 ? 2 : 1);
   const temSaldo = $derived(pontos.some((p) => p.temSaldo));
   const temAlgo = $derived(pontos.some((p) => p.temSaldo || p.bitcoinCentavos > 0));
-  // Escala pela soma bruta (contas + bitcoin): o total líquido pode ser negativo com dívida de cartão.
+  // Escala pela soma de contas e bitcoin (o total pode ser negativo com conta no vermelho).
   const topo = $derived(
     Math.max(
       1,
@@ -125,7 +122,6 @@
             <th scope="col">Mês</th>
             <th scope="col" class="num">Contas</th>
             <th scope="col" class="num">Bitcoin</th>
-            {#if temDivida}<th scope="col" class="num">Cartões a pagar</th>{/if}
             <th scope="col" class="num">Total</th>
           </tr>
         </thead>
@@ -135,13 +131,6 @@
               <td>{nomeMes(p.mes)}</td>
               <td class="num">{p.temSaldo ? formatarBRL(p.contasCentavos) : 'sem saldo'}</td>
               <td class="num">{formatarBRL(p.bitcoinCentavos)}</td>
-              {#if temDivida}
-                <td class="num">
-                  {(p.dividaCartaoCentavos ?? 0) > 0
-                    ? formatarBRL(-(p.dividaCartaoCentavos ?? 0))
-                    : formatarBRL(0)}
-                </td>
-              {/if}
               <td class="num">{formatarBRL(p.totalCentavos)}</td>
             </tr>
           {/each}
