@@ -14,7 +14,7 @@
  *
  * Escritas que mexem em mais de uma tabela rodam numa transação IMMEDIATE.
  */
-import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import {
   ehDia,
   ehMes,
@@ -30,7 +30,7 @@ import {
   type ItemFatura,
   type SituacaoFatura,
 } from '../../dominio/cartoes.ts';
-import { ehCentavos, somar, type Centavos } from '../../dominio/dinheiro.ts';
+import { ehCentavos, type Centavos } from '../../dominio/dinheiro.ts';
 import {
   dataFechamento,
   dataVencimento,
@@ -288,33 +288,53 @@ export function cartoesNaLixeira(banco: Banco): Cartao[] {
     .all();
 }
 
-/** Parcelas ainda não pagas (fatura sem `pagaEm`), de um cartão ou de todos. */
-function parcelasEmAberto(db: Leitor, cartaoId?: string): { valorCentavos: Centavos }[] {
-  return db
-    .select({ valorCentavos: parcelas.valorCentavos })
+/** Soma das parcelas no SQL (0 quando não há nenhuma). */
+const somaDasParcelas = sql<Centavos>`coalesce(sum(${parcelas.valorCentavos}), 0)`;
+
+// Parcela em aberto: de compra no cartão fora da lixeira, de cartão fora da lixeira, numa
+// fatura sem `pagaEm`.
+const compraNoCartao = and(
+  eq(compras.id, parcelas.compraId),
+  isNull(compras.removidoEm),
+  isNotNull(compras.cartaoId),
+);
+const cartaoForaDaLixeira = and(eq(cartoes.id, compras.cartaoId), isNull(cartoes.removidoEm));
+const faturaNaoPaga = and(eq(faturas.id, parcelas.faturaId), isNull(faturas.pagaEm));
+
+/** Soma das parcelas ainda não pagas, de um cartão ou de todos. */
+function somaEmAberto(db: Leitor, cartaoId?: string): Centavos {
+  const r = db
+    .select({ total: somaDasParcelas })
     .from(parcelas)
-    .innerJoin(
-      compras,
-      and(
-        eq(compras.id, parcelas.compraId),
-        isNull(compras.removidoEm),
-        isNotNull(compras.cartaoId),
-      ),
-    )
-    .innerJoin(cartoes, and(eq(cartoes.id, compras.cartaoId), isNull(cartoes.removidoEm)))
-    .innerJoin(faturas, and(eq(faturas.id, parcelas.faturaId), isNull(faturas.pagaEm)))
+    .innerJoin(compras, compraNoCartao)
+    .innerJoin(cartoes, cartaoForaDaLixeira)
+    .innerJoin(faturas, faturaNaoPaga)
     .where(cartaoId ? eq(compras.cartaoId, cartaoId) : undefined)
+    .get();
+  return r?.total ?? 0;
+}
+
+/** Soma das parcelas ainda não pagas de cada cartão (sem nada em aberto, o cartão não aparece). */
+function emAbertoPorCartao(db: Leitor): Map<string, Centavos> {
+  const linhas = db
+    .select({ cartaoId: compras.cartaoId, total: somaDasParcelas })
+    .from(parcelas)
+    .innerJoin(compras, compraNoCartao)
+    .innerJoin(cartoes, cartaoForaDaLixeira)
+    .innerJoin(faturas, faturaNaoPaga)
+    .groupBy(compras.cartaoId)
     .all();
+  return new Map(linhas.map((l) => [l.cartaoId!, l.total]));
 }
 
 /** Quanto um cartão tem a pagar: parcelas (inclusive futuras) de faturas não pagas. */
 export function aPagarDoCartao(banco: Banco, cartaoId: string): Centavos {
-  return somar(parcelasEmAberto(banco.db, cartaoId).map((p) => p.valorCentavos));
+  return somaEmAberto(banco.db, cartaoId);
 }
 
 /** Dívida de todos os cartões fora da lixeira (não entra no patrimônio). */
 export function aPagarCartoes(banco: Banco): Centavos {
-  return somar(parcelasEmAberto(banco.db).map((p) => p.valorCentavos));
+  return somaEmAberto(banco.db);
 }
 
 /** Itens (parcelas) de uma linha de fatura, do mais recente para o mais antigo. */
@@ -345,6 +365,7 @@ function itensDaFatura(db: Leitor, faturaId: string): ItemFatura[] {
 }
 
 interface FaturaComTotal {
+  cartaoId: string;
   mes: Mes;
   dataFechamento: Dia;
   dataVencimento: Dia;
@@ -352,42 +373,27 @@ interface FaturaComTotal {
   totalCentavos: Centavos;
 }
 
-/** Faturas de um cartão que têm parcelas (fora da lixeira), do mês mais novo para o mais antigo. */
-function faturasComTotal(db: Leitor, cartaoId: string): FaturaComTotal[] {
-  const linhas = db
+/**
+ * Faturas que têm parcelas (fora da lixeira), com o total somado no SQL, de um cartão ou de
+ * todos. Do mês mais novo para o mais antigo.
+ */
+function faturasComTotal(db: Leitor, cartaoId?: string): FaturaComTotal[] {
+  return db
     .select({
-      id: faturas.id,
+      cartaoId: faturas.cartaoId,
       mes: faturas.mesVencimento,
       dataFechamento: faturas.dataFechamento,
       dataVencimento: faturas.dataVencimento,
       pagaEm: faturas.pagaEm,
-      valorCentavos: parcelas.valorCentavos,
+      totalCentavos: somaDasParcelas,
     })
     .from(faturas)
     .innerJoin(parcelas, eq(parcelas.faturaId, faturas.id))
     .innerJoin(compras, and(eq(compras.id, parcelas.compraId), isNull(compras.removidoEm)))
-    .where(eq(faturas.cartaoId, cartaoId))
+    .where(cartaoId ? eq(faturas.cartaoId, cartaoId) : undefined)
+    .groupBy(faturas.id)
+    .orderBy(desc(faturas.mesVencimento), asc(faturas.cartaoId))
     .all();
-  const porFatura = new Map<
-    string,
-    { f: Omit<FaturaComTotal, 'totalCentavos'>; valores: number[] }
-  >();
-  for (const l of linhas) {
-    const atual = porFatura.get(l.id) ?? {
-      f: {
-        mes: l.mes,
-        dataFechamento: l.dataFechamento,
-        dataVencimento: l.dataVencimento,
-        pagaEm: l.pagaEm,
-      },
-      valores: [],
-    };
-    atual.valores.push(l.valorCentavos);
-    porFatura.set(l.id, atual);
-  }
-  return [...porFatura.values()]
-    .map(({ f, valores }) => ({ ...f, totalCentavos: somar(valores) }))
-    .sort((a, b) => (a.mes < b.mes ? 1 : a.mes > b.mes ? -1 : 0));
 }
 
 /**
@@ -399,45 +405,52 @@ export function listarCartoes(
   opcoes: { incluirArquivados?: boolean; hoje?: Dia } = {},
 ): CartaoNaLista[] {
   const dia = opcoes.hoje ?? hojeDe();
-  return naoRemovidos(banco.db)
-    .filter((c) => opcoes.incluirArquivados || c.ativo)
-    .map((c) => {
-      const aPagarCentavos = aPagarDoCartao(banco, c.id);
-      const todas = faturasComTotal(banco.db, c.id);
-      const naoPagas = todas
-        .filter((f) => f.pagaEm === null)
-        .sort((a, b) => (a.mes < b.mes ? -1 : a.mes > b.mes ? 1 : 0));
-      const primeira = naoPagas[0];
+  const lista = naoRemovidos(banco.db).filter((c) => opcoes.incluirArquivados || c.ativo);
+  if (lista.length === 0) return [];
+  const emAberto = emAbertoPorCartao(banco.db);
+  const faturasPorCartao = new Map<string, FaturaComTotal[]>();
+  for (const f of faturasComTotal(banco.db)) {
+    const doCartao = faturasPorCartao.get(f.cartaoId);
+    if (doCartao) doCartao.push(f);
+    else faturasPorCartao.set(f.cartaoId, [f]);
+  }
+  return lista.map((c) => {
+    const aPagarCentavos = emAberto.get(c.id) ?? 0;
+    const todas = faturasPorCartao.get(c.id) ?? [];
+    const naoPagas = todas
+      .filter((f) => f.pagaEm === null)
+      .sort((a, b) => (a.mes < b.mes ? -1 : a.mes > b.mes ? 1 : 0));
+    const primeira = naoPagas[0];
 
-      const ciclo: CicloCartao = { diaFechamento: c.diaFechamento, diaVencimento: c.diaVencimento };
-      const mesDoCiclo = mesDaFatura(ciclo, dia);
-      const atrasada = naoPagas.find((f) => f.mes <= mesDoCiclo);
-      const mesAtual = atrasada?.mes ?? mesDoCiclo;
-      const porMes = new Map(todas.map((f) => [f.mes, f]));
-      const resumo = (mes: Mes): ResumoFatura => {
-        const f = porMes.get(mes);
-        return {
-          mes,
-          vencimento: f?.dataVencimento ?? dataVencimento(ciclo, mes),
-          totalCentavos: f?.totalCentavos ?? 0,
-          paga: f ? f.pagaEm !== null : false,
-        };
-      };
+    const ciclo: CicloCartao = { diaFechamento: c.diaFechamento, diaVencimento: c.diaVencimento };
+    const mesDoCiclo = mesDaFatura(ciclo, dia);
+    const atrasada = naoPagas.find((f) => f.mes <= mesDoCiclo);
+    const mesAtual = atrasada?.mes ?? mesDoCiclo;
+    const porMes = new Map(todas.map((f) => [f.mes, f]));
+    const resumo = (mes: Mes): ResumoFatura => {
+      const f = porMes.get(mes);
       return {
-        ...c,
-        faturaAtual: resumo(mesAtual),
-        faturaSeguinte: resumo(somarMeses(mesAtual, 1)),
-        aPagarCentavos,
-        disponivelCentavos: limiteDisponivel(c.limiteCentavos, aPagarCentavos),
-        proximaFatura: primeira
-          ? {
-              mes: primeira.mes,
-              vencimento: primeira.dataVencimento,
-              totalCentavos: primeira.totalCentavos,
-            }
-          : null,
+        mes,
+        vencimento: f?.dataVencimento ?? dataVencimento(ciclo, mes),
+        totalCentavos: f?.totalCentavos ?? 0,
+        paga: f ? f.pagaEm !== null : false,
       };
-    });
+    };
+    return {
+      ...c,
+      faturaAtual: resumo(mesAtual),
+      faturaSeguinte: resumo(somarMeses(mesAtual, 1)),
+      aPagarCentavos,
+      disponivelCentavos: limiteDisponivel(c.limiteCentavos, aPagarCentavos),
+      proximaFatura: primeira
+        ? {
+            mes: primeira.mes,
+            vencimento: primeira.dataVencimento,
+            totalCentavos: primeira.totalCentavos,
+          }
+        : null,
+    };
+  });
 }
 
 function exigirCartaoParaFatura(db: Leitor, cartaoId: string, mes: string): Cartao {
