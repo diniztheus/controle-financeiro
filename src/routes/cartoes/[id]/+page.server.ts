@@ -2,14 +2,12 @@ import { error, redirect } from '@sveltejs/kit';
 import { executar, falhou, validar } from '$lib/server/acoes';
 import { obterBanco } from '$lib/server/db';
 import {
-  aPagarDoCartao,
   arquivarCartao,
   desarquivarCartao,
   editarCartao,
-  listarCartoes,
-  listarFaturasDoCartao,
   obterCartao,
   removerCartao,
+  telaDoCartao,
 } from '$lib/server/servicos/cartoes';
 import { cartaoForm } from '$lib/validacao/nucleo';
 import type { Actions, PageServerLoad } from './$types';
@@ -18,12 +16,12 @@ export const load: PageServerLoad = ({ params }) => {
   const banco = obterBanco();
   const cartao = obterCartao(banco, params.id);
   if (!cartao || cartao.removidoEm) error(404, 'Este cartão não existe ou está na lixeira.');
+  const tela = telaDoCartao(banco, cartao);
   return {
     cartao,
-    aPagar: aPagarDoCartao(banco, cartao.id),
-    faturaAtual: listarCartoes(banco, { incluirArquivados: true }).find((x) => x.id === cartao.id)!
-      .faturaAtual,
-    faturas: listarFaturasDoCartao(banco, cartao.id),
+    aPagar: tela.aPagarCentavos,
+    faturaAtual: tela.faturaAtual,
+    faturas: tela.faturas,
   };
 };
 

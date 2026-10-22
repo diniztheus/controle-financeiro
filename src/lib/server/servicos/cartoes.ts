@@ -414,43 +414,72 @@ export function listarCartoes(
     if (doCartao) doCartao.push(f);
     else faturasPorCartao.set(f.cartaoId, [f]);
   }
-  return lista.map((c) => {
-    const aPagarCentavos = emAberto.get(c.id) ?? 0;
-    const todas = faturasPorCartao.get(c.id) ?? [];
-    const naoPagas = todas
-      .filter((f) => f.pagaEm === null)
-      .sort((a, b) => (a.mes < b.mes ? -1 : a.mes > b.mes ? 1 : 0));
-    const primeira = naoPagas[0];
+  return lista.map((c) =>
+    resumirCartao(c, faturasPorCartao.get(c.id) ?? [], emAberto.get(c.id) ?? 0, dia),
+  );
+}
 
-    const ciclo: CicloCartao = { diaFechamento: c.diaFechamento, diaVencimento: c.diaVencimento };
-    const mesDoCiclo = mesDaFatura(ciclo, dia);
-    const atrasada = naoPagas.find((f) => f.mes <= mesDoCiclo);
-    const mesAtual = atrasada?.mes ?? mesDoCiclo;
-    const porMes = new Map(todas.map((f) => [f.mes, f]));
-    const resumo = (mes: Mes): ResumoFatura => {
-      const f = porMes.get(mes);
-      return {
-        mes,
-        vencimento: f?.dataVencimento ?? dataVencimento(ciclo, mes),
-        totalCentavos: f?.totalCentavos ?? 0,
-        paga: f ? f.pagaEm !== null : false,
-      };
-    };
+/** Resumo de um cartão a partir das faturas dele (com total) e do que está a pagar. */
+function resumirCartao(
+  c: Cartao,
+  todas: readonly FaturaComTotal[],
+  aPagarCentavos: Centavos,
+  dia: Dia,
+): CartaoNaLista {
+  const naoPagas = todas
+    .filter((f) => f.pagaEm === null)
+    .sort((a, b) => (a.mes < b.mes ? -1 : a.mes > b.mes ? 1 : 0));
+  const primeira = naoPagas[0];
+
+  const ciclo: CicloCartao = { diaFechamento: c.diaFechamento, diaVencimento: c.diaVencimento };
+  const mesDoCiclo = mesDaFatura(ciclo, dia);
+  const atrasada = naoPagas.find((f) => f.mes <= mesDoCiclo);
+  const mesAtual = atrasada?.mes ?? mesDoCiclo;
+  const porMes = new Map(todas.map((f) => [f.mes, f]));
+  const resumo = (mes: Mes): ResumoFatura => {
+    const f = porMes.get(mes);
     return {
-      ...c,
-      faturaAtual: resumo(mesAtual),
-      faturaSeguinte: resumo(somarMeses(mesAtual, 1)),
-      aPagarCentavos,
-      disponivelCentavos: limiteDisponivel(c.limiteCentavos, aPagarCentavos),
-      proximaFatura: primeira
-        ? {
-            mes: primeira.mes,
-            vencimento: primeira.dataVencimento,
-            totalCentavos: primeira.totalCentavos,
-          }
-        : null,
+      mes,
+      vencimento: f?.dataVencimento ?? dataVencimento(ciclo, mes),
+      totalCentavos: f?.totalCentavos ?? 0,
+      paga: f ? f.pagaEm !== null : false,
     };
-  });
+  };
+  return {
+    ...c,
+    faturaAtual: resumo(mesAtual),
+    faturaSeguinte: resumo(somarMeses(mesAtual, 1)),
+    aPagarCentavos,
+    disponivelCentavos: limiteDisponivel(c.limiteCentavos, aPagarCentavos),
+    proximaFatura: primeira
+      ? {
+          mes: primeira.mes,
+          vencimento: primeira.dataVencimento,
+          totalCentavos: primeira.totalCentavos,
+        }
+      : null,
+  };
+}
+
+/** O que a tela de um cartão mostra: o que está a pagar, a fatura atual e a lista de faturas. */
+export interface TelaDoCartao {
+  aPagarCentavos: Centavos;
+  faturaAtual: ResumoFatura;
+  faturas: FaturaNaLista[];
+}
+
+/**
+ * Tela de um cartão (fora da lixeira): calcula só este cartão, lendo as faturas uma vez para a
+ * fatura atual e para a lista. Mesmos números de `listarCartoes` e `listarFaturasDoCartao`.
+ */
+export function telaDoCartao(banco: Banco, cartao: Cartao, hoje: Dia = hojeDe()): TelaDoCartao {
+  const todas = faturasComTotal(banco.db, cartao.id);
+  const aPagarCentavos = somaEmAberto(banco.db, cartao.id);
+  return {
+    aPagarCentavos,
+    faturaAtual: resumirCartao(cartao, todas, aPagarCentavos, hoje).faturaAtual,
+    faturas: todas.map((f) => faturaNaLista(f, hoje)),
+  };
 }
 
 function exigirCartaoParaFatura(db: Leitor, cartaoId: string, mes: string): Cartao {
@@ -503,7 +532,11 @@ export function listarFaturasDoCartao(
   hoje: Dia = hojeDe(),
 ): FaturaNaLista[] {
   exigirNaoRemovido(banco.db, cartaoId);
-  return faturasComTotal(banco.db, cartaoId).map((f) => ({
+  return faturasComTotal(banco.db, cartaoId).map((f) => faturaNaLista(f, hoje));
+}
+
+function faturaNaLista(f: FaturaComTotal, hoje: Dia): FaturaNaLista {
+  return {
     mes: f.mes,
     vencimento: f.dataVencimento,
     totalCentavos: f.totalCentavos,
@@ -511,7 +544,7 @@ export function listarFaturasDoCartao(
       { dataFechamento: f.dataFechamento, dataVencimento: f.dataVencimento, pagaEm: f.pagaEm },
       hoje,
     ),
-  }));
+  };
 }
 
 /**

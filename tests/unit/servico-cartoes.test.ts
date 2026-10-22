@@ -20,6 +20,7 @@ import {
   pagarFatura,
   removerCartao,
   restaurarCartao,
+  telaDoCartao,
   type Cartao,
 } from '../../src/lib/server/servicos/cartoes';
 import { criarConta, listarContas } from '../../src/lib/server/servicos/contas';
@@ -212,6 +213,36 @@ describe('fatura atual e próxima na lista de cartões', () => {
       vencimento: '2026-11-20',
       totalCentavos: 0,
       paga: false,
+    });
+  });
+});
+
+describe('tela de um cartão', () => {
+  it('telaDoCartao dá os mesmos números de aPagarDoCartao, listarCartoes e listarFaturasDoCartao', () => {
+    const c = cartao({ limiteCentavos: 500_000 });
+    const outro = cartao({ nome: 'Inter' });
+    compra(c, '2026-09-05', 30_000, 3);
+    compra(c, '2026-10-05', 60_000, 6);
+    const removida = compra(c, '2026-10-06', 9_000);
+    removerGasto(banco, removida.id, T);
+    compra(outro, '2026-10-05', 7_000, 2);
+    pagarFatura(banco, c.id, '2026-09', { pagaEm: '2026-09-20' }, HOJE);
+    arquivarCartao(banco, c.id, T);
+
+    for (const hoje of ['2026-10-08', '2026-10-15', '2026-11-25']) {
+      const tela = telaDoCartao(banco, obterCartao(banco, c.id)!, hoje);
+      const daLista = listarCartoes(banco, { incluirArquivados: true, hoje }).find(
+        (x) => x.id === c.id,
+      )!;
+      expect(tela).toEqual({
+        aPagarCentavos: aPagarDoCartao(banco, c.id),
+        faturaAtual: daLista.faturaAtual,
+        faturas: listarFaturasDoCartao(banco, c.id, hoje),
+      });
+    }
+    expect(telaDoCartao(banco, obterCartao(banco, c.id)!, '2026-10-15')).toMatchObject({
+      aPagarCentavos: 80_000,
+      faturaAtual: { mes: '2026-10', totalCentavos: 20_000, paga: false },
     });
   });
 });
