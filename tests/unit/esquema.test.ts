@@ -69,13 +69,35 @@ describe('esquema', () => {
       'parcelas_fatura_idx',
       'compras_data_idx',
       'compras_categoria_idx',
+      'compras_cartao_idx',
       'btc_movimentos_data_idx',
+      'btc_movimentos_ordem_idx',
       'saldos_historico_conta_data_idx',
       'faturas_cartao_mes_unico',
       'categorias_nome_unico',
     ]) {
       expect(idx).toContain(nome);
     }
+  });
+
+  it('parcelas em aberto de um cartão e movimentos de bitcoin em ordem usam índice', () => {
+    const plano = (q: string) =>
+      (banco.sqlite.prepare(`EXPLAIN QUERY PLAN ${q}`).all() as { detail: string }[]).map(
+        (r) => r.detail,
+      );
+    const parcelasDoCartao = plano(
+      `SELECT p.valor_centavos FROM parcelas p
+         JOIN compras c ON c.id = p.compra_id AND c.removido_em IS NULL
+         JOIN cartoes ca ON ca.id = c.cartao_id AND ca.removido_em IS NULL
+         JOIN faturas f ON f.id = p.fatura_id AND f.paga_em IS NULL
+        WHERE c.cartao_id = 'x'`,
+    );
+    expect(parcelasDoCartao.some((d) => d.includes('compras_cartao_idx'))).toBe(true);
+    expect(parcelasDoCartao.some((d) => /^SCAN p\b/.test(d))).toBe(false);
+    const btc = plano(
+      `SELECT * FROM btc_movimentos WHERE removido_em IS NULL ORDER BY data, criado_em, id`,
+    );
+    expect(btc).toEqual(['SCAN btc_movimentos USING INDEX btc_movimentos_ordem_idx']);
   });
 
   it('ids são ULID e timestamps são preenchidos', () => {

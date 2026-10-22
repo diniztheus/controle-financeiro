@@ -246,6 +246,7 @@ export const compras = sqliteTable(
     ),
     index('compras_data_idx').on(t.dataCompra),
     index('compras_categoria_idx').on(t.categoriaId),
+    index('compras_cartao_idx').on(t.cartaoId),
   ],
 );
 
@@ -386,6 +387,10 @@ export const btcMovimentos = sqliteTable(
     check('btc_movimentos_valor', sql`${inteiro(t.valorCentavos)} AND ${t.valorCentavos} >= 0`),
     check('btc_movimentos_data', ehDiaSql(t.data)),
     index('btc_movimentos_data_idx').on(t.data),
+    // Ordem cronológica dos movimentos fora da lixeira (posição, painel, conferência da venda).
+    index('btc_movimentos_ordem_idx')
+      .on(t.data, t.criadoEm, t.id)
+      .where(sql`${t.removidoEm} IS NULL`),
   ],
 );
 

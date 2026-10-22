@@ -1,0 +1,2 @@
+CREATE INDEX `btc_movimentos_ordem_idx` ON `btc_movimentos` (`data`,`criado_em`,`id`) WHERE "btc_movimentos"."removido_em" IS NULL;--> statement-breakpoint
+CREATE INDEX `compras_cartao_idx` ON `compras` (`cartao_id`);
