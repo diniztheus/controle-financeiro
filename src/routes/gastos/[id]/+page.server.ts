@@ -7,7 +7,7 @@ import { faturas, parcelas } from '$lib/server/db/esquema';
 import { listarCategorias, obterCategoria } from '$lib/server/servicos/categorias';
 import { listarContas, obterConta } from '$lib/server/servicos/contas';
 import { editarGasto, obterGasto, removerGasto } from '$lib/server/servicos/gastos';
-import { listarCartoes, obterCartao } from '$lib/server/servicos/cartoes';
+import { cartoesParaFormulario, obterCartao } from '$lib/server/servicos/cartoes';
 import { comCamposDoFormulario, dadosDoGasto } from '$lib/server/formularioGasto';
 import { gastoForm } from '$lib/validacao/nucleo';
 import type { Actions, PageServerLoad } from './$types';
@@ -28,12 +28,7 @@ export const load: PageServerLoad = ({ params }) => {
   if (conta && !contas.some((c) => c.id === conta.id)) {
     contas.push({ id: conta.id, nome: `${conta.nome} (na lixeira)` });
   }
-  const cartoes = listarCartoes(banco).map((c) => ({
-    id: c.id,
-    nome: c.nome,
-    diaFechamento: c.diaFechamento,
-    diaVencimento: c.diaVencimento,
-  }));
+  const cartoes = cartoesParaFormulario(banco);
   const cartaoDaCompra = g.cartaoId ? obterCartao(banco, g.cartaoId) : undefined;
   if (cartaoDaCompra && !cartoes.some((c) => c.id === cartaoDaCompra.id)) {
     cartoes.push({

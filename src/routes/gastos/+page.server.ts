@@ -4,7 +4,7 @@ import { redirect } from '@sveltejs/kit';
 import { campo, executar, falhou, validar } from '$lib/server/acoes';
 import { obterBanco } from '$lib/server/db';
 import { listarCategorias } from '$lib/server/servicos/categorias';
-import { listarCartoes } from '$lib/server/servicos/cartoes';
+import { cartoesParaFormulario } from '$lib/server/servicos/cartoes';
 import { listarContas } from '$lib/server/servicos/contas';
 import {
   lancamentosDoMes,
@@ -41,12 +41,7 @@ export const load: PageServerLoad = ({ url }) => {
     quantidade: lancamentos.length,
     categorias: listarCategorias(banco).map((c) => ({ id: c.id, nome: c.nome, cor: c.cor })),
     contas: listarContas(banco).map((c) => ({ id: c.id, nome: c.nome })),
-    cartoes: listarCartoes(banco).map((c) => ({
-      id: c.id,
-      nome: c.nome,
-      diaFechamento: c.diaFechamento,
-      diaVencimento: c.diaVencimento,
-    })),
+    cartoes: cartoesParaFormulario(banco),
     ultimaCategoria: ultimaCategoriaUsada(banco),
     /** Gasto que acabou de ir para a lixeira (para oferecer "desfazer"). */
     removido: gastoAindaNaLixeira(banco, url.searchParams.get('removido')),

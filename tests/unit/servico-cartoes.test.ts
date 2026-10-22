@@ -7,6 +7,7 @@ import {
   aPagarDoCartao,
   arquivarCartao,
   cartoesNaLixeira,
+  cartoesParaFormulario,
   criarCartao,
   desarquivarCartao,
   desfazerPagamentoFatura,
@@ -115,6 +116,28 @@ describe('cadastro de cartões', () => {
     ]);
     desarquivarCartao(banco, c.id, T);
     expect(listarCartoes(banco)).toHaveLength(1);
+  });
+
+  it('cartoesParaFormulario: só ativos fora da lixeira, na ordem da lista, sem as faturas', () => {
+    const a = cartao({ nome: 'Nubank' });
+    const b = cartao({ nome: 'Inter', diaFechamento: 3, diaVencimento: 12 });
+    const arquivado = cartao({ nome: 'Velho' });
+    const removido = cartao({ nome: 'Lixo' });
+    arquivarCartao(banco, arquivado.id, T);
+    removerCartao(banco, removido.id, T);
+    compra(a, '2026-10-05', 10_000);
+    expect(cartoesParaFormulario(banco)).toEqual(
+      listarCartoes(banco).map((c) => ({
+        id: c.id,
+        nome: c.nome,
+        diaFechamento: c.diaFechamento,
+        diaVencimento: c.diaVencimento,
+      })),
+    );
+    expect(cartoesParaFormulario(banco)).toEqual([
+      { id: a.id, nome: 'Nubank', diaFechamento: 10, diaVencimento: 20 },
+      { id: b.id, nome: 'Inter', diaFechamento: 3, diaVencimento: 12 },
+    ]);
   });
 
   it('remover manda para a lixeira; restaurar traz de volta; nome livre na restauração', () => {

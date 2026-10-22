@@ -249,6 +249,27 @@ export function restaurarCartao(banco: Banco, id: string): Cartao {
   }, IMEDIATA);
 }
 
+/** O que os formulários de gasto precisam de um cartão. */
+export type CartaoDoFormulario = Pick<Cartao, 'id' | 'nome' | 'diaFechamento' | 'diaVencimento'>;
+
+/**
+ * Cartões ativos e fora da lixeira, na ordem de `listarCartoes`, só com o que o seletor do
+ * gasto usa. Não calcula faturas nem dívida.
+ */
+export function cartoesParaFormulario(banco: Banco): CartaoDoFormulario[] {
+  return banco.db
+    .select({
+      id: cartoes.id,
+      nome: cartoes.nome,
+      diaFechamento: cartoes.diaFechamento,
+      diaVencimento: cartoes.diaVencimento,
+    })
+    .from(cartoes)
+    .where(and(isNull(cartoes.removidoEm), eq(cartoes.ativo, true)))
+    .orderBy(asc(cartoes.criadoEm), asc(cartoes.id))
+    .all();
+}
+
 /** Cartão fora da lixeira, ou `undefined`. */
 export function obterCartao(banco: Banco, id: string): Cartao | undefined {
   return banco.db
