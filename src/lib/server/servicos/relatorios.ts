@@ -34,7 +34,7 @@ import type { Banco } from '../db/conexao.ts';
 import { btcPrecos, contas, saldosHistorico } from '../db/esquema.ts';
 import { lancamentosDoMes } from './gastos.ts';
 import { ErroDeNegocio } from './erros.ts';
-import { listarMovimentos } from './bitcoin.ts';
+import { movimentosEmOrdem } from './bitcoin.ts';
 import { receitasDoMes } from './receitas.ts';
 import {
   filtrarReceitas,
@@ -163,7 +163,7 @@ export function evolucaoPatrimonioMensal(
     .innerJoin(contas, and(eq(contas.id, saldosHistorico.contaId), isNull(contas.removidoEm)))
     .all();
 
-  const btcMovs = listarMovimentos(banco).map((m) => ({ sats: m.sats, data: m.data }));
+  const btcMovs = movimentosEmOrdem(banco).map((m) => ({ sats: m.sats, data: m.data }));
   const precos = banco.db
     .select({ data: btcPrecos.data, precoCentavos: btcPrecos.precoCentavos })
     .from(btcPrecos)

@@ -286,4 +286,26 @@ describe('ordem cronológica (revisão)', () => {
     expect(() => removerMovimento(banco, compra.id, T2)).toThrow(ErroDeNegocio);
     expect(() => painelBitcoin(banco)).not.toThrow();
   });
+
+  it('compra e venda no mesmo dia: a venda criada depois vem depois da compra', () => {
+    registrarMovimento(
+      banco,
+      { sats: 1000, valorCentavos: 0, data: '2026-10-01' },
+      new Date('2026-10-01T10:00:00Z'),
+    );
+    registrarMovimento(
+      banco,
+      { sats: -500, valorCentavos: 0, data: '2026-10-01' },
+      new Date('2026-10-01T11:00:00Z'),
+    );
+    expect(painelBitcoin(banco).posicao.sats).toBe(500);
+    expect(() => montarPainel(banco, '2026-10', '2026-10-15')).not.toThrow();
+    const nova = registrarMovimento(
+      banco,
+      { sats: -100, valorCentavos: 0, data: '2026-10-02' },
+      new Date('2026-10-02T09:00:00Z'),
+    );
+    expect(listarMovimentos(banco)[0]!.id).toBe(nova.id);
+    expect(painelBitcoin(banco).posicao.sats).toBe(400);
+  });
 });

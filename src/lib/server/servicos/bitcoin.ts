@@ -62,18 +62,35 @@ const PRIORIDADE: Record<OrigemPreco, number> = { manual: 3, api: 2, implicito: 
 
 type Leitor = Pick<Banco['db'], 'select'>;
 
-function ativos(db: Leitor): MovimentoBtc[] {
+/**
+ * Movimentos fora da lixeira em ordem cronológica de verdade (data, criação, id). O domínio
+ * aplica os movimentos de um mesmo dia na ordem recebida, então esta é a ordem das contas.
+ */
+function cronologicos(db: Leitor): MovimentoBtc[] {
   return db
     .select()
     .from(btcMovimentos)
     .where(isNull(btcMovimentos.removidoEm))
-    .orderBy(desc(btcMovimentos.data), desc(btcMovimentos.criadoEm), desc(btcMovimentos.id))
+    .orderBy(asc(btcMovimentos.data), asc(btcMovimentos.criadoEm), asc(btcMovimentos.id))
     .all();
 }
 
 /** Saldo de sats da posição (fora da lixeira). */
 function saldoSats(db: Leitor): number {
-  return ativos(db).reduce((total, m) => total + m.sats, 0);
+  return cronologicos(db).reduce((total, m) => total + m.sats, 0);
+}
+
+/** Mesma ordem de `cronologicos`; o movimento ainda sem id (o novo) fica por último no empate. */
+function porOrdemCronologica(
+  a: Pick<MovimentoBtc, 'data' | 'criadoEm'> & { id?: string },
+  b: Pick<MovimentoBtc, 'data' | 'criadoEm'> & { id?: string },
+): number {
+  if (a.data !== b.data) return a.data < b.data ? -1 : 1;
+  if (a.criadoEm !== b.criadoEm) return a.criadoEm < b.criadoEm ? -1 : 1;
+  if (a.id === b.id) return 0;
+  if (a.id === undefined) return 1;
+  if (b.id === undefined) return -1;
+  return a.id < b.id ? -1 : 1;
 }
 
 function exigirAtivo(db: Leitor, id: string): MovimentoBtc {
@@ -84,7 +101,12 @@ function exigirAtivo(db: Leitor, id: string): MovimentoBtc {
 
 /** Movimentos fora da lixeira, do mais novo para o mais antigo. */
 export function listarMovimentos(banco: Banco): MovimentoBtc[] {
-  return ativos(banco.db);
+  return cronologicos(banco.db).reverse();
+}
+
+/** Movimentos fora da lixeira, do mais antigo para o mais novo (a ordem das contas). */
+export function movimentosEmOrdem(banco: Banco): MovimentoBtc[] {
+  return cronologicos(banco.db);
 }
 
 export function movimentosNaLixeira(banco: Banco): MovimentoBtc[] {
@@ -112,13 +134,15 @@ function gravarPreco(
     .run();
 }
 
+type MovParaConferir = MovBtc & Pick<MovimentoBtc, 'criadoEm'> & { id?: string };
+
 /**
- * Confere a lista inteira pela ordem das datas: nenhuma venda pode passar do saldo que havia
- * no dia dela (o domínio recusa o contrário, e a tela deixaria de abrir).
+ * Confere a lista inteira em ordem cronológica: nenhuma venda pode passar do saldo que havia
+ * naquele momento (o domínio recusa o contrário, e a tela deixaria de abrir).
  */
-function conferirOrdem(movs: readonly MovBtc[], campo?: string): void {
+function conferirOrdem(movs: readonly MovParaConferir[], campo?: string): void {
   try {
-    calcularPosicao(movs, null);
+    calcularPosicao([...movs].sort(porOrdemCronologica), null);
   } catch (e) {
     if (e instanceof RangeError || (e instanceof Error && /excede o saldo/.test(e.message))) {
       throw new ErroDeNegocio(
@@ -151,11 +175,14 @@ export function registrarMovimento(
         'sats',
       );
     }
+    const quando = agoraIso(agora);
     conferirOrdem(
-      [...ativos(tx), { sats: d.sats, valorCentavos: d.valorCentavos, data: d.data }],
+      [
+        ...cronologicos(tx),
+        { sats: d.sats, valorCentavos: d.valorCentavos, data: d.data, criadoEm: quando },
+      ],
       'data',
     );
-    const quando = agoraIso(agora);
     const mov = tx
       .insert(btcMovimentos)
       .values({
@@ -179,7 +206,7 @@ export function registrarMovimento(
 export function removerMovimento(banco: Banco, id: string, agora = new Date()): void {
   banco.db.transaction((tx) => {
     exigirAtivo(tx, id);
-    conferirOrdem(ativos(tx).filter((x) => x.id !== id));
+    conferirOrdem(cronologicos(tx).filter((x) => x.id !== id));
     tx.update(btcMovimentos)
       .set({ removidoEm: agoraIso(agora) })
       .where(eq(btcMovimentos.id, id))
@@ -193,7 +220,7 @@ export function restaurarMovimento(banco: Banco, id: string): MovimentoBtc {
     const m = tx.select().from(btcMovimentos).where(eq(btcMovimentos.id, id)).get();
     if (!m) throw naoEncontrado('Este movimento não existe mais');
     if (!m.removidoEm) return m;
-    conferirOrdem([...ativos(tx), m]);
+    conferirOrdem([...cronologicos(tx), m]);
     return tx
       .update(btcMovimentos)
       .set({ removidoEm: null })
@@ -309,23 +336,21 @@ function todosOsPrecos(banco: Banco): PrecoBtc[] {
 
 /** Tudo que a seção de bitcoin mostra, lido de uma vez. */
 export function painelBitcoin(banco: Banco): PainelBitcoin {
-  const movimentos = listarMovimentos(banco);
+  const emOrdem = cronologicos(banco.db);
   const preco = precoAtual(banco);
   return {
-    posicao: calcularPosicao(movimentos as MovBtc[], preco?.precoCentavos ?? null),
+    posicao: calcularPosicao(emOrdem, preco?.precoCentavos ?? null),
     preco,
-    movimentos,
-    evolucao: calcularEvolucao(movimentos as MovBtc[], todosOsPrecos(banco)),
+    // A tela mostra do mais novo para o mais antigo.
+    movimentos: [...emOrdem].reverse(),
+    evolucao: calcularEvolucao(emOrdem, todosOsPrecos(banco)),
   };
 }
 
 /** Valor atual da posição em centavos (0 se ainda não há preço). */
 export function valorBitcoinCentavos(banco: Banco): number {
   const preco = precoAtual(banco);
-  const posicao = calcularPosicao(
-    listarMovimentos(banco) as MovBtc[],
-    preco?.precoCentavos ?? null,
-  );
+  const posicao = calcularPosicao(cronologicos(banco.db), preco?.precoCentavos ?? null);
   return posicao.valorAtualCentavos ?? 0;
 }
 

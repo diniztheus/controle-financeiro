@@ -151,7 +151,10 @@ interface Estado {
 
 const ESTADO_INICIAL: Estado = { sats: 0, satsComPreco: 0, custo: 0 };
 
-/** Ordena por dia sem alterar a entrada. Dentro do mesmo dia, mantém a ordem recebida. */
+/**
+ * Ordena por dia sem alterar a entrada. Dentro do mesmo dia, mantém a ordem recebida: quem chama
+ * manda os movimentos do mesmo dia na ordem em que aconteceram (compra antes da venda).
+ */
 function ordenarPorData<T extends { data: string }>(itens: readonly T[]): T[] {
   return [...itens].sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
 }
