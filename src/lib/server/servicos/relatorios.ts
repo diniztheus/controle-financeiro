@@ -32,7 +32,7 @@ import { somar } from '../../dominio/dinheiro.ts';
 import type { Lancamento } from '../../dominio/lancamentos.ts';
 import type { Banco } from '../db/conexao.ts';
 import { btcPrecos, contas, saldosHistorico } from '../db/esquema.ts';
-import { lancamentosDoMes } from './gastos.ts';
+import { lancamentosDosMeses } from './gastos.ts';
 import { ErroDeNegocio } from './erros.ts';
 import { movimentosEmOrdem } from './bitcoin.ts';
 import { receitasDoMes } from './receitas.ts';
@@ -69,9 +69,7 @@ export function intervaloDeMeses(de: Mes, ate: Mes): Mes[] {
 
 /** Lançamentos de cada mês do período (todos os meses aparecem, mesmo sem gasto). */
 export function lancamentosNoPeriodo(banco: Banco, de: Mes, ate: Mes): Record<Mes, Lancamento[]> {
-  const porMes: Record<Mes, Lancamento[]> = {};
-  for (const mes of intervaloDeMeses(de, ate)) porMes[mes] = lancamentosDoMes(banco, mes);
-  return porMes;
+  return lancamentosDosMeses(banco, intervaloDeMeses(de, ate));
 }
 
 /** Mais recente primeiro: data, depois criação, depois parcela. */

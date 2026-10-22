@@ -8,7 +8,7 @@
  * Regra da casa: gasto não mexe no saldo da conta. A conta é só informativa.
  * Toda escrita que toca compra e parcelas roda numa transação única.
  */
-import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNotNull, isNull, lte, type SQL } from 'drizzle-orm';
 import { diaNoMes, type Dia, type Mes } from '../../dominio/datas.ts';
 import type { Centavos } from '../../dominio/dinheiro.ts';
 import type { Lancamento } from '../../dominio/lancamentos.ts';
@@ -238,44 +238,49 @@ export function restaurarGasto(banco: Banco, id: string): Compra {
   }, IMEDIATA);
 }
 
-/**
- * Lançamentos do mês (uma linha por parcela de competência), do dia mais recente para o mais
- * antigo; no mesmo dia, o lançado por último primeiro (id ULID desempata). Compras na lixeira
- * ficam de fora.
- */
-export function lancamentosDoMes(banco: Banco, mes: Mes): Lancamento[] {
-  const linhas = banco.db
-    .select({
-      compraId: parcelas.compraId,
-      numero: parcelas.numero,
-      valorCentavos: parcelas.valorCentavos,
-      dataCompra: compras.dataCompra,
-      valorTotalCentavos: compras.valorTotalCentavos,
-      numParcelas: compras.numParcelas,
-      descricao: compras.descricao,
-      categoriaId: compras.categoriaId,
-      categoriaNome: categorias.nome,
-      categoriaCor: categorias.cor,
-      meio: compras.meio,
-      contaNome: contas.nome,
-      contaRemovidaEm: contas.removidoEm,
-      cartaoNome: cartoes.nome,
-      criadoEm: compras.criadoEm,
-    })
-    .from(parcelas)
-    .innerJoin(compras, and(eq(compras.id, parcelas.compraId), isNull(compras.removidoEm)))
-    .innerJoin(categorias, eq(categorias.id, compras.categoriaId))
-    .leftJoin(contas, eq(contas.id, compras.contaId))
-    .leftJoin(cartoes, eq(cartoes.id, compras.cartaoId))
-    // Cartão na lixeira tira as compras dele de todas as listas e somas.
-    .where(and(eq(parcelas.mesCompetencia, mes), isNull(cartoes.removidoEm)))
-    .orderBy(
-      desc(compras.dataCompra),
-      desc(compras.criadoEm),
-      desc(compras.id),
-      asc(parcelas.numero),
-    )
-    .all();
+/** Parcelas (com compra, categoria, conta e cartão) dos meses que `ondeMes` aceita. */
+function linhasDeLancamentos(banco: Banco, ondeMes: SQL) {
+  return (
+    banco.db
+      .select({
+        compraId: parcelas.compraId,
+        numero: parcelas.numero,
+        valorCentavos: parcelas.valorCentavos,
+        mesCompetencia: parcelas.mesCompetencia,
+        dataCompra: compras.dataCompra,
+        valorTotalCentavos: compras.valorTotalCentavos,
+        numParcelas: compras.numParcelas,
+        descricao: compras.descricao,
+        categoriaId: compras.categoriaId,
+        categoriaNome: categorias.nome,
+        categoriaCor: categorias.cor,
+        meio: compras.meio,
+        contaNome: contas.nome,
+        contaRemovidaEm: contas.removidoEm,
+        cartaoNome: cartoes.nome,
+        criadoEm: compras.criadoEm,
+      })
+      .from(parcelas)
+      .innerJoin(compras, and(eq(compras.id, parcelas.compraId), isNull(compras.removidoEm)))
+      .innerJoin(categorias, eq(categorias.id, compras.categoriaId))
+      .leftJoin(contas, eq(contas.id, compras.contaId))
+      .leftJoin(cartoes, eq(cartoes.id, compras.cartaoId))
+      // Cartão na lixeira tira as compras dele de todas as listas e somas.
+      .where(and(ondeMes, isNull(cartoes.removidoEm)))
+      .orderBy(
+        desc(compras.dataCompra),
+        desc(compras.criadoEm),
+        desc(compras.id),
+        asc(parcelas.numero),
+      )
+      .all()
+  );
+}
+
+type LinhaDeLancamento = ReturnType<typeof linhasDeLancamentos>[number];
+
+/** Linhas de um mês (já na ordem do SQL) viram os lançamentos daquele mês. */
+function lancamentosDasLinhas(mes: Mes, linhas: readonly LinhaDeLancamento[]): Lancamento[] {
   return (
     linhas
       .map((l) => ({
@@ -299,6 +304,35 @@ export function lancamentosDoMes(banco: Banco, mes: Mes): Lancamento[] {
       // O dia no mês pode empatar dias diferentes da compra (31 → 30); a ordem do SQL desempata.
       .sort((a, b) => (a.data === b.data ? 0 : a.data < b.data ? 1 : -1))
   );
+}
+
+/**
+ * Lançamentos do mês (uma linha por parcela de competência), do dia mais recente para o mais
+ * antigo; no mesmo dia, o lançado por último primeiro (id ULID desempata). Compras na lixeira
+ * ficam de fora.
+ */
+export function lancamentosDoMes(banco: Banco, mes: Mes): Lancamento[] {
+  return lancamentosDasLinhas(mes, linhasDeLancamentos(banco, eq(parcelas.mesCompetencia, mes)));
+}
+
+/**
+ * Lançamentos de cada mês de `meses` (na ordem recebida), numa
+ * consulta só. Cada mês sai igual a `lancamentosDoMes`; mês sem gasto vem com lista vazia.
+ */
+export function lancamentosDosMeses(
+  banco: Banco,
+  meses: readonly Mes[],
+): Record<Mes, Lancamento[]> {
+  const porMes = new Map<Mes, LinhaDeLancamento[]>(meses.map((m) => [m, []]));
+  if (meses.length > 0) {
+    const de = meses.reduce((a, b) => (a < b ? a : b));
+    const ate = meses.reduce((a, b) => (a > b ? a : b));
+    const onde = and(gte(parcelas.mesCompetencia, de), lte(parcelas.mesCompetencia, ate))!;
+    for (const l of linhasDeLancamentos(banco, onde)) porMes.get(l.mesCompetencia)?.push(l);
+  }
+  const resultado: Record<Mes, Lancamento[]> = {};
+  for (const [mes, linhas] of porMes) resultado[mes] = lancamentosDasLinhas(mes, linhas);
+  return resultado;
 }
 
 /** Categoria do gasto lançado por último, se ainda estiver ativa. */

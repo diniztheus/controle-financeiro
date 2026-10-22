@@ -9,7 +9,7 @@ import {
   removerMovimento,
 } from '../../src/lib/server/servicos/bitcoin';
 import { ErroDeNegocio } from '../../src/lib/server/servicos/erros';
-import { lancarGasto, removerGasto } from '../../src/lib/server/servicos/gastos';
+import { lancamentosDoMes, lancarGasto, removerGasto } from '../../src/lib/server/servicos/gastos';
 import {
   definirLimiteMes,
   definirLimitePadrao,
@@ -124,6 +124,14 @@ describe('lancamentosNoPeriodo', () => {
     montarCenario();
     const todos = Object.values(lancamentosNoPeriodo(banco, '2026-01', '2026-12')).flat();
     expect(todos.some((l) => l.categoriaNome === 'Saúde')).toBe(false);
+  });
+
+  it('cada mês sai igual a lancamentosDoMes (mesma ordem e campos)', () => {
+    montarCenario();
+    const porMes = lancamentosNoPeriodo(banco, '2025-11', '2027-02');
+    for (const [mes, lista] of Object.entries(porMes)) {
+      expect(lista).toEqual(lancamentosDoMes(banco, mes));
+    }
   });
 });
 
