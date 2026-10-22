@@ -75,11 +75,6 @@ function cronologicos(db: Leitor): MovimentoBtc[] {
     .all();
 }
 
-/** Saldo de sats da posição (fora da lixeira). */
-function saldoSats(db: Leitor): number {
-  return cronologicos(db).reduce((total, m) => total + m.sats, 0);
-}
-
 /** Mesma ordem de `cronologicos`; o movimento ainda sem id (o novo) fica por último no empate. */
 function porOrdemCronologica(
   a: Pick<MovimentoBtc, 'data' | 'criadoEm'> & { id?: string },
@@ -169,18 +164,16 @@ export function registrarMovimento(
   const nota = d.nota?.trim() || null;
 
   return banco.db.transaction((tx) => {
-    if (d.sats < 0 && -d.sats > saldoSats(tx)) {
+    const quando = agoraIso(agora);
+    const atuais = cronologicos(tx);
+    if (d.sats < 0 && -d.sats > atuais.reduce((total, m) => total + m.sats, 0)) {
       throw new ErroDeNegocio(
         'Você não tem essa quantidade de sats para vender. Confira o saldo na posição.',
         'sats',
       );
     }
-    const quando = agoraIso(agora);
     conferirOrdem(
-      [
-        ...cronologicos(tx),
-        { sats: d.sats, valorCentavos: d.valorCentavos, data: d.data, criadoEm: quando },
-      ],
+      [...atuais, { sats: d.sats, valorCentavos: d.valorCentavos, data: d.data, criadoEm: quando }],
       'data',
     );
     const mov = tx
